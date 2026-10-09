@@ -15,9 +15,9 @@
  * {DATA_ROOT}/config/cv-facts.json.
  *
  * Usage:
- *   node shinsotsu/audit-materials.mjs            # scan the configured dirs
- *   node shinsotsu/audit-materials.mjs <file|dir>  # scan specific paths
- *   node shinsotsu/audit-materials.mjs --json
+ *   node shukatsu/audit-materials.mjs            # scan the configured dirs
+ *   node shukatsu/audit-materials.mjs <file|dir>  # scan specific paths
+ *   node shukatsu/audit-materials.mjs --json
  *
  * Exit code: 0 clean, 1 at least one error, 2 config problem.
  */

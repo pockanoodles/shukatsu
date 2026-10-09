@@ -12,10 +12,10 @@
  * box answered in 200 characters reads as low effort to a Japanese recruiter.
  *
  * Usage:
- *   node shinsotsu/char-count.mjs <file> --limit 400
- *   pbpaste | node shinsotsu/char-count.mjs --limit 400
- *   node shinsotsu/char-count.mjs <file> --limit 400 --min-fill 0.9
- *   node shinsotsu/char-count.mjs --self-test
+ *   node shukatsu/char-count.mjs <file> --limit 400
+ *   pbpaste | node shukatsu/char-count.mjs --limit 400
+ *   node shukatsu/char-count.mjs <file> --limit 400 --min-fill 0.9
+ *   node shukatsu/char-count.mjs --self-test
  *
  * Exit code: 0 within limit, 1 over limit, 2 usage error.
  */

@@ -36,7 +36,7 @@ English-language roles at Japanese companies outside these cases use the default
   event days, and ~80% of the result is decided in the online application round before
   the forum.
 - **Fill the box.** Write to 80–100% of a character limit. Under 80% reads as low effort.
-  Check every answer with `node shinsotsu/char-count.mjs --limit N` before showing it.
+  Check every answer with `node shukatsu/char-count.mjs --limit N` before showing it.
 
 ## Vocabulary the candidate's materials must use
 

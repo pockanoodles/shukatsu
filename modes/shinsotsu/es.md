@@ -30,8 +30,8 @@ Draft only. The candidate reviews and submits.
    hook from step 1 and one sentence connecting it to the candidate's own episode.
    Write to `{DATA_ROOT}/output/es/{company-slug}/{question-slug}.md`, one file per answer.
 4. **Check every answer**:
-   - `node shinsotsu/char-count.mjs <file> --limit N` (must pass and fill ≥80%)
-   - `node shinsotsu/audit-materials.mjs <file>` (no forbidden claims)
+   - `node shukatsu/char-count.mjs <file> --limit N` (must pass and fill ≥80%)
+   - `node shukatsu/audit-materials.mjs <file>` (no forbidden claims)
    - `node verify-cv-facts.mjs <file>` (every number is in the sources)
    Fix and recheck until all three pass. Show the counts with the draft.
 5. **Show the drafts** with the char counts and the hooks used. Apply the candidate's
