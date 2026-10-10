@@ -41,17 +41,30 @@
 
 ## Protocol
 
+When `{DATA_ROOT}/data/career-profile.yml` exists, every resume is a selection from it
+(`shukatsu/master.mjs`). Without one, fall back to drafting from `cv.md` and the digest
+and run the three gates by hand.
+
 1. Pick the archetype from the JD and read its row in `_profile.md`'s framing table.
-2. Draft the bullets from `article-digest.md` and `cv.md` under rules 1–13.
-3. Write them into the CV payload, then run:
-   - `node shukatsu/bullet-lint.mjs <generated.md|html>` (zero errors)
-   - `node verify-cv-facts.mjs <generated>` (every number is in the sources)
-   - `node shukatsu/audit-materials.mjs <generated>` (no forbidden claims, required lines present)
-   Fix and rerun until all three pass. Don't show a draft that fails.
-4. Show the candidate the bullets that changed from `cv.md`, each next to its
+2. `node shukatsu/master.mjs select --archetype <id> --company <C> --role <R> --jd jds/<slug>.md`.
+   It scores each verified fact by the archetype's tags, the JD's words, and its
+   priority, keeps the one-page budget (rule 12), picks archetype variants, and writes
+   a draft to `output/tailored/` plus a manifest to `data/manifests/`. Read the
+   "left out" list: a fact the JD clearly wants can be swapped in by hand.
+3. Reword toward the JD under rules 1–13. Move the framing, never the numbers, and
+   never add a claim. A claim the master doesn't hold goes into the profile as a
+   `needs_review` fact for the candidate to confirm first.
+4. `node shukatsu/master.mjs finalize <manifest>`. It traces every bullet back to a
+   verified fact, fails on any changed number or untraceable line, then runs
+   `bullet-lint`, `verify-cv-facts`, and `audit-materials`. Fix and rerun until it says
+   Final. Don't show a draft that fails.
+5. Show the candidate the bullets that changed from `cv.md`, each next to its
    original, with the reason for the change.
-5. **Learn from his rewrites.** When he edits a generated bullet, diff his version
+6. Build the PDF payload from the final draft (`modes/pdf.md`). After he submits:
+   `master.mjs sent <manifest> --on YYYY-MM-DD --num <tracker #>`.
+7. **Learn from his rewrites.** When he edits a generated bullet, diff his version
    against yours and append an entry to `edit_log` in `config/bullet-rules.yml`
    (date, before, after, pattern). When a pattern shows up twice, propose it as a rule:
    a config value if the linter can check it, a line in this file if it can't.
-   If his edit improves the canonical wording, offer to update `cv.md` too.
+   If his edit improves the canonical wording, offer to make it the fact's text (or a
+   variant) in the master profile, then re-render `cv.md`.

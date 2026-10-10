@@ -59,7 +59,7 @@ const ACHIEVEMENT_SECTIONS = /experience|project|volunteer|leadership|activit|çµ
 
 // Irregular past forms that don't end in -ed, so the tense check doesn't flag them.
 const IRREGULAR_PAST = new Set([
-  'built', 'led', 'ran', 'won', 'wrote', 'made', 'found', 'cut', 'set', 'drove', 'grew', 'took',
+  'built', 'caught', 'led', 'ran', 'won', 'wrote', 'made', 'found', 'cut', 'set', 'drove', 'grew', 'took',
   'began', 'brought', 'sold', 'taught', 'thought', 'spent', 'sent', 'held', 'kept', 'met', 'paid',
   'put', 'read', 'rebuilt', 'rewrote', 'saw', 'shipped', 'spoke', 'stood', 'told', 'understood',
   'upheld', 'withdrew', 'co-led', 'co-founded', 'overhauled', 'oversaw', 'chose', 'drew', 'flew',
