@@ -87,6 +87,17 @@ const CALL_SITES = [
     probe: 'flags-only',
   },
   {
+    source: 'web/src/app/api/quiet-companies/route.ts',
+    script: 'rejection-latency.mjs',
+    // The route parses stdout, so the payload is the contract, not just exit 0.
+    expectJson: true,
+    // No flags: it prints JSON by default, like stats.mjs and upskill.mjs. With
+    // no data/active-interviews.md in the fixture it reports zero rows checked
+    // and still exits 0, which is the shape the route reads.
+    args: [],
+    probe: 'run',
+  },
+  {
     source: 'web/src/app/api/stats/route.ts',
     script: 'stats.mjs',
     // NO FLAGS. stats.mjs prints JSON by default and rejects `--json` outright
@@ -251,7 +262,12 @@ export function runWebCoreArgvContract() {
         fail(`${label} — ${why}`);
         continue;
       }
-      if (site.probe === 'run' && argv.includes('--json')) {
+      // JSON is asserted for a no-flag probe too. Three of these scripts
+      // (stats, upskill, rejection-latency) print JSON BY DEFAULT and reject a
+      // --json flag, so keying the check on the flag skipped exactly the sites
+      // whose routes parse stdout — a script that started printing a banner
+      // would have passed this probe and returned `available: false` in the app.
+      if (site.probe === 'run' && (argv.includes('--json') || site.expectJson)) {
         try {
           JSON.parse(result.stdout);
           pass(`${label} — exit 0, stdout parses as JSON (${site.source})`);
