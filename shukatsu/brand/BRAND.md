@@ -14,16 +14,16 @@ Paper and ink form a neutral lightness ladder with a 2% warm tint, so the paper 
 
 There are three voices, each a stack of an English and a Japanese face, so one class serves both languages.
 
-- **Display:** Anton (one weight, uppercase) over Shippori Mincho 800. It is used for statements, titles and the 就活 kanji.
-- **Text:** IBM Plex Sans over Zen Kaku Gothic New.
+- **Display:** League Gothic (1900s wood type, one weight, uppercase) over Yuji Syuku (a brush face, one weight). It is used for statements, titles, the 就活 kanji and every seal, so the Japanese reads as calligraphy beside the hanko.
+- **Text:** Public Sans over Zen Kaku Gothic New.
 - **Labels and figures:** IBM Plex Mono, uppercase with tracking for labels and bold on ink for stamped figures (`.fig`).
 
-Each surface declares these faces with next/font under the same five variables (`--font-display`, `--font-body`, `--font-mono`, `--font-display-ja`, `--font-body-ja`), so the app's `src/app/layout.tsx` and the page's `site/app/_lib/fonts.ts` must list the same faces.
+Both display faces have a single weight, so nothing asks them for bold. Each surface declares these faces with next/font under the same five variables (`--font-display`, `--font-body`, `--font-mono`, `--font-display-ja`, `--font-body-ja`), so the app's `src/app/layout.tsx` and the page's `site/app/_lib/fonts.ts` must list the same faces.
 
 ## Parts
 
 - **Rules.** Structure is drawn with 2px ink rules and 1px hairlines, never with boxes inside boxes, and shadows are not used.
-- **Pills.** A pill is the one round shape on the page, so it always means "you can press this". Each view has one primary pill, in shu for a decision and in ink for everything else.
+- **Seal pills.** A pill is the one round shape on the page, so it always means "you can press this". Each view has one primary pill, in shu for a decision and in ink for everything else. A pill that records a decision, or is a page's one main action, carries a seal in its left cap: a small hanko at the stamp's angle with one kanji for what it records (確 confirm, 直 correct, 残 keep without figures, 不 unsure, 却 reject, 承 approve, 戻 send back, 検 run the check, 出 submit, 送 sent). The seal gives under the finger like a stamp. Utility pills (cancel, copy, reorder, remove) stay plain.
 - **The hanko (`.stamp`).** It is shu while something waits (確認待ち), it is pressed when the candidate confirms (本人確認), and it is dashed for "I don't know" (不明).
 - **Figures (`.fig`).** Every number a reviewer vouches for is set like a stamped number, and a changed figure turns shu.
 

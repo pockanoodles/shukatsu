@@ -1,6 +1,6 @@
 /*
   The Ledger parts both surfaces draw with: the three voices, the stamped
-  figure, the buttons and the hanko. Plain CSS over tokens.css, so the app
+  figure, the seal pills and the hanko. Plain CSS over tokens.css, so the app
   (inside Tailwind's components layer) and the product page (no Tailwind) use
   the same rules. App-only parts, such as form fields, stay in the app.
 
@@ -8,16 +8,17 @@
   --font-display, --font-body, --font-mono, --font-display-ja, --font-body-ja.
 */
 
-/* Three voices, each a stack of two type systems: English is Poster Condensed
-   (Anton, IBM Plex), Japanese is Serif Twist (Shippori Mincho display, Zen Kaku
-   Gothic New text). The stacks hand Japanese glyphs to the Japanese face on their
-   own, so one class serves both languages. Anton has one weight: never ask for bold. */
+/* Three voices, each a stack of two type systems: English is wood type (League
+   Gothic display, Public Sans text, IBM Plex Mono labels), Japanese is brush and
+   seal (Yuji Syuku display, Zen Kaku Gothic New text). The stacks hand Japanese
+   glyphs to the Japanese face on their own, so one class serves both languages.
+   Both display faces have one weight: never ask for bold. */
 .display {
   font-family: var(--font-display), var(--font-display-ja), sans-serif;
   font-weight: 400;
   font-synthesis: none;
-  letter-spacing: 0.004em;
-  line-height: 0.9;
+  letter-spacing: 0.012em;
+  line-height: 0.92;
   text-transform: uppercase;
 }
 .heading {
@@ -27,10 +28,10 @@
   letter-spacing: 0.012em;
   line-height: 1.08;
 }
-/* Mincho needs more air than a condensed grotesk. */
-:lang(ja) .display { line-height: 1.08; letter-spacing: 0.02em; }
-:lang(ja) .heading { line-height: 1.3; letter-spacing: 0.02em; }
-.kanji { font-family: var(--font-display-ja), serif; font-weight: 800; letter-spacing: 0.02em; line-height: 1; }
+/* A brush needs more air than a condensed grotesk. */
+:lang(ja) .display { line-height: 1.24; letter-spacing: 0.02em; }
+:lang(ja) .heading { line-height: 1.32; letter-spacing: 0.02em; }
+.kanji { font-family: var(--font-display-ja), serif; font-weight: 400; font-synthesis: none; letter-spacing: 0.02em; line-height: 1; }
 .label {
   font-family: var(--font-mono), var(--font-body-ja), ui-monospace, monospace;
   font-size: 12px;
@@ -60,23 +61,39 @@
 
 /* Buttons: pills (palesquid's shape) against the ruled grid. The round edge is
    the one soft thing on the page, so it always means "you can press this".
-   One primary per view: shu for a decision, ink for everything else. */
+   One primary per view: shu for a decision, ink for everything else. A pill
+   that records a decision, or is a page's one main action, carries a seal
+   (below); utility pills (cancel, copy, reorder, remove) stay plain. */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
   min-height: 44px; padding: 0 20px; border-radius: 999px;
   border: 1.5px solid var(--ink); background: var(--ink); color: var(--on-ink);
-  font-family: var(--font-body), var(--font-body-ja), sans-serif; font-weight: 500; font-size: 14px;
+  font-family: var(--font-body), var(--font-body-ja), sans-serif; font-weight: 600; font-size: 14px;
   letter-spacing: 0; line-height: 1;
   cursor: pointer; transition: transform 150ms ease, background-color 150ms ease, color 150ms ease, border-color 150ms ease;
   text-decoration: none; white-space: nowrap;
 }
 .btn:active { transform: translateY(1px) scale(0.99); }
 .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; transform: none; }
-.btn-ghost { background: transparent; color: var(--ink); }
+.btn-ghost { background: transparent; color: var(--ink); font-weight: 500; }
 @media (hover: hover) { .btn-ghost:hover { background: var(--paper-3); } .btn:not(.btn-ghost):not(.btn-shu):hover { background: var(--ink-2); border-color: var(--ink-2); } .btn-shu:hover { filter: brightness(0.94); } }
 .btn-shu { background: var(--shu); border-color: var(--shu); color: var(--on-shu); }
 .btn-sm { min-height: 36px; padding: 0 14px; font-size: 13px; }
 .btn kbd { font: 500 11px/1 var(--font-mono), monospace; opacity: 0.6; border: 1px solid currentColor; border-radius: 4px; padding: 2px 4px; }
+/* The seal: a small hanko in the pill's left cap, set at the stamp's angle, with
+   one kanji for what the button records (確 confirm, 却 reject, 送 sent). It
+   gives under the finger like a stamp being pressed. */
+.btn:has(> .seal) { padding-left: 6px; gap: 10px; }
+.btn-sm:has(> .seal) { padding-left: 5px; gap: 8px; }
+.seal {
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid currentColor; display: grid; place-items: center;
+  font-family: var(--font-display-ja), serif; font-weight: 400; font-synthesis: none; font-size: 16px; line-height: 1;
+  transform: rotate(-11deg); transition: transform 170ms cubic-bezier(0.3, 0.9, 0.3, 1);
+}
+.btn-sm > .seal { width: 24px; height: 24px; border-width: 1.5px; font-size: 13px; }
+.btn:not(:disabled):active > .seal { transform: rotate(-11deg) scale(0.76); }
+@media (hover: hover) { .btn:not(:disabled):hover > .seal { transform: rotate(-11deg) scale(1.1); } }
 /* A segmented pill group, for tabs and small choices. */
 .seg { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 999px; padding: 2px; gap: 2px; }
 .seg > * { min-height: 36px; padding: 0 14px; border-radius: 999px; display: inline-flex; align-items: center; font: 500 13px/1 var(--font-body), var(--font-body-ja), sans-serif; color: var(--ink-2); text-decoration: none; }
@@ -94,7 +111,7 @@
   width: var(--size); height: var(--size); border-radius: 50%;
   border: calc(var(--size) / 21) solid var(--shu); color: var(--shu);
   display: inline-grid; place-items: center; text-align: center;
-  font-family: var(--font-display-ja), sans-serif; font-weight: 800; font-size: calc(var(--size) / 3.1); line-height: 1.02;
+  font-family: var(--font-display-ja), sans-serif; font-weight: 400; font-synthesis: none; font-size: calc(var(--size) / 3.1); line-height: 1.02;
   transform: rotate(-11deg); flex: none; user-select: none;
 }
 .stamp.two { font-size: calc(var(--size) / 4.3); }
@@ -112,5 +129,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .stamp.press { animation: none; }
-  .btn { transition: none; }
+  .btn, .seal { transition: none; }
 }

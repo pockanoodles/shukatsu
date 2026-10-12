@@ -7,19 +7,22 @@ import { formatDate, relative, translator } from "@/lib/i18n";
 import type { Packet } from "@/lib/types";
 import { Claim } from "@/components/claim";
 import { Diff } from "@/components/diff";
-import { Findings, Flash, Stamp } from "@/components/marks";
+import { Findings, Flash, Seal, Stamp } from "@/components/marks";
 import { Comments } from "@/components/comments";
 import { checkPacketAction, packetStepAction, selectionAction } from "@/app/actions/work";
 import { AnswersEditor, BulletEditor, CoverForm } from "../forms";
 
 export const metadata: Metadata = { title: "Packet" };
 
+// The kanji each packet step presses: 提出 submit, 戻す withdraw, 準備 ready, 送信 sent.
+const STEP_SEAL: Record<string, string> = { submit: "出", withdraw: "戻", ready: "備", sent: "送" };
+
 function Step({ id, step, label, tone = "btn", children }: { id: number; step: string; label: string; tone?: string; children?: React.ReactNode }) {
   return (
     <form action={packetStepAction} className="grid gap-2">
       <input type="hidden" name="packet" value={id} /><input type="hidden" name="step" value={step} />
       {children}
-      <button className={tone}>{label}</button>
+      <button className={tone}>{STEP_SEAL[step] && <Seal k={STEP_SEAL[step]} />}{label}</button>
     </form>
   );
 }
@@ -170,7 +173,7 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
               </div>
             ) : <p className="label text-ink-3">{t("packets.notChecked")}</p>}
             {allowed(user, "packet.edit") && pk.status !== "sent" && pk.status !== "closed" && (
-              <form action={checkPacketAction}><input type="hidden" name="packet" value={pk.id} /><button className="btn">{t("packets.check")}</button></form>
+              <form action={checkPacketAction}><input type="hidden" name="packet" value={pk.id} /><button className="btn"><Seal k="検" />{t("packets.check")}</button></form>
             )}
           </section>
 
@@ -179,7 +182,7 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
               <><p className="text-[14px] text-ink-2">{t("packets.submitReviewLead")}</p><Step id={pk.id} step="submit" label={t("packets.submitReview")} tone="btn btn-shu" /></>
             )}
             {pk.status === "in_review" && !owner && pk.created_by === user.id && <Step id={pk.id} step="withdraw" label={t("packets.withdraw")} tone="btn btn-ghost" />}
-            {pk.status === "in_review" && owner && <Link href={`/review?item=${encodeURIComponent(`packet:${pk.id}`)}`} className="btn btn-shu justify-self-start">{t("review.out.approve")} / {t("review.out.changes")} →</Link>}
+            {pk.status === "in_review" && owner && <Link href={`/review?item=${encodeURIComponent(`packet:${pk.id}`)}`} className="btn btn-shu justify-self-start"><Seal k="承" />{t("review.out.approve")} / {t("review.out.changes")} →</Link>}
             {owner && (pk.status === "drafting" || pk.status === "changes_requested") && (
               <><p className="text-[14px] text-ink-2">{t("packets.markReadyLead")}</p><Step id={pk.id} step="ready" label={t("packets.markReady")} tone={final ? "btn btn-shu" : "btn btn-ghost"} /></>
             )}

@@ -9,6 +9,11 @@ export function Stamp({ children, size = "", tone = "shu", press = false, two = 
   );
 }
 
+/** The seal in a pill's left cap: one kanji for the decision the button records. */
+export function Seal({ k }: { k: string }) {
+  return <span className="seal" aria-hidden>{k}</span>;
+}
+
 /** Provenance letter: what backs a fact. */
 export function Prov({ letter, t }: { letter: string | null; t: T }) {
   if (!letter) return null;
