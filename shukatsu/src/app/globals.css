@@ -1,0 +1,218 @@
+@import "tailwindcss";
+
+/*
+  Ledger. Washi paper, sumi ink, and one accent: shu, the vermilion of a hanko's
+  ink pad. Shu means one thing everywhere: this needs your stamp (a draft, a
+  waiting decision, a failed check). Confirmed things are plain ink.
+
+  Colors: paper and ink are a neutral lightness sequence at a 2% warm tint
+  (washi, not lab white). Shu is sampled from cultural context (朱肉), pressed
+  to L 0.53 so text on it and it on paper both clear 4.5:1.
+*/
+:root {
+  color-scheme: light;
+  --paper: oklch(0.97 0.008 85);
+  --paper-2: oklch(0.945 0.01 85);
+  --paper-3: oklch(0.92 0.011 85);
+  --ink: oklch(0.18 0.006 60);
+  --ink-2: oklch(0.38 0.006 60);
+  --ink-3: oklch(0.52 0.006 60);
+  --hair: oklch(0.86 0.008 85);
+  --shu: oklch(0.53 0.17 32);
+  --shu-soft: oklch(0.93 0.03 32);
+  --on-shu: oklch(0.98 0.006 85);
+  --on-ink: oklch(0.97 0.008 85);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: oklch(0.17 0.006 60);
+    --paper-2: oklch(0.205 0.006 60);
+    --paper-3: oklch(0.24 0.006 60);
+    --ink: oklch(0.93 0.01 85);
+    --ink-2: oklch(0.79 0.01 85);
+    --ink-3: oklch(0.64 0.01 85);
+    --hair: oklch(0.3 0.006 60);
+    --shu: oklch(0.65 0.16 33);
+    --shu-soft: oklch(0.27 0.04 32);
+    --on-shu: oklch(0.15 0.006 60);
+    --on-ink: oklch(0.17 0.006 60);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: oklch(0.17 0.006 60);
+  --paper-2: oklch(0.205 0.006 60);
+  --paper-3: oklch(0.24 0.006 60);
+  --ink: oklch(0.93 0.01 85);
+  --ink-2: oklch(0.79 0.01 85);
+  --ink-3: oklch(0.64 0.01 85);
+  --hair: oklch(0.3 0.006 60);
+  --shu: oklch(0.65 0.16 33);
+  --shu-soft: oklch(0.27 0.04 32);
+  --on-shu: oklch(0.15 0.006 60);
+  --on-ink: oklch(0.17 0.006 60);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-paper-3: var(--paper-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-hair: var(--hair);
+  --color-shu: var(--shu);
+  --color-shu-soft: var(--shu-soft);
+  --color-on-shu: var(--on-shu);
+  --color-on-ink: var(--on-ink);
+  --font-sans: var(--font-body), var(--font-body-ja);
+  --font-display: var(--font-display), var(--font-display-ja);
+  --font-mono: var(--font-mono), var(--font-body-ja);
+  --font-kanji: var(--font-display-ja);
+}
+
+@layer base {
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), var(--font-body-ja), "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+::selection { background: var(--ink); color: var(--on-ink); }
+}
+
+/* Components live in a layer so Tailwind utilities (hidden, md:flex, ...) can override them. */
+@layer components {
+/* Three voices, each a stack of two type systems: English is Poster Condensed
+   (Anton, IBM Plex), Japanese is Serif Twist (Shippori Mincho display, Zen Kaku
+   Gothic New text). The stacks hand Japanese glyphs to the Japanese face on their
+   own, so one class serves both languages. Anton has one weight: never ask for bold. */
+.display {
+  font-family: var(--font-display), var(--font-display-ja), sans-serif;
+  font-weight: 400;
+  font-synthesis: none;
+  letter-spacing: 0.004em;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+.heading {
+  font-family: var(--font-display), var(--font-display-ja), sans-serif;
+  font-weight: 400;
+  font-synthesis: none;
+  letter-spacing: 0.012em;
+  line-height: 1.08;
+}
+/* Mincho needs more air than a condensed grotesk. */
+:lang(ja) .display { line-height: 1.08; letter-spacing: 0.02em; }
+:lang(ja) .heading { line-height: 1.3; letter-spacing: 0.02em; }
+.kanji { font-family: var(--font-display-ja), serif; font-weight: 800; letter-spacing: 0.02em; line-height: 1; }
+.label {
+  font-family: var(--font-mono), var(--font-body-ja), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+.code { font-family: var(--font-mono), var(--font-body-ja), ui-monospace, monospace; font-size: 12.5px; letter-spacing: 0; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Rules: structure is drawn, never boxed in boxes. */
+.rule { border-color: var(--ink); }
+.hair { border-color: var(--hair); }
+
+/* A figure inside a claim: the thing a reviewer must check, set like a stamped number. */
+.fig {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 0.86em;
+  background: var(--ink);
+  color: var(--on-ink);
+  padding: 0.06em 0.28em;
+  white-space: nowrap;
+}
+.fig.changed { background: var(--shu); color: var(--on-shu); }
+.fig.gone { background: transparent; color: var(--ink-3); text-decoration: line-through; box-shadow: inset 0 0 0 1px var(--ink-3); }
+
+/* Buttons: pills (palesquid's shape) against the ruled grid. The round edge is
+   the one soft thing on the page, so it always means "you can press this".
+   One primary per view: shu for a decision, ink for everything else. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+  min-height: 44px; padding: 0 20px; border-radius: 999px;
+  border: 1.5px solid var(--ink); background: var(--ink); color: var(--on-ink);
+  font-family: var(--font-body), var(--font-body-ja), sans-serif; font-weight: 500; font-size: 14px;
+  letter-spacing: 0; line-height: 1;
+  cursor: pointer; transition: transform 150ms ease, background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  text-decoration: none; white-space: nowrap;
+}
+.btn:active { transform: translateY(1px) scale(0.99); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; transform: none; }
+.btn-ghost { background: transparent; color: var(--ink); }
+@media (hover: hover) { .btn-ghost:hover { background: var(--paper-3); } .btn:not(.btn-ghost):not(.btn-shu):hover { background: var(--ink-2); border-color: var(--ink-2); } .btn-shu:hover { filter: brightness(0.94); } }
+.btn-shu { background: var(--shu); border-color: var(--shu); color: var(--on-shu); }
+.btn-sm { min-height: 36px; padding: 0 14px; font-size: 13px; }
+.btn kbd { font: 500 11px/1 var(--font-mono), monospace; opacity: 0.6; border: 1px solid currentColor; border-radius: 4px; padding: 2px 4px; }
+/* A segmented pill group, for tabs and small choices. */
+.seg { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 999px; padding: 2px; gap: 2px; }
+.seg > * { min-height: 36px; padding: 0 14px; border-radius: 999px; display: inline-flex; align-items: center; font: 500 13px/1 var(--font-body), var(--font-body-ja), sans-serif; color: var(--ink-2); text-decoration: none; }
+.seg > [aria-current="page"], .seg > .on { background: var(--ink); color: var(--on-ink); }
+@media (hover: hover) { .seg > :not([aria-current="page"]):not(.on):hover { background: var(--paper-3); color: var(--ink); } }
+.link { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.link:hover { text-decoration-thickness: 2px; }
+
+/* Fields */
+.field {
+  width: 100%; min-height: 44px; padding: 10px 12px;
+  border: 1.5px solid var(--ink); background: var(--paper); color: var(--ink);
+  font: inherit; font-size: 15px; border-radius: 0; outline: none;
+}
+.field:focus { border-color: var(--shu); box-shadow: inset 0 0 0 1px var(--shu); }
+.field::placeholder { color: var(--ink-3); }
+textarea.field { min-height: 96px; line-height: 1.55; resize: vertical; }
+select.field { appearance: none; padding-right: 36px; background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+
+/* Provenance letter: what backs a fact (V artifact, M measured, U stated). */
+.prov { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1.5px solid var(--ink); font: 700 11px/1 var(--font-mono), monospace; flex: none; }
+
+/* The hanko. Confirming a fact stamps it. */
+.stamp {
+  --size: 64px;
+  width: var(--size); height: var(--size); border-radius: 50%;
+  border: calc(var(--size) / 21) solid var(--shu); color: var(--shu);
+  display: inline-grid; place-items: center; text-align: center;
+  font-family: var(--font-kanji), sans-serif; font-size: calc(var(--size) / 3.1); line-height: 1.02;
+  transform: rotate(-11deg); flex: none; user-select: none;
+}
+.stamp.two { font-size: calc(var(--size) / 4.3); }
+.stamp.sm { --size: 44px; }
+.stamp.lg { --size: 120px; }
+.stamp.ink { border-color: var(--ink); color: var(--ink); }
+.stamp.on { border-color: var(--on-shu); color: var(--on-shu); }
+.stamp.dashed { border-style: dashed; border-color: var(--ink-3); color: var(--ink-3); transform: none; }
+@keyframes stamp-press {
+  0% { opacity: 0; transform: rotate(-4deg) scale(1.6); }
+  60% { opacity: 1; transform: rotate(-12deg) scale(0.94); }
+  100% { opacity: 1; transform: rotate(-11deg) scale(1); }
+}
+.stamp.press { animation: stamp-press 260ms cubic-bezier(0.3, 0.9, 0.3, 1) both; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 640ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.fade { animation: fade 200ms ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp.press, .rise, .fade { animation: none; }
+  .btn { transition: none; }
+}
+
+.clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.scroll-thin { scrollbar-width: thin; scrollbar-color: var(--hair) transparent; }
+kbd.key { font: 600 11px/1 var(--font-mono), monospace; border: 1px solid currentColor; padding: 2px 5px; opacity: 0.7; }
+}

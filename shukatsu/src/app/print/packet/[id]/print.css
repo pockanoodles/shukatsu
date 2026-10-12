@@ -1,0 +1,15 @@
+/* A resume is read by parsers and by people skimming in six seconds: no app chrome here. */
+@page { size: letter; margin: 0.5in; }
+html, body { background: #fff !important; color: #111 !important; }
+.cv { max-width: 7.5in; margin: 0 auto; padding: 0.5in 0; font: 10pt/1.38 "Helvetica Neue", Arial, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif; color: #111; }
+.cv .name { font-size: 13pt; font-weight: 700; margin: 0 0 4pt; }
+.cv h1 { font-size: 18pt; letter-spacing: -0.01em; margin: 0 0 2pt; text-transform: none; font-weight: 700; }
+.cv .contact { margin: 0 0 8pt; font-size: 9pt; color: #333; }
+.cv h2 { font-size: 10.5pt; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #111; padding-bottom: 2pt; margin: 10pt 0 5pt; }
+.cv h3 { font-size: 10pt; margin: 6pt 0 0; font-weight: 700; }
+.cv .meta { margin: 0 0 2pt; color: #222; }
+.cv p { margin: 0 0 3pt; }
+.cv ul { margin: 2pt 0 4pt; padding-left: 14pt; list-style: disc; }
+.cv li { margin: 0 0 2pt; }
+.cv .block { break-inside: avoid; }
+@media screen { .cv { padding: 0.6in 0.6in; box-shadow: 0 0 0 1px #ddd; margin: 24px auto; background: #fff; } }
