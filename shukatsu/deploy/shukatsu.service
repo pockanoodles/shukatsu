@@ -1,0 +1,33 @@
+# systemd unit for a Linux mini PC.
+#   sudo cp shukatsu/deploy/shukatsu.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now shukatsu
+#   journalctl -u shukatsu -f
+# Edit User and the paths to match where the two repos live.
+
+[Unit]
+Description=shukatsu (career-ops fork) app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=shukatsu
+WorkingDirectory=/home/shukatsu/shukatsu/shukatsu
+EnvironmentFile=/home/shukatsu/shukatsu/shukatsu/.env
+Environment=NODE_ENV=production PORT=3000 HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/env npx next start -p 3000 -H 127.0.0.1
+Restart=on-failure
+RestartSec=5
+
+# The app needs the two repos and nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/shukatsu/shukatsu /home/shukatsu/resume
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

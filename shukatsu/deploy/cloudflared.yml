@@ -1,0 +1,19 @@
+# Cloudflare Tunnel: a public HTTPS address with no open port on the home router.
+#   cloudflared tunnel login
+#   cloudflared tunnel create shukatsu
+#   cloudflared tunnel route dns shukatsu shukatsu.example.com
+#   cloudflared tunnel --config shukatsu/deploy/cloudflared.yml run shukatsu
+# Then set SHUKATSU_URL=https://shukatsu.example.com and
+# SHUKATSU_ALLOWED_ORIGINS=shukatsu.example.com in shukatsu/.env.
+#
+# Optional second lock: put a Cloudflare Access application (email one-time code)
+# in front of the hostname, allowing only the people you invite. The app's own
+# sign-in still applies behind it.
+
+tunnel: shukatsu
+credentials-file: /home/shukatsu/.cloudflared/shukatsu.json
+
+ingress:
+  - hostname: shukatsu.example.com
+    service: http://127.0.0.1:3000
+  - service: http_status:404

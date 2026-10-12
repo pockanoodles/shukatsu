@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- launchd agent for a Mac mini.
+       cp shukatsu/deploy/com.shukatsu.app.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.shukatsu.app.plist
+       tail -f ~/Library/Logs/shukatsu.log
+     Edit the paths (and the node path: `which node`) to match this machine. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.shukatsu.app</string>
+  <key>WorkingDirectory</key><string>/Users/USER/Projects/shukatsu/shukatsu</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>node_modules/next/dist/bin/next</string>
+    <string>start</string>
+    <string>-p</string><string>3000</string>
+    <string>-H</string><string>127.0.0.1</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict><key>NODE_ENV</key><string>production</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/Users/USER/Library/Logs/shukatsu.log</string>
+  <key>StandardErrorPath</key><string>/Users/USER/Library/Logs/shukatsu.log</string>
+</dict>
+</plist>
