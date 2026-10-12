@@ -11,6 +11,13 @@ import type { Dict, Outcome } from "@/content/copy";
 import { Claim, figureCount } from "./Claim";
 
 const ORDER: Outcome[] = ["accept", "correct", "narrative", "unsure"];
+// The kanji each answer presses, as in the app: 確認, 直す, 残す, 不明.
+const SEAL: Record<Outcome, string> = { accept: "確", correct: "直", narrative: "残", unsure: "不" };
+const Seal = ({ k }: { k: string }) => (
+  <span className="seal" aria-hidden>
+    {k}
+  </span>
+);
 const FIGURES = /\d+(?:,\d{3})*(?:\.\d+)?/g;
 const figures = (s: string): string[] => s.match(FIGURES) ?? [];
 
@@ -125,6 +132,7 @@ export function ReviewDemo({ t }: { t: Dict["review"] }) {
                       aria-expanded={form ? open === o : undefined}
                       onClick={() => choose(o)}
                     >
+                      <Seal k={SEAL[o]} />
                       {label}
                       {key && <kbd>{key}</kbd>}
                     </button>
@@ -140,6 +148,7 @@ export function ReviewDemo({ t }: { t: Dict["review"] }) {
                   <textarea id="review-wording" ref={field} className="review__field" rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} />
                   <div>
                     <button type="submit" className="btn">
+                      <Seal k={SEAL[open]} />
                       {open === "correct" ? t.submitEdit : t.submitNarrative}
                     </button>
                   </div>

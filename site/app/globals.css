@@ -138,6 +138,15 @@ a.label:hover {
   padding: 0 28px;
   font-size: 15px;
 }
+.btn-lg:has(> .seal) {
+  padding-left: 8px;
+  gap: 12px;
+}
+.btn-lg > .seal {
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+}
 
 /* A section's eyebrow is a ledger heading: its number, its name, and a short
    ink rule over both. */
@@ -182,7 +191,7 @@ a.label:hover {
 }
 .bar__word {
   font-family: var(--font-display), sans-serif;
-  font-size: 22px;
+  font-size: 26px;
   line-height: 1;
   letter-spacing: 0.04em;
 }

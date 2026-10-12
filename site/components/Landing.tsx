@@ -76,6 +76,9 @@ export function Landing({ t, locale }: { t: Dict; locale: Locale }) {
           </div>
           <div className="hero__action">
             <a href={SETUP_URL} className="btn btn-lg">
+              <span className="seal" aria-hidden>
+                宅
+              </span>
               {t.hero.cta}
             </a>
             <a href="#how" className="hero__more">
@@ -223,6 +226,9 @@ export function Landing({ t, locale }: { t: Dict; locale: Locale }) {
             <p className="screen__sub">{t.open.body}</p>
             <div className="end__action">
               <a href={REPO_URL} className="btn btn-lg">
+                <span className="seal" aria-hidden>
+                  源
+                </span>
                 {t.open.cta}
               </a>
               <p className="end__note">
