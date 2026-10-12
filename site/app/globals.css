@@ -1165,6 +1165,26 @@ html[data-vt="in"]::view-transition-new(vt-name) {
 html[data-vt="in"]::view-transition-old(vt-name) {
   animation: vt-roll-out var(--dur-ui) var(--ease-inout) 400ms both;
 }
+/* The portfolio's name is white, which vanishes on washi while the paper
+   opens. On light paper the name group is blended by difference, so the white
+   name reads as ink on the paper and stays white over the black, and this
+   page's ink wordmark is inverted first so that difference brings it back to
+   ink. On sumi paper (dark mode) white already shows, and the same blend would
+   sink the light wordmark into the paper, so it stays off there. Difference
+   over paper gives paper − (white − colour), so the wordmark is set to ink
+   plus (white − paper) for the move, the paper being rgb(248 245 239), and
+   lands on true ink with no snap when the transition lets go. */
+@media (prefers-color-scheme: light) {
+  html[data-vt="in"] .bar__word {
+    color: rgb(from var(--ink) calc(r + 7) calc(g + 10) calc(b + 16));
+  }
+  html[data-vt="in"]::view-transition-group(vt-name) {
+    mix-blend-mode: difference;
+  }
+  html[data-vt="in"]::view-transition-new(vt-name) {
+    filter: invert(1);
+  }
+}
 html[data-vt="in"]::view-transition-new(vt-name) {
   animation: vt-roll-in var(--dur-ui) var(--ease-inout) 400ms both;
 }
