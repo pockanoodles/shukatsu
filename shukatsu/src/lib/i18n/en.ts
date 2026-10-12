@@ -256,7 +256,7 @@ const en = {
       "packet.passed": "{subject} passed its check", "packet.failed": "{subject} failed its check",
       "packet.bullet": "{actor} reworded a bullet in {subject}", "packet.add": "{actor} added a fact to {subject}",
       "packet.drop": "{actor} removed a fact from {subject}", "packet.up": "{actor} reordered {subject}", "packet.down": "{actor} reordered {subject}",
-      "packet.cover": "{actor} edited the letter in {subject}", "packet.withdrawn": "{actor} withdrew {subject} from review",
+      "packet.cover": "{actor} edited the letter in {subject}", "packet.answers": "{actor} edited the written answers in {subject}", "packet.withdrawn": "{actor} withdrew {subject} from review",
       "person.joined": "{actor} joined", "person.updated": "{actor} updated {subject}", "person.disabled": "{actor} removed access for {subject}",
       "person.enabled": "{actor} restored access for {subject}", "person.passkey": "{actor} added a passkey",
       "person.passkey-removed": "{actor} removed a passkey", "person.password": "{actor} changed their password",

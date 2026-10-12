@@ -248,7 +248,7 @@ const ja: Dict = {
       "packet.passed": "{subject}がチェックに合格", "packet.failed": "{subject}がチェックで不合格",
       "packet.bullet": "{actor}が{subject}の箇条書きを言い換え", "packet.add": "{actor}が{subject}に実績を追加",
       "packet.drop": "{actor}が{subject}から実績を外しました", "packet.up": "{actor}が{subject}を並べ替え", "packet.down": "{actor}が{subject}を並べ替え",
-      "packet.cover": "{actor}が{subject}のレターを編集", "packet.withdrawn": "{actor}が{subject}の確認依頼を取り下げ",
+      "packet.cover": "{actor}が{subject}のレターを編集", "packet.answers": "{actor}が{subject}の設問の回答を編集", "packet.withdrawn": "{actor}が{subject}の確認依頼を取り下げ",
       "person.joined": "{actor}が参加しました", "person.updated": "{actor}が{subject}を更新", "person.disabled": "{actor}が{subject}のアクセスを停止",
       "person.enabled": "{actor}が{subject}のアクセスを再開", "person.passkey": "{actor}がパスキーを追加",
       "person.passkey-removed": "{actor}がパスキーを削除", "person.password": "{actor}がパスワードを変更",
