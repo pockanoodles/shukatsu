@@ -12,9 +12,12 @@ shukatsu/
   core/          the engine: plain ESM, used by the CLIs and the app alike
   *.mjs          CLIs: master, review, people, digest, bullet-lint, audit-materials, char-count
   src/           the web app (Next.js 16, React 19, Tailwind 4)
+  brand/         the palette and the shared Ledger parts, used by the app and the product page
   deploy/        running it on a home machine: services, tunnel, backups
   tests/         node:test suites (*.spec.mjs, run by `npm test` here, not upstream test-all)
 ```
+
+The public product page, kaitosoeno.com/shukatsu, is built from `../site` (its own README).
 
 ## The model
 

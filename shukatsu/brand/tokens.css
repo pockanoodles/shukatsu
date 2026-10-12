@@ -1,0 +1,58 @@
+/*
+  Shukatsu's palette. One source for the app (src/app/globals.css imports it)
+  and the product page (site/, kaitosoeno.com/shukatsu, which copies it in at
+  build time). Change a value here and rebuild both; nothing else holds a colour.
+
+  Ledger. Washi paper, sumi ink, and one accent: shu, the vermilion of a hanko's
+  ink pad. Shu means one thing everywhere: this needs your stamp (a draft, a
+  waiting decision, a failed check). Confirmed things are plain ink.
+
+  Paper and ink are a neutral lightness sequence at a 2% warm tint (washi, not
+  lab white). Shu is sampled from cultural context (朱肉), pressed to L 0.53 so
+  text on it and it on paper both clear 4.5:1.
+*/
+:root {
+  color-scheme: light;
+  --paper: oklch(0.97 0.008 85);
+  --paper-2: oklch(0.945 0.01 85);
+  --paper-3: oklch(0.92 0.011 85);
+  --ink: oklch(0.18 0.006 60);
+  --ink-2: oklch(0.38 0.006 60);
+  --ink-3: oklch(0.52 0.006 60);
+  --hair: oklch(0.86 0.008 85);
+  --shu: oklch(0.53 0.17 32);
+  --shu-soft: oklch(0.93 0.03 32);
+  --on-shu: oklch(0.98 0.006 85);
+  --on-ink: oklch(0.97 0.008 85);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: oklch(0.17 0.006 60);
+    --paper-2: oklch(0.205 0.006 60);
+    --paper-3: oklch(0.24 0.006 60);
+    --ink: oklch(0.93 0.01 85);
+    --ink-2: oklch(0.79 0.01 85);
+    --ink-3: oklch(0.64 0.01 85);
+    --hair: oklch(0.3 0.006 60);
+    --shu: oklch(0.65 0.16 33);
+    --shu-soft: oklch(0.27 0.04 32);
+    --on-shu: oklch(0.15 0.006 60);
+    --on-ink: oklch(0.17 0.006 60);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: oklch(0.17 0.006 60);
+  --paper-2: oklch(0.205 0.006 60);
+  --paper-3: oklch(0.24 0.006 60);
+  --ink: oklch(0.93 0.01 85);
+  --ink-2: oklch(0.79 0.01 85);
+  --ink-3: oklch(0.64 0.01 85);
+  --hair: oklch(0.3 0.006 60);
+  --shu: oklch(0.65 0.16 33);
+  --shu-soft: oklch(0.27 0.04 32);
+  --on-shu: oklch(0.15 0.006 60);
+  --on-ink: oklch(0.17 0.006 60);
+}
