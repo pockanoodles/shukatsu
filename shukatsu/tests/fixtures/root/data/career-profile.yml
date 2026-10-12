@@ -1,0 +1,122 @@
+# Fixture master profile for shukatsu's tests. A made-up candidate, small enough
+# to read in one screen, with every shape the real file uses: comments, flow
+# maps, an empty facts list, drafts, variants, and Japanese text.
+
+schema_version: 1
+
+candidate:
+  name: Test Candidate
+  location: Boston, MA
+  email: test@example.com
+  availability: "6-month co-op, January–June 2027"
+
+tag_vocabulary: [bizops, data, eng, leadership]
+
+archetypes:
+  analyst: { name: "Analyst", tags: [data, bizops] }
+  eng:     { name: "Engineer", tags: [eng, data] }
+
+select:
+  max_bullets: 6
+  main_role_max: 3
+  minor_role_max: 2
+  projects_max: 1
+  project_bullets_max: 2
+  volunteering_max: 1
+
+layout:
+  - { section: summary, heading: Summary }
+  - { section: work, heading: Work Experience }
+  - { section: projects, heading: Projects }
+  - { section: education, heading: Education }
+  - { section: skills, heading: Skills }
+
+summary:
+  - id: summary.default
+    text: "Analyst who builds the tools he uses."
+    archetypes: [analyst, eng]
+    evidence: { source: sources/notes.md, line: 1, quote: "builds the tools" }
+    review_status: verified
+
+experiences:
+  - id: acme
+    label: Acme
+    section: work
+    heading: "Acme -- Boston, MA"
+    title: Operations Intern
+    dates: "May 2026 – August 2026"
+    ended: true
+    always: true
+    tags: [bizops, data]
+    evidence: { source: sources/notes.md, line: 2, quote: "Acme" }
+    facts:
+      - id: acme.routing
+        text: "Rebuilt lead routing for a 6-person team, cutting manual triage from 40 to 5 minutes a day across 1,200 weekly leads."
+        tags: [bizops, data]
+        provenance: U
+        priority: 1
+        evidence: { source: sources/notes.md, line: 3, quote: "40 to 5 minutes" }
+        review_status: verified
+        variants:
+          - key: eng
+            for: [eng]
+            text: "Built lead-routing automation for a 6-person team that cut manual triage from 40 to 5 minutes a day across 1,200 weekly leads."
+            review_status: needs_review
+        ja: { text: "6名チームのリード振り分けを再構築し、週1,200件のリードの手作業を1日40分から5分に短縮。", review_status: needs_review }
+      # Drafts below. Numbers are verbatim from the notes; wording is new.
+      - id: acme.dashboard
+        text: "Built a pipeline dashboard tracking 14 KPIs that the ops lead reviewed every Monday with 3 regional managers."
+        tags: [data]
+        provenance: M
+        priority: 2
+        evidence: { source: sources/notes.md, line: 4, quote: "14 KPIs" }
+        review_status: needs_review
+
+  - id: cafe
+    label: Corner Cafe
+    section: work
+    heading: "Corner Cafe -- Tokyo, Japan"
+    title: Barista
+    dates: "2023 – 2024"
+    ended: true
+    evidence: { source: sources/notes.md, line: 5, quote: "Corner Cafe" }
+    review_status: needs_review
+    facts: []
+
+projects:
+  - id: tool
+    label: Tool
+    section: projects
+    heading: "Tool (open source) -- Creator"
+    dates: "2026 – Present"
+    ended: false
+    tags: [eng]
+    evidence: { source: sources/notes.md, line: 6, quote: "Tool" }
+    facts:
+      - id: tool.speed
+        text: "Built an open-source CLI that cuts a 45 minute report build to 13 seconds with a two-layer cache, used by 30 people."
+        tags: [eng, data]
+        provenance: V
+        priority: 1
+        evidence: { source: sources/notes.md, line: 7, quote: "45 minute report" }
+        review_status: verified
+
+education:
+  - id: uni
+    label: University
+    section: education
+    heading: "University -- Boston, MA"
+    title: B.S. Business Administration
+    dates: "Expected May 2028"
+    always: true
+    evidence: { source: sources/notes.md, line: 8, quote: "University" }
+    facts: []
+
+certifications: []
+
+skills:
+  - id: skills.languages
+    group: Languages
+    text: "Python, SQL"
+    evidence: { source: sources/notes.md, line: 9, quote: "Python, SQL" }
+    review_status: verified

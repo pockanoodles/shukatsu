@@ -1,0 +1,12 @@
+# Fixture audit rules: one must-carry line, one forbidden claim.
+scan:
+  - output/
+forbidden_patterns:
+  - pattern: "minor in computer science"
+    reason: "Fixture: never declared."
+required:
+  - id: acme
+    applies_to: resume
+    pattern: "Acme"
+    reason: "Fixture: the main role must appear."
+stale_against: []
