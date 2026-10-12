@@ -38,6 +38,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
+import { isMainModule } from '../../lib/is-main-module.mjs';
 
 const SITE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = resolve(SITE, '..');
@@ -408,6 +409,6 @@ async function main() {
   log(`done in ${Math.round((Date.now() - started) / 1000)}s`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isMainModule(import.meta.url)) {
   main().catch((err) => { console.error(err); process.exit(1); });
 }
