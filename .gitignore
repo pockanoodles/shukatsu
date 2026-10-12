@@ -261,5 +261,6 @@ data/agent-inbox.md
 
 # Fork: track the local-paths declaration so CI and updates see it (config/local-paths.example.txt).
 !config/local-paths.txt
-# Fork: the app pins its own dependency tree (npm ci on the server needs it).
+# Fork: the app and the product page pin their own dependency trees (npm ci needs them).
 !shukatsu/package-lock.json
+!site/package-lock.json

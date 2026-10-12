@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+dist
+.wrangler
+next-env.d.ts
+*.tsbuildinfo
+# Copied from ../shukatsu/brand and the app by scripts/prepare.mjs on every build
+generated/
+public/favicon.svg

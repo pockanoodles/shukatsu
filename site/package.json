@@ -1,0 +1,27 @@
+{
+  "name": "shukatsu-site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "prepare-assets": "node scripts/prepare.mjs",
+    "dev": "npm run prepare-assets && next dev --port 3140",
+    "build": "npm run prepare-assets && next build && node scripts/nest.mjs",
+    "typecheck": "npm run prepare-assets && tsc --noEmit",
+    "preview": "npm run build && wrangler dev --port 3240",
+    "shots": "node scripts/shots.mjs",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "next": "16.3.8",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "playwright": "1.62.1",
+    "typescript": "^5",
+    "wrangler": "^4.119.0"
+  }
+}

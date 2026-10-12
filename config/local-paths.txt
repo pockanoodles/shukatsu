@@ -6,6 +6,9 @@
 # The shukatsu engine and app: master profile, review queue, web app, deploy.
 shukatsu/
 
+# The product page for kaitosoeno.com/shukatsu (its own Worker on that route).
+site/
+
 # Fork-owned modes.
 modes/shukatsu/
 modes/shinsotsu/

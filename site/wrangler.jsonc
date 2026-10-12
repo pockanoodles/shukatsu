@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The product page for kaitosoeno.com/shukatsu. An assets-only Worker on
+  // that route: the personal site stays the origin for every other path, and
+  // this one ships on Shukatsu's own release schedule.
+  "name": "kaitosoeno-shukatsu",
+  "compatibility_date": "2026-10-12",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "kaitosoeno.com/shukatsu*", "zone_name": "kaitosoeno.com" }]
+}

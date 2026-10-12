@@ -1,0 +1,1350 @@
+/* Shukatsu's product page. The palette and the Ledger parts (voices, figures,
+   pills, the hanko) come from the app (../shukatsu/brand, copied in by
+   scripts/prepare.mjs), so the page cannot drift from it. Spacing is ui-master
+   Design 03, the same ladder and gutters Mahoraga's and Erwin's pages use: one
+   gutter for everything pinned to the frame, outer gaps at least three times
+   the inner ones, one idea per screen. Structure is drawn with the app's 2px
+   ink rules, never boxes in boxes. */
+@import "../generated/tokens.css";
+@import "../generated/ledger.css";
+
+:root {
+  /* The ladder (px): 4 · 8 · 12 · 16 · 24 · 40 · 56 · 64 · 80 · 96 · 112 · 128. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 40px;
+  --s-7: 56px;
+  --s-8: 64px;
+  --s-9: 80px;
+  --s-10: 96px;
+  --s-11: 112px;
+  --s-12: 128px;
+  --gutter: 16px;
+  --header: 56px;
+  --measure-statement: 42rem;
+  --measure-lede: 36rem;
+  --measure-section: 64rem;
+  --measure-page: 72rem;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 160ms;
+  --dur-ui: 240ms;
+  --dur-enter: 700ms;
+  /* The personal site's fluid rem, for the shared MENU pill only. */
+  --site-rem: 12px;
+  --lift: max(4.5rem, calc(env(safe-area-inset-bottom) + 3.5rem));
+}
+@media (min-width: 640px) {
+  :root {
+    --gutter: 32px;
+  }
+}
+@media (min-width: 992px) {
+  :root {
+    --site-rem: clamp(10px, calc(10px + 6 * ((100vw - 991px) / 929)), 16px);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  background: var(--paper);
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), var(--font-body-ja), "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+:lang(ja) body,
+html:lang(ja) {
+  line-break: strict;
+  word-break: normal;
+}
+/* Japanese breaks between phrases, never before a particle. */
+:lang(ja) :is(h1, h2, h3, p, li, dd, figcaption) {
+  word-break: auto-phrase;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+img {
+  max-width: 100%;
+  display: block;
+}
+/* Element rules above set display, which would beat the UA's [hidden]. */
+[hidden] {
+  display: none !important;
+}
+ul,
+ol,
+dl {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+h1,
+h2,
+h3,
+p,
+dd,
+pre,
+figure {
+  margin: 0;
+}
+:focus-visible {
+  outline: 2px solid var(--shu);
+  outline-offset: 3px;
+}
+::selection {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.label {
+  color: var(--ink-2);
+}
+a.label:hover {
+  color: var(--ink);
+}
+.shu {
+  color: var(--shu);
+}
+.btn-lg {
+  min-height: 48px;
+  padding: 0 28px;
+  font-size: 15px;
+}
+
+/* A section's eyebrow is a ledger heading: its number, its name, and a short
+   ink rule over both. */
+.eyebrow {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 2px solid var(--ink);
+}
+.eyebrow__n {
+  color: var(--ink-3);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+/* Three columns, so the links sit in the true centre (Design 03 §3.2). */
+.bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: calc(var(--header) + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) var(--gutter) 0;
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 2px solid var(--ink);
+}
+.bar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  justify-self: start;
+}
+/* The app's favicon at header size: one character in the hanko ring. */
+.bar__mark {
+  --size: 30px;
+  font-size: 15px;
+  border-width: 2px;
+}
+.bar__word {
+  font-family: var(--font-display), sans-serif;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.bar__nav {
+  display: flex;
+  gap: var(--s-5);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.bar__nav a:hover {
+  color: var(--ink);
+}
+.bar__util {
+  display: flex;
+  gap: var(--s-5);
+  justify-self: end;
+}
+
+/* ── Hero ───────────────────────────────────────────────────────────── */
+
+/* Corner-anchored: the statement bottom-left, the action middle-right, and the
+   word 就活 in the middle, which belongs to the visual and never to text. */
+.hero {
+  position: relative;
+  isolation: isolate;
+  height: 100svh;
+  min-height: 640px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 1fr auto;
+  padding: calc(var(--header) + var(--s-5)) var(--gutter) var(--s-10);
+  overflow: hidden;
+}
+.hero__visual {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  translate: -50% -50%;
+  display: grid;
+  justify-items: center;
+  gap: var(--s-4);
+  z-index: -1;
+}
+.hero__scroll {
+  position: relative;
+}
+/* Sized so the column's foot clears the statement's last line. */
+.hero__kanji {
+  display: block;
+  writing-mode: vertical-rl;
+  font-size: min(26svh, 17vw, 260px);
+  letter-spacing: 0.04em;
+}
+/* The seal sits beside the word's last character, as a signature does. */
+.hero__seal {
+  --size: clamp(64px, 10svh, 104px);
+  position: absolute;
+  right: calc(var(--size) * -0.62);
+  bottom: 2%;
+}
+.hero__caption {
+  color: var(--ink-3);
+}
+.hero__words {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  gap: var(--s-4);
+  max-width: var(--measure-statement);
+}
+.hero__statement {
+  font-size: clamp(44px, 5.4vw, 84px);
+  line-height: 0.92;
+  text-wrap: balance;
+}
+:lang(ja) .hero__statement {
+  font-size: clamp(32px, 3.6vw, 54px);
+  line-height: 1.22;
+}
+:lang(ja) .hero__statement span {
+  display: block;
+}
+.hero__sub {
+  max-width: var(--measure-lede);
+  font-size: clamp(16px, 1.3vw, 18px);
+  line-height: 1.55;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.hero__action {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: grid;
+  justify-items: end;
+  gap: var(--s-3);
+  padding-right: var(--s-9);
+}
+.hero__more {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.hero__more:hover {
+  color: var(--ink);
+}
+
+/* ── Screens ────────────────────────────────────────────────────────── */
+
+/* One idea per screen, opaque, sliding up over the hero, each opened by the
+   app's 2px ink rule. */
+.screen {
+  position: relative;
+  z-index: 1;
+  min-height: 100svh;
+  display: grid;
+  align-items: center;
+  padding: var(--s-10) var(--gutter);
+  background: var(--paper);
+  border-top: 2px solid var(--ink);
+}
+#how,
+#app {
+  padding-block: var(--s-9);
+}
+.screen__body {
+  width: 100%;
+  max-width: var(--measure-section);
+  margin: 0 auto;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+.screen__body--wide {
+  max-width: var(--measure-page);
+}
+.screen__title {
+  margin-top: var(--s-5);
+  max-width: 24ch;
+  font-size: clamp(36px, 4.2vw, 58px);
+  line-height: 0.95;
+  text-wrap: balance;
+}
+:lang(ja) .screen__title {
+  max-width: 18em;
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1.3;
+}
+.screen__sub {
+  margin-top: var(--s-4);
+  max-width: var(--measure-lede);
+  color: var(--ink-2);
+  font-size: 18px;
+  text-wrap: pretty;
+}
+.lede {
+  color: var(--ink-2);
+  font-size: 17px;
+  text-wrap: pretty;
+}
+
+/* How it works: a resume as ledger rows, then three steps. */
+.ledger {
+  margin-top: var(--s-6);
+  width: 100%;
+  text-align: left;
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+}
+.ledger__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: 10px 0;
+  border-bottom: 2px solid var(--ink);
+}
+.ledger__cols,
+.ledger__row {
+  display: grid;
+  grid-template-columns: 32px 128px 32px minmax(0, 1fr) 96px;
+  column-gap: var(--s-4);
+  align-items: first baseline;
+}
+.ledger__cols {
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--hair);
+  color: var(--ink-3);
+}
+.ledger__cols > :last-child {
+  text-align: right;
+}
+.ledger__row {
+  padding: var(--s-3) 0;
+  border-bottom: 1px solid var(--hair);
+}
+.ledger__row:last-child {
+  border-bottom: 0;
+}
+.ledger__n {
+  color: var(--ink-3);
+}
+.ledger__line {
+  font-size: 15.5px;
+  line-height: 1.55;
+}
+.ledger__state {
+  justify-self: end;
+  align-self: center;
+}
+.steps {
+  margin-top: var(--s-6);
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 48px;
+  text-align: left;
+}
+.step {
+  display: grid;
+  align-content: start;
+  gap: var(--s-2);
+  padding-top: var(--s-4);
+  border-top: 2px solid var(--ink);
+}
+.step__n {
+  color: var(--ink-3);
+}
+.step__title {
+  font-size: 24px;
+}
+.step__body {
+  color: var(--ink-2);
+}
+
+/* Review: one waiting item, decided in place. */
+.review {
+  margin-top: var(--s-7);
+  width: 100%;
+  max-width: 46rem;
+  display: grid;
+  gap: var(--s-4);
+  text-align: left;
+}
+.review__item {
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+}
+.review__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.review__body {
+  position: relative;
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-5) 128px var(--s-5) 0;
+}
+.review__q {
+  font-size: 22px;
+}
+.review__claim {
+  font-size: 18px;
+  line-height: 1.55;
+  transition: color var(--dur-ui) var(--ease);
+}
+[data-decided="unsure"] .review__claim {
+  color: var(--ink-3);
+}
+.review__mom {
+  display: grid;
+  gap: var(--s-1);
+  padding-left: var(--s-3);
+  border-left: 3px solid var(--hair);
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.review__figs {
+  color: var(--shu);
+}
+.review__stamp {
+  position: absolute;
+  top: var(--s-5);
+  right: 0;
+  --size: 96px;
+}
+.review__stamp--waiting {
+  --size: 52px;
+}
+.review__decide {
+  display: grid;
+  gap: var(--s-4);
+  padding: 20px 0 var(--s-5);
+  border-top: 1px solid var(--hair);
+}
+.review__outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.review__leads {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-1) var(--s-5);
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.review__leads > div {
+  display: flex;
+  gap: var(--s-2);
+}
+.review__leads dt {
+  flex: none;
+  font-weight: 600;
+  color: var(--ink);
+}
+.review__form {
+  display: grid;
+  gap: 10px;
+  padding-left: var(--s-4);
+  border-left: 4px solid var(--ink);
+}
+.review__help {
+  margin-top: calc(-1 * var(--s-1));
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.review__field,
+.es__field {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+}
+.review__field:focus,
+.es__field:focus {
+  border-color: var(--shu);
+  box-shadow: inset 0 0 0 1px var(--shu);
+}
+.review__done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.review__status {
+  max-width: 34rem;
+  font-size: 15px;
+}
+.review__foot {
+  font-size: 13.5px;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+/* The app tour fits one screen: the title holds one line, and the frame's
+   width follows the height left over. */
+#app .screen__title {
+  max-width: none;
+  font-size: clamp(32px, 3.4vw, 48px);
+}
+.tour {
+  margin-top: var(--s-6);
+  width: min(100%, calc((100svh - 420px) * 1.6));
+  min-width: min(100%, 560px);
+  display: grid;
+  justify-items: center;
+  gap: var(--s-5);
+}
+.tour__tabs button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.tour__frame {
+  width: 100%;
+}
+.tour__shot {
+  border: 2px solid var(--ink);
+  background: var(--paper-2);
+}
+.tour__shot img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+}
+.tour__caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-5);
+  padding: 10px 0;
+  border-bottom: 2px solid var(--ink);
+  text-align: left;
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.tour__caption .label {
+  flex: none;
+}
+
+/* Two columns: a lead and the thing it is about. */
+.split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: var(--s-8);
+  justify-items: stretch;
+  align-items: center;
+  text-align: left;
+}
+.split__lead {
+  display: grid;
+  align-content: center;
+  gap: var(--s-4);
+}
+.split__lead .eyebrow {
+  justify-self: start;
+}
+.split .screen__title {
+  margin-top: var(--s-2);
+  max-width: 16ch;
+  font-size: clamp(32px, 3.4vw, 48px);
+}
+:lang(ja) .split .screen__title {
+  max-width: 14em;
+  font-size: clamp(26px, 2.6vw, 36px);
+}
+.split--flip > :first-child {
+  order: 2;
+}
+.roles {
+  margin-top: var(--s-2);
+  border-top: 2px solid var(--ink);
+}
+.roles li {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: var(--s-1) var(--s-4);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--hair);
+  color: var(--ink-2);
+  font-size: 15px;
+}
+.roles__name {
+  font-size: 18px;
+  color: var(--ink);
+}
+.points {
+  margin-top: var(--s-2);
+  border-top: 2px solid var(--ink);
+}
+.points li {
+  position: relative;
+  padding: 14px 0 14px 28px;
+  border-bottom: 1px solid var(--hair);
+  font-size: 15px;
+}
+/* An inked box, the ledger's tick. */
+.points li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 23px;
+  width: 8px;
+  height: 8px;
+  background: var(--ink);
+}
+.digest,
+.es {
+  display: grid;
+  gap: var(--s-3);
+  align-content: center;
+  text-align: left;
+}
+.digest__head,
+.es__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--ink);
+}
+.digest__text {
+  padding: 20px;
+  border: 2px solid var(--ink);
+  background: var(--paper-2);
+  white-space: pre-wrap;
+  font-size: 13.5px;
+  line-height: 1.8;
+}
+.digest__foot {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* The entry-sheet counter: shu while the answer needs work. */
+.es__q {
+  font-family: var(--font-body-ja), sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+}
+.es__field {
+  font-family: var(--font-body-ja), sans-serif;
+  line-height: 1.9;
+}
+.es__meter {
+  display: grid;
+  gap: var(--s-2);
+}
+.es__bar {
+  position: relative;
+  height: 12px;
+  border: 1.5px solid var(--ink);
+}
+.es__fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  background: var(--ink);
+  transition: transform var(--dur-ui) var(--ease);
+}
+.es__norm {
+  position: absolute;
+  left: 80%;
+  top: -6px;
+  bottom: -6px;
+  width: 2px;
+  background: var(--ink);
+  box-shadow: 0 0 0 1.5px var(--paper);
+}
+.es__count {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-4);
+  font-family: var(--font-mono), var(--font-body-ja), monospace;
+  font-size: 14px;
+}
+.es__state {
+  margin-left: auto;
+}
+.es__meter:not([data-state="ok"]) .es__fill {
+  background: var(--shu);
+}
+.es__meter:not([data-state="ok"]) .es__count {
+  color: var(--shu);
+}
+.es__legend {
+  position: relative;
+  height: 16px;
+  color: var(--ink-3);
+}
+.es__legend span {
+  position: absolute;
+  top: 0;
+}
+.es__legend span:nth-child(1) {
+  left: 0;
+}
+.es__legend span:nth-child(2) {
+  left: 80%;
+  transform: translateX(-50%);
+}
+.es__legend span:nth-child(3) {
+  right: 0;
+}
+
+/* At home: four facts as ledger cells. */
+.cells {
+  margin-top: var(--s-7);
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 2px solid var(--ink);
+  text-align: left;
+}
+.cell {
+  display: grid;
+  align-content: start;
+  gap: var(--s-2);
+  padding: var(--s-5) var(--s-6) var(--s-6) 0;
+  border-bottom: 2px solid var(--ink);
+  font-size: 16.5px;
+}
+.cell:nth-child(odd) {
+  border-right: 2px solid var(--ink);
+}
+.cell:nth-child(even) {
+  padding-left: var(--s-6);
+  padding-right: 0;
+}
+.cell__n {
+  color: var(--ink-3);
+}
+.more {
+  margin-top: var(--s-6);
+  font-size: 15px;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+.more:hover {
+  color: var(--ink);
+  text-decoration-thickness: 2px;
+}
+
+/* The last screen: one action, one footnote. */
+.end__action {
+  margin-top: var(--s-8);
+  display: grid;
+  justify-items: center;
+  gap: var(--s-4);
+}
+.end__note {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.end__note a {
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.end__note a:hover {
+  color: var(--ink);
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+
+.foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s-6);
+  padding: var(--s-6) var(--gutter) calc(var(--s-11) + env(safe-area-inset-bottom, 0px));
+  background: var(--paper);
+  border-top: 2px solid var(--ink);
+}
+.foot__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.foot__mark {
+  --size: 26px;
+  font-size: 13px;
+  border-width: 2px;
+}
+.foot__cols {
+  display: flex;
+  gap: var(--s-9);
+}
+.foot__cols ul {
+  margin-top: var(--s-3);
+  display: grid;
+  gap: var(--s-2);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.foot__cols a:hover {
+  color: var(--ink);
+}
+
+/* ── 404 ────────────────────────────────────────────────────────────── */
+
+.lost {
+  min-height: 100svh;
+  display: grid;
+  place-content: center;
+  justify-items: start;
+  gap: var(--s-5);
+  padding: var(--gutter);
+}
+.lost__stamp {
+  --size: 96px;
+}
+.lost__title {
+  font-size: clamp(40px, 6vw, 88px);
+}
+
+/* ── The site's own MENU pill (copied with SiteMenu.tsx from erwin/site,
+   which ports kaitosoeno.com's 348652e pill with a true 44px button row) ── */
+
+.site-menu {
+  position: fixed;
+  bottom: calc(1.25 * var(--site-rem));
+  left: 50%;
+  z-index: 50;
+  transform: translateX(-50%);
+  font-family: var(--font-body), sans-serif;
+  line-height: 1.4; /* the site's body leading, so the drawer opens to the same height */
+}
+
+/* One surface, one border: the pill grows up and out into the drawer and the
+   button stays its bottom row. Width and height animate (a scale would stretch
+   the hairline and the type mid-flight). Radius is half the closed height. */
+.site-menu__surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: calc(7 * var(--site-rem) + 2px);
+  height: 46px;
+  overflow: hidden;
+  border: 1px solid #353535;
+  border-radius: 23px;
+  background: #000;
+  transition:
+    width 300ms cubic-bezier(0.62, 0.04, 0.06, 1),
+    height 300ms cubic-bezier(0.62, 0.04, 0.06, 1),
+    border-color 220ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.site-menu__surface:has(> .site-menu__button:hover) {
+  border-color: #8f8f8f;
+}
+
+.site-menu__drawer {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  width: calc(13 * var(--site-rem));
+  padding: calc(0.8 * var(--site-rem));
+  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 180ms cubic-bezier(0.4, 0, 1, 1),
+    visibility 0s linear 180ms;
+}
+
+/* Fades in once the surface has room for it, and out at once on close. */
+.site-menu__drawer[data-open] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 220ms cubic-bezier(0, 0, 0.2, 1) 80ms,
+    visibility 0s;
+}
+
+.site-menu__link {
+  display: block;
+  padding: calc(0.4 * var(--site-rem)) calc(0.8 * var(--site-rem));
+  font-size: clamp(14px, calc(0.875 * var(--site-rem)), 16px);
+  text-align: center;
+  color: #8f8f8f;
+  transition: color 180ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.site-menu__link:hover {
+  color: #fff;
+}
+
+.site-menu__button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: #fff;
+  font-size: clamp(12px, calc(0.75 * var(--site-rem)), calc(0.9 * var(--site-rem)));
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* The label keeps its own width, so the pill measures "メニュー" whole instead
+   of a label already squeezed to the closed pill's minimum. */
+.site-menu__label {
+  flex: none;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(0.8 * var(--site-rem));
+  min-width: calc(7 * var(--site-rem));
+  padding: 0 calc(1.25 * var(--site-rem));
+}
+
+.site-menu__glyph {
+  color: #8f8f8f;
+  transition: transform 300ms cubic-bezier(0.62, 0.04, 0.06, 1);
+}
+
+.site-menu__glyph[data-open] {
+  transform: rotate(180deg);
+}
+
+/* The surface clips anything outside it, so focus rings are drawn inside. */
+.site-menu :focus-visible {
+  outline: 2px solid var(--shu);
+  outline-offset: -2px;
+}
+
+.site-menu__button:focus-visible {
+  border-radius: 9999px;
+}
+
+/* ── Motion (Design 03 §3.5, the same grammar as erwin/site) ─────────── */
+
+/* Where the browser runs scroll timelines, the bar is clear over the hero and
+   frosts once the first screen has scrolled under it. Elsewhere it is frosted
+   from the start (see .bar), so nothing ever scrolls under bare links. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .bar {
+      background: transparent;
+      backdrop-filter: none;
+      border-bottom-color: transparent;
+      animation: bar-frost linear both;
+      animation-timeline: scroll(root);
+      animation-range: 60svh 90svh;
+    }
+  }
+}
+@keyframes bar-frost {
+  to {
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 2px solid var(--ink);
+  }
+}
+
+/* The hero drifts down at half speed so the next screen slides over it. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hero__visual,
+    .hero__words {
+      animation: drift linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 100svh;
+    }
+    .hero__action {
+      animation: fade-out linear both;
+      animation-timeline: scroll(root);
+      animation-range: 15svh 40svh;
+    }
+  }
+}
+@keyframes drift {
+  to {
+    transform: translateY(40svh);
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* The candidate's seal is pressed once the page is up. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero__seal {
+    animation: stamp-press 260ms cubic-bezier(0.3, 0.9, 0.3, 1) 450ms both;
+  }
+}
+
+/* Each screen's content rises into place as it arrives, run by the browser.
+   Where scroll timelines are missing, it is simply already in place. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .screen__body > * {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* ── Arriving from kaitosoeno.com/portfolio (components/ViewTransition.tsx) ──
+   The contract erwin/site set: the portfolio's row grows into this page's
+   paper, and the name rises into the wordmark as it turns into this face. The
+   page then comes up on the paper in one series, 60ms apart: the word 就活,
+   the statement, the action, and last the seal, pressed 90ms after. The curve and lengths are
+   kaitosoeno.com's, so the move reads as the site's, not this page's. The
+   seal is the one ornament that moves (shukatsu/brand/BRAND.md § Motion). */
+@view-transition {
+  navigation: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+:root {
+  --vt-ease: cubic-bezier(0.62, 0.04, 0.06, 1);
+  --vt-move: 700ms;
+}
+.vt-surface {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: var(--paper);
+  pointer-events: none;
+}
+html[data-vt] .vt-surface {
+  view-transition-name: vt-surface;
+}
+html[data-vt] .bar__word {
+  view-transition-name: vt-name;
+  /* Trimmed to the caps, as the portfolio's names are, so the two boxes the
+     name moves between are both the letters and nothing else. */
+  text-box: trim-both cap alphabetic;
+}
+html[data-vt] .site-menu {
+  view-transition-name: vt-menu;
+}
+/* kaitosoeno.com's black behind the move, so the paper is seen to open
+   rather than this page's ground showing through from the first frame. */
+html[data-vt="in"]::view-transition {
+  background: #000;
+}
+html[data-vt="in"]::view-transition-group(*) {
+  animation-duration: var(--vt-move);
+  animation-timing-function: var(--vt-ease);
+}
+/* Named layers paint above the page, so the page is moved over the paper
+   once it is nearly full and fades in on top of it, on the same ground.
+   Until then it sits beneath, where the portfolio dissolves around the row. */
+html[data-vt="in"]::view-transition-group(root) {
+  animation: vt-root-over var(--vt-move) linear both;
+}
+html[data-vt="in"]::view-transition-group(vt-name),
+html[data-vt="in"]::view-transition-group(vt-menu) {
+  z-index: 3;
+}
+html[data-vt="in"]::view-transition-old(root) {
+  animation: vt-fade 180ms var(--ease) both reverse;
+}
+html[data-vt="in"]::view-transition-new(root) {
+  animation: vt-fade var(--dur-ui) var(--ease) 480ms both;
+}
+html[data-vt="in"]::view-transition-image-pair(vt-surface) {
+  animation: vt-edge var(--vt-move) var(--vt-ease) both;
+}
+html[data-vt="in"]::view-transition-old(vt-surface),
+html[data-vt="in"]::view-transition-new(vt-surface) {
+  width: 100%;
+  height: 100%;
+}
+html[data-vt="in"]::view-transition-old(vt-surface) {
+  animation: vt-fade 180ms var(--ease) both reverse;
+}
+html[data-vt="in"]::view-transition-new(vt-surface) {
+  animation: vt-fade var(--dur-ui) var(--ease) both;
+}
+/* The name changes face by rolling over inside its own box: the old face
+   leaves up and out, the new one comes up from below, as the flight settles. */
+html[data-vt="in"]::view-transition-image-pair(vt-name) {
+  overflow-y: clip;
+}
+html[data-vt="in"]::view-transition-old(vt-name),
+html[data-vt="in"]::view-transition-new(vt-name) {
+  width: auto;
+  height: 100%;
+  mix-blend-mode: normal;
+}
+html[data-vt="in"]::view-transition-old(vt-name) {
+  animation: vt-roll-out var(--dur-ui) var(--ease-inout) 400ms both;
+}
+html[data-vt="in"]::view-transition-new(vt-name) {
+  animation: vt-roll-in var(--dur-ui) var(--ease-inout) 400ms both;
+}
+@keyframes vt-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-root-over {
+  from,
+  67% {
+    z-index: 0;
+  }
+  68%,
+  to {
+    z-index: 2;
+  }
+}
+@keyframes vt-roll-out {
+  to {
+    transform: translateY(-110%);
+  }
+}
+@keyframes vt-roll-in {
+  from {
+    transform: translateY(110%);
+  }
+}
+@keyframes vt-edge {
+  from {
+    outline: 1px solid var(--ink-3);
+  }
+  to {
+    outline: 1px solid transparent;
+  }
+}
+/* The hero's own boxes drift on the scroll timeline, so the entrance runs on
+   their children and the two never fight over one transform. */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-vt-arrived] .hero__visual > :first-child {
+    animation: vt-rise var(--dur-enter) var(--ease) 460ms both;
+  }
+  html[data-vt-arrived] .hero__words > * {
+    animation: vt-rise var(--dur-enter) var(--ease) calc(520ms + var(--i, 0) * 60ms) both;
+  }
+  html[data-vt-arrived] .hero__words > :nth-child(2) {
+    --i: 1;
+  }
+  html[data-vt-arrived] .hero__words > :nth-child(3) {
+    --i: 2;
+  }
+  html[data-vt-arrived] .hero__caption {
+    animation: vt-rise var(--dur-enter) var(--ease) 640ms both;
+  }
+  html[data-vt-arrived] .hero__action > * {
+    animation: vt-rise var(--dur-enter) var(--ease) 700ms both;
+  }
+  html[data-vt-arrived] .hero__seal {
+    animation-delay: 790ms;
+  }
+}
+@keyframes vt-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* ── Narrow screens ─────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .bar__nav {
+    gap: var(--s-4);
+  }
+}
+
+/* Phones and tall screens: the corners become a column (Design 03 §3.6). */
+@media (max-width: 860px), (max-aspect-ratio: 5/4) {
+  .bar__nav {
+    display: none;
+  }
+  .bar {
+    grid-template-columns: 1fr auto;
+  }
+  .hero {
+    height: auto;
+    min-height: 100svh;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    gap: var(--s-6);
+    padding-bottom: var(--lift);
+  }
+  .hero__words {
+    grid-row: 1;
+  }
+  .hero__visual {
+    position: static;
+    translate: none;
+    grid-row: 2;
+    align-self: center;
+    z-index: 0;
+  }
+  .hero__kanji {
+    font-size: min(22svh, 36vw, 220px);
+  }
+  .hero__action {
+    grid-column: 1;
+    grid-row: 3;
+    justify-items: start;
+    padding-right: 0;
+  }
+  .steps,
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-7);
+  }
+  .split--flip > :first-child {
+    order: 0;
+  }
+  .screen {
+    padding: var(--s-10) var(--gutter);
+  }
+  .tour__caption {
+    flex-direction: column;
+    gap: var(--s-2);
+  }
+  .foot {
+    flex-direction: column;
+  }
+}
+@media (max-width: 720px) {
+  .ledger__cols {
+    display: none;
+  }
+  .ledger__row {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    row-gap: var(--s-2);
+  }
+  .ledger__prov {
+    display: none;
+  }
+  .ledger__line {
+    grid-column: 1 / -1;
+  }
+  .ledger__state {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .review__body {
+    padding-right: 64px;
+  }
+  .review__stamp {
+    --size: 64px;
+  }
+  .review__stamp--waiting {
+    --size: 44px;
+  }
+  .review__leads {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cells {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cell,
+  .cell:nth-child(even) {
+    padding: var(--s-5) 0;
+    border-right: 0;
+  }
+  .cell:nth-child(odd) {
+    border-right: 0;
+  }
+  .roles li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .bar__util .label:last-child {
+    display: none;
+  }
+  .foot__cols {
+    gap: var(--s-6);
+  }
+}
