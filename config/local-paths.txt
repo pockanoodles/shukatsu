@@ -1,0 +1,11 @@
+# Paths this fork (pockanoodles/shukatsu) owns. Upstream career-ops never ships
+# them, `update-system.mjs apply` never writes them, and the coverage guard
+# counts them as covered. Tracked on purpose: see the negation at the end of
+# .gitignore and config/local-paths.example.txt.
+
+# The shukatsu engine and app: master profile, review queue, web app, deploy.
+shukatsu/
+
+# Fork-owned modes.
+modes/shukatsu/
+modes/shinsotsu/
