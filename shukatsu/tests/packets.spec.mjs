@@ -121,6 +121,10 @@ test('a Japanese packet carries only confirmed Japanese, traced to it, with Japa
   assert.match(draft, /# 職務経歴書 -- Test Candidate/);
   assert.match(draft, /<!-- fact:acme\.routing\/ja -->/);
   assert.equal(checkPacket(root, { actor: owner, id }).ok, true);
+  // An untouched Japanese line is the confirmed Japanese, not a rewording of the English.
+  const line = pk.sections.flatMap((s) => s.bullets).find((b) => b.id === 'acme.routing');
+  assert.equal(line.reworded, false);
+  assert.equal(line.original, line.text);
   // A Japanese rewording that changes a counter fails the trace.
   setBullet(root, { actor: owner, id, factId: 'acme.routing', text: '6名チームのリード振り分けを再構築し、週1,200件のリードの手作業を1日40分から3分に短縮。' });
   const bad = checkPacket(root, { actor: owner, id });

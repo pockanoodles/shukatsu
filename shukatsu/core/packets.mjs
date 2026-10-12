@@ -103,9 +103,14 @@ function draftBullets(root, p, m) {
     const entity = hit?.entity?.id || '?';
     if (!byEntity.has(entity)) byEntity.set(entity, []);
     const e = hit?.entity;
+    // A Japanese line (`/ja`) is a rewording only if it differs from the fact's
+    // confirmed Japanese, which is also what it's shown against; trace holds it
+    // to that same wording. A variant line is compared with its variant.
+    const ja = r.variant === 'ja' ? hit?.fact.ja?.text ?? null : null;
+    const declared = ja ?? (r.variant ? (hit?.fact.variants || []).find((v) => v.key === r.variant)?.text : hit?.fact.text);
     byEntity.get(entity).push({
-      id: r.id, variant: r.variant, text: r.text, kind: r.kind, score: r.score, original: hit?.fact.text ?? null,
-      reworded: hit ? r.text !== (r.variant ? (hit.fact.variants || []).find((v) => v.key === r.variant)?.text : hit.fact.text) : false,
+      id: r.id, variant: r.variant, text: r.text, kind: r.kind, score: r.score, original: ja ?? hit?.fact.text ?? null,
+      reworded: hit ? r.text !== declared : false,
       problem: traceProblem(r), numberDiff: r.numberDiff,
       lint: m.lang === 'ja' ? jaFindings(r.text) : lintWording(root, r.text, { current: e?.ended === false }),
     });
