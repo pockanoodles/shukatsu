@@ -1,22 +1,23 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { engine } from "@/lib/server/engine";
-import { requireUser } from "@/lib/server/session";
+import { requireCan } from "@/lib/server/session";
 import { translator } from "@/lib/i18n";
 import type { Activity } from "@/lib/types";
 import { Head } from "@/components/marks";
 import { ActivityLine } from "@/components/activity";
+import { withLabels } from "@/lib/activity-labels";
 
 export const metadata: Metadata = { title: "Activity" };
 
 export default async function ActivityPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const user = await requireUser();
+  const user = await requireCan("view.review");
   const { t } = translator(user.lang);
   const before = Number((await searchParams).before) || null;
   const { root, store } = await engine();
   const list: Activity[] = store.recentActivity(root, { limit: 60, before });
   // People management is the owner's business; everyone else sees the search, not the admin.
-  const shown = user.role === "owner" ? list : list.filter((a) => !a.verb.startsWith("person.") && !a.verb.startsWith("invite."));
+  const shown = await withLabels(user.role === "owner" ? list : list.filter((a) => !a.verb.startsWith("person.") && !a.verb.startsWith("invite.")));
   return (
     <div>
       <Head title={t("activity.title")} lead={t("activity.lead")} />

@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Packets" };
 type Row = { id: number; company: string; role: string; status: string; author_name: string; updated_at: string; archetype: string; sent_on: string | null };
 
 export default async function PacketsPage() {
-  const user = await requireCan("view");
+  const user = await requireCan("view.review");
   const { t } = translator(user.lang);
   const { root, packets } = await engine();
   const rows: Row[] = packets.listPackets(root);

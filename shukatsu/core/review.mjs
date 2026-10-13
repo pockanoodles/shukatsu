@@ -31,7 +31,7 @@ import {
 import { lintWording } from './validate.mjs';
 import { editProfile } from './profile-edit.mjs';
 import { decidedProposals, getProposal, isStale, openProposals } from './proposals.mjs';
-import { appendPipeline } from './tracker.mjs';
+import { appendPipeline, readTracker } from './tracker.mjs';
 import { assertCan, getUser } from './people.mjs';
 import { commentCounts, db, json, logActivity, now } from './store.mjs';
 import { readManifest } from './manifests.mjs';
@@ -171,6 +171,43 @@ export function item(root, key) {
   return queue(root).find((x) => x.key === key) || null;
 }
 
+const clip = (s, n = 70) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
+const hostOf = (u) => { try { return new URL(u).host.replace(/^www\./, ''); } catch { return String(u || ''); } };
+
+/** A short human name for a review/activity subject: fact text, role heading, packet company and role, posting host. */
+function labelOf(root, p, subject) {
+  try {
+    const key = String(subject || '');
+    if (/^person:\d+$/.test(key)) return db(root).prepare('SELECT name FROM users WHERE id = ?').get(Number(key.slice(7)))?.name || null;
+    if (/^app:\d+$/.test(key)) { const row = readTracker(root).rows.find((r) => Number(r.num) === Number(key.slice(4))); return row ? `${row.company} · ${row.role}` : null; }
+    if (/^packet:\d+$/.test(key)) {
+      const pk = db(root).prepare('SELECT company, role FROM packets WHERE id = ?').get(Number(key.slice(7)));
+      return pk ? `${pk.company} · ${pk.role}` : null;
+    }
+    if (/^proposal:\d+$/.test(key)) {
+      const pr = getProposal(root, Number(key.slice(9)));
+      if (!pr) return null;
+      if (pr.kind === 'posting') return [pr.payload.company, hostOf(pr.payload.url)].filter(Boolean).join(' · ');
+      if (pr.kind === 'entity.new') return clip(pr.payload.label);
+      if (pr.kind === 'fact.new') return clip(pr.payload.text);
+      const hit = p._facts.get(pr.payload.id);
+      return hit ? clip(hit.fact.text) : pr.payload.id;
+    }
+    const k = parseKey(key);
+    if (k.what === 'entity') { const e = p._entities.find((x) => x.id === k.id); return e ? clip(e.label || e.heading) : k.id; }
+    const hit = p._facts.get(k.id);
+    return hit ? clip(hit.fact.text) : k.id;
+  } catch { return null; }
+}
+
+/** Human names for a list of subjects: { subject: label }. */
+export function labelsFor(root, subjects) {
+  const p = loadProfile(root);
+  const out = {};
+  for (const s of new Set(subjects.filter(Boolean))) { const l = labelOf(root, p, s); if (l) out[s] = l; }
+  return out;
+}
+
 /** Decided profile drafts and proposals, for the "Decided" view and reopening. */
 export function decided(root) {
   const p = loadProfile(root);
@@ -183,7 +220,9 @@ export function decided(root) {
       if (f.ja && ['rejected', 'cannot-confirm'].includes(statusOf(f.ja))) out.push({ key: `draft:ja:${f.id}`, kind: 'ja', status: statusOf(f.ja), text: f.ja.text, reason: f.ja.decision_note || null, decided_on: f.ja.decided_on || null, entity: entityView(e) });
     }
   }
-  return { drafts: out, proposals: decidedProposals(root) };
+  const proposals = decidedProposals(root);
+  const labels = labelsFor(root, proposals.map((pr) => `proposal:${pr.id}`));
+  return { drafts: out, proposals: proposals.map((pr) => ({ ...pr, label: labels[`proposal:${pr.id}`] || null })) };
 }
 
 // ---------------------------------------------------------------- decisions
@@ -233,7 +272,9 @@ export function decide(root, { actor, key, outcome, text = null, reason = '' }) 
   if (k.type === 'draft') result = decideDraft(root, actor, k, outcome, edited, reasonText(reason));
   else if (k.type === 'proposal') result = decideProposal(root, actor, k.id, outcome, edited, reasonText(reason));
   else result = decidePacket(root, actor, k.id, outcome, reasonText(reason));
-  logActivity(root, { actor, verb: `review.${outcome}`, subject: key, detail: { ...result.detail, commit: result.commit?.sha || null } });
+  // Sending a packet back is not a rejection: it keeps its own verb so the feed and the digest can tell them apart.
+  const verb = k.type === 'packet' && outcome === 'reject' ? 'review.changes' : `review.${outcome}`;
+  logActivity(root, { actor, verb, subject: key, detail: { ...result.detail, commit: result.commit?.sha || null } });
   return result;
 }
 

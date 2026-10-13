@@ -28,7 +28,7 @@ function Step({ id, step, label, tone = "btn", children }: { id: number; step: s
 }
 
 export default async function PacketPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
-  const user = await requireCan("view");
+  const user = await requireCan("view.review");
   const { t } = translator(user.lang);
   const { id: raw } = await params;
   const sp = await searchParams;
@@ -52,6 +52,12 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
     <div>
       {sp.error && <Flash tone="shu">{sp.error}</Flash>}
       {done && <Flash>{done}</Flash>}
+      {pk.status === "changes_requested" && pk.changesNote && (
+        <div className="border-b-2 border-shu bg-shu-soft px-4 py-4 sm:px-10">
+          <span className="label text-shu">{t("packets.changesNote")}</span>
+          <p className="mt-1 text-[16px]">{pk.changesNote}</p>
+        </div>
+      )}
       <div className="grid gap-4 border-b-2 rule px-4 pb-5 pt-6 sm:px-10">
         <Link href="/packets" className="label text-ink-2">← {t("packets.title")}</Link>
         <div className="flex flex-wrap items-end justify-between gap-6">
@@ -164,7 +170,7 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
                 <ul className="grid border-2 rule">
                   {pk.manifest!.gates!.map((g) => (
                     <li key={g.name} className="grid gap-1 border-b hair px-3 py-2 last:border-b-0">
-                      <span className="flex justify-between"><span className="label">{t(`packets.gates.${g.name}`)}</span><span className={`label ${g.ok ? "" : "text-shu"}`}>{g.ok ? "PASS" : "FAIL"}</span></span>
+                      <span className="flex justify-between"><span className="label">{t(`packets.gates.${g.name}`)}</span><span className={`label ${g.ok ? "" : "text-shu"}`}>{g.ok ? t("packets.pass") : t("packets.fail")}</span></span>
                       {!g.ok && showGateOutput && g.out && <pre className="code scroll-thin max-h-48 overflow-auto whitespace-pre-wrap text-[11.5px] text-ink-2">{g.out}</pre>}
                     </li>
                   ))}

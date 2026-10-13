@@ -45,7 +45,7 @@ export type Packet = {
   id: number; company: string; role: string; url: string | null; jd_path: string | null; archetype: string; lang: string;
   status: "drafting" | "in_review" | "changes_requested" | "ready" | "sent" | "closed";
   tracker_num: number | null; cover_letter: string | null; notes: string | null; created_by: number; author_name: string;
-  created_at: string; updated_at: string; sent_on: string | null; jdText: string;
+  created_at: string; updated_at: string; sent_on: string | null; jdText: string; changesNote?: string | null;
   sections: { entity: EntityView; bullets: Bullet[] }[];
   pool: { id: string; entity: string; entityLabel: string; text: string; score: number; why: string }[];
   budget: number; count: number; canEdit: boolean;

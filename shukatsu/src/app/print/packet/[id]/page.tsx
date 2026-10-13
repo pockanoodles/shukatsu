@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "CV" };
  * system serif-free type, nothing a parser could trip on.
  */
 export default async function PrintPacket({ params }: { params: Promise<{ id: string }> }) {
-  await requireCan("view");
+  await requireCan("view.review");
   const { id } = await params;
   const { root, packets } = await engine();
   const pk = packets.getPacketRow(root, Number(id));

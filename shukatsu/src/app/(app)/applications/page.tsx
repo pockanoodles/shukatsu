@@ -11,6 +11,8 @@ export const metadata: Metadata = { title: "Applications" };
 
 const stateKey = (s: string) => s.trim().toLowerCase().replace(/\s+/g, "");
 
+const hostOf = (u: string) => { try { return new URL(u).host.replace(/^www\./, ""); } catch { return u; } };
+
 export default async function ApplicationsPage() {
   const user = await requireCan("view");
   const { t } = translator(user.lang);
@@ -34,7 +36,7 @@ export default async function ApplicationsPage() {
       <section aria-labelledby="tracker" className="border-b-2 rule">
         <h2 id="tracker" className="label border-b-2 rule bg-paper-2 px-4 py-2.5 text-ink-2 sm:px-10">{t("apps.tracker")} · {rows.length}</h2>
         {rows.length === 0 ? <p className="px-4 py-8 text-ink-2 sm:px-10">{t("apps.empty")}</p> : (
-          <div className="scroll-thin overflow-x-auto">
+          <div className="scroll-thin relative overflow-x-auto">
             <table className="w-full min-w-[760px] border-collapse text-left">
               <thead>
                 <tr className="label text-ink-3">
@@ -69,16 +71,16 @@ export default async function ApplicationsPage() {
         )}
       </section>
 
-      <section aria-labelledby="inbox" className="grid border-b-2 rule lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <section aria-labelledby="inbox" className="grid grid-cols-[minmax(0,1fr)] border-b-2 rule lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <div className="border-b-2 rule lg:border-b-0 lg:border-r-2">
           <h2 id="inbox" className="label border-b-2 rule bg-paper-2 px-4 py-2.5 text-ink-2 sm:px-10">{t("apps.inbox")} · {inbox.length}</h2>
           <p className="border-b hair px-4 py-3 text-[14px] text-ink-2 sm:px-10">{t("apps.inboxLead")}</p>
           {inbox.length === 0 ? <p className="px-4 py-8 text-ink-2 sm:px-10">{t("apps.inboxEmpty")}</p> : (
             <ul>
               {inbox.map((x) => (
-                <li key={`${x.line}-${x.url}`} className="grid gap-x-6 gap-y-1 border-b hair px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-10">
+                <li key={`${x.line}-${x.url}`} className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-1 border-b hair px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-10">
                   <div className="grid min-w-0 gap-0.5">
-                    <a href={x.url} target="_blank" rel="noreferrer noopener" className="truncate font-bold hover:underline">{x.company} <span className="font-normal text-ink-2">· {x.role}</span></a>
+                    <a href={x.url} target="_blank" rel="noreferrer noopener" className="truncate font-bold hover:underline">{x.company === "?" && x.role === "?" ? hostOf(x.url) : x.company} {x.role !== "?" || x.company !== "?" ? <span className="font-normal text-ink-2">· {x.role}</span> : null}</a>
                     <span className="flex flex-wrap gap-x-3 text-[12.5px] text-ink-3">
                       {x.location && <span>{x.location}</span>}
                       {x.posted && <span className="label">{t("apps.posted", { date: x.posted })}</span>}

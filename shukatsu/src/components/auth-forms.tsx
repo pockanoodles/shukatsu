@@ -49,6 +49,7 @@ export function InviteForm({ token, reset, defaults, l }: { token: string; reset
   return (
     <form action={action} className="grid gap-5">
       <input type="hidden" name="token" value={token} />
+      <input type="hidden" name="ui" value={defaults.lang} />
       {!reset && (
         <>
           <label className="grid gap-1.5"><span className="label text-ink-2">{l.name}</span>

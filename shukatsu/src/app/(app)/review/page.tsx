@@ -69,7 +69,7 @@ function ItemCard({ it, next, user, t }: { it: QueueItem; next: string | null; u
           {it.source === "profile" ? t("review.drafted_from") : t("review.proposedBy", { name: it.author?.name || "" })}
         </span>
         {it.created_at && <span className="label text-ink-3">{relative(it.created_at, user.lang)}</span>}
-        <span className="code text-ink-3">{it.key}</span>
+        <span className="label text-ink-3">{t(`review.kind.${it.kind}`)}</span>
       </div>
       <h2 id="q" className="heading text-[26px] sm:text-[30px]">{question(it, t)}</h2>
 
@@ -167,14 +167,18 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
   }
   const done = sp.done && ["accept", "narrative", "cannot-confirm", "reject"].includes(sp.done) ? sp.done : null;
   const hasItem = Boolean(sp.item);
+  // A link to an item that's been decided (or never existed) says so, instead of quietly opening another one.
+  const gone = Boolean(sp.item && !sp.stamped && !items.some((x) => x.key === sp.item));
+  const stampedLabel = sp.stamped ? (review.labelsFor(root, [sp.stamped]) as Record<string, string>)[sp.stamped] || "" : "";
   return (
     <div className="flex min-h-[calc(100dvh-56px)] flex-col">
       <ReviewKeys keys={items.map((x) => x.key)} current={current?.key ?? null} />
+      {gone && <Flash>{t("sys.reviewGone")}</Flash>}
       {done && (
         <Flash tone={done === "accept" ? "shu" : "ink"}>
           <span className="flex items-center gap-4">
             {done === "accept" && <Stamp size="sm" tone="on" press>確認</Stamp>}
-            {t(`review.done.${done}`)}{sp.stamped ? <span className="code normal-case opacity-80">{sp.stamped}</span> : null}
+            {t(`review.done.${done}`)}{stampedLabel ? <span className="clamp-2 normal-case opacity-80">{stampedLabel}</span> : null}
           </span>
         </Flash>
       )}
@@ -209,13 +213,13 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
                         <Link href={`/review?item=${encodeURIComponent(it.key)}`} data-item={it.key} aria-current={on ? "true" : undefined} scroll={false}
                           className={`grid min-w-0 gap-1.5 border-b hair px-4 py-3.5 sm:px-6 ${on ? "bg-ink text-on-ink" : "hover:bg-paper-2"}`}>
                           <span className="flex min-w-0 items-center justify-between gap-3">
-                            <span className={`code truncate text-[11.5px] ${on ? "" : "text-ink-2"}`}>{it.key.replace(/^draft:/, "")}</span>
+                            <span className={`label truncate text-[11.5px] ${on ? "" : "text-ink-2"}`}>{t(`review.kind.${it.kind}`)}</span>
                             <span className="flex flex-none items-center gap-2">
                               {it.comments ? <span className="code text-[11px]">✎{it.comments}</span> : null}
                               {it.hasNumbers && <span className={`h-2 w-2 ${on ? "bg-on-ink" : "bg-shu"}`} aria-hidden />}
                             </span>
                           </span>
-                          <span className={`clamp-2 min-w-0 break-words text-[13.5px] leading-snug ${on ? "opacity-85" : "text-ink-2"}`} lang={it.kind === "ja" ? "ja" : undefined}>{it.after}</span>
+                          <span className={`clamp-2 min-w-0 break-words text-[13.5px] leading-snug ${on ? "opacity-85" : "text-ink-2"}`} lang={it.kind === "ja" ? "ja" : undefined}>{it.after || it.fact?.text || it.before}</span>
                           {it.author && <span className={`label text-[11px] ${on ? "opacity-75" : "text-ink-3"}`}>{it.author.name}</span>}
                         </Link>
                       </li>

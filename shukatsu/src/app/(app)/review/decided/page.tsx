@@ -8,7 +8,7 @@ import { reopenAction } from "@/app/actions/work";
 
 export const metadata: Metadata = { title: "Decided" };
 
-type Decided = { drafts: { key: string; kind: string; status: string; text: string; reason: string | null; decided_on: string | null; entity: { label: string } }[]; proposals: { id: number; kind: string; status: string; author_name: string; decided_by_name: string | null; decided_at: string | null; decision_note: string | null; payload: { text?: string; url?: string; label?: string; id?: string } }[] };
+type Decided = { drafts: { key: string; kind: string; status: string; text: string; reason: string | null; decided_on: string | null; entity: { label: string } }[]; proposals: { id: number; kind: string; status: string; author_name: string; decided_by_name: string | null; decided_at: string | null; decision_note: string | null; label?: string | null; payload: { text?: string; url?: string; label?: string; id?: string } }[] };
 
 export default async function DecidedPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const user = await requireCan("view.review");
@@ -38,7 +38,7 @@ export default async function DecidedPage({ searchParams }: { searchParams: Prom
               <span className="label text-ink-2">{t(`status.${x.status}`)}</span>
             </span>
             <div className="grid gap-1">
-              <span className="code text-ink-3">{x.key.replace(/^draft:/, "")} · {x.entity.label}{x.decided_on ? ` · ${formatDate(dateOf(x.decided_on), user.lang)}` : ""}</span>
+              <span className="code text-ink-3">{t(`review.kind.${x.kind}`)} · {x.entity.label}{x.decided_on ? ` · ${formatDate(dateOf(x.decided_on), user.lang)}` : ""}</span>
               <p className="text-ink-2" lang={x.kind === "ja" ? "ja" : undefined}>{x.text}</p>
               {x.reason && <p className="text-[14px]"><span className="label mr-2 text-ink-3">{t("review.reason")}</span>{x.reason}</p>}
             </div>
@@ -51,8 +51,8 @@ export default async function DecidedPage({ searchParams }: { searchParams: Prom
           <li key={pr.id} className="grid gap-x-6 gap-y-2 border-b hair px-4 py-4 sm:grid-cols-[150px_minmax(0,1fr)] sm:px-10">
             <span className="label self-start text-ink-2">{t(`today.proposalState.${pr.status}`)}</span>
             <div className="grid gap-1">
-              <span className="code text-ink-3">proposal:{pr.id} · {pr.kind} · {pr.author_name}{pr.decided_at ? ` · ${formatDate(pr.decided_at, user.lang)}` : ""}</span>
-              <p className="text-ink-2">{pr.payload.text || pr.payload.label || pr.payload.url || pr.payload.id}</p>
+              <span className="code text-ink-3">{t(`review.kind.proposal.${pr.kind}`)} · {pr.author_name}{pr.decided_at ? ` · ${formatDate(pr.decided_at, user.lang)}` : ""}</span>
+              <p className="text-ink-2">{pr.payload.text || pr.payload.label || pr.payload.url || pr.label || pr.payload.id}</p>
               {pr.decision_note && <p className="text-[14px]"><span className="label mr-2 text-ink-3">{t("review.reason")}</span>{pr.decision_note}</p>}
             </div>
           </li>

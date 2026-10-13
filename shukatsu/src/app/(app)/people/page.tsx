@@ -3,10 +3,13 @@ import { headers } from "next/headers";
 import { engine } from "@/lib/server/engine";
 import { requireCan } from "@/lib/server/session";
 import { formatDate, relative, translator } from "@/lib/i18n";
-import { Head } from "@/components/marks";
+import { errorText } from "@/lib/server/errors";
+import { Flash, Head } from "@/components/marks";
 import { ConfirmSubmit } from "@/components/client";
 import { personAction } from "@/app/actions/work";
 import { InviteForm, ResetLink } from "./forms";
+import { ActionForm } from "@/components/system-forms";
+import { tokenAction } from "@/app/actions/system";
 
 export const metadata: Metadata = { title: "People" };
 
@@ -20,9 +23,10 @@ async function baseUrl() {
   return `${h.get("x-forwarded-proto") || "http"}://${h.get("x-forwarded-host") || h.get("host")}`;
 }
 
-export default async function PeoplePage() {
+export default async function PeoplePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const user = await requireCan("people.manage");
   const { t } = translator(user.lang);
+  const sp = await searchParams;
   const { root, people } = await engine();
   const list: Person[] = people.listUsers(root);
   const invites: Invite[] = people.openInvites(root);
@@ -35,10 +39,11 @@ export default async function PeoplePage() {
   const roles = ["editor", "reviewer", "viewer"].map((r) => ({ id: r, label: t(`role.${r}`), help: t(`role.${r}Help`) }));
   return (
     <div>
+      {sp.error && <Flash tone="shu">{errorText(new Error(sp.error), t, user.lang)}</Flash>}
       <Head title={t("people.title")} lead={t("people.lead")} />
       <section className="grid border-b-2 rule lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <div className="border-b-2 rule lg:border-b-0 lg:border-r-2">
-          <h2 className="label border-b-2 rule bg-paper-2 px-4 py-2.5 text-ink-2 sm:px-10">{t("people.list")} · {list.length}</h2>
+          <h2 className="label border-b-2 rule bg-paper-2 px-4 py-2.5 text-ink-2 sm:px-10">{t("people.list")} · {list.filter((p) => !p.disabled_at).length}</h2>
           <ul>
             {list.map((p) => (
               <li key={p.id} className={`grid gap-3 border-b hair px-4 py-5 sm:px-10 ${p.disabled_at ? "opacity-60" : ""}`}>
@@ -62,6 +67,12 @@ export default async function PeoplePage() {
                       <button className="btn btn-ghost btn-sm">{t("common.save")}</button>
                     </form>
                     <ResetLink id={p.id} name={p.name} base={base} l={l} />
+                    {!p.disabled_at && (
+                      <ActionForm action={tokenAction} submit={t("sys.familyFeed")} pending={t("common.loading")} buttonClass="btn btn-ghost btn-sm" className="flex"
+                        secret={{ lead: t("sys.familyFeedMade", { name: p.name }), copy: t("common.copy"), copied: t("common.copied"), template: `${base}/cal/{token}.ics` }}>
+                        <input type="hidden" name="user_id" value={p.id} /><input type="hidden" name="kind" value="feed" /><input type="hidden" name="name" value={`${p.name}'s calendar`} />
+                      </ActionForm>
+                    )}
                     <form action={personAction}>
                       <input type="hidden" name="id" value={p.id} /><input type="hidden" name="op" value={p.disabled_at ? "enable" : "disable"} />
                       {p.disabled_at ? <button className="label text-ink-2 underline underline-offset-4">{t("people.enable")}</button>

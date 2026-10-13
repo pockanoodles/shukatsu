@@ -85,7 +85,7 @@ export default async function RecordPage() {
   let n = 0;
   return (
     <div>
-      <Head eyebrow={t("record.counts", { live, pending, aside: all.length - live - pending })} title={t("record.title")} lead={owner ? t("record.lead") : t("record.leadHelper")}>
+      <Head eyebrow={t("record.counts", { live, pending, aside: all.length - live - pending })} title={t("record.title")} lead={owner ? t("record.lead") : allowed(user, "propose.profile") ? t("record.leadHelper") : t("record.leadViewer")}>
         {canPropose && <div className="w-full sm:w-auto"><NewRole owner={owner} l={l} /></div>}
       </Head>
       <nav className="scroll-thin flex gap-0 overflow-x-auto border-b-2 rule" aria-label={t("record.title")}>

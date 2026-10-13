@@ -29,7 +29,7 @@ export function ThemeToggle({ labels }: { labels: Record<Theme, string> & { swit
   const theme = useSyncExternalStore((cb) => { listeners.add(cb); return () => listeners.delete(cb); }, readTheme, () => "system" as Theme);
   const next = ORDER[(ORDER.indexOf(theme) + 1) % ORDER.length];
   return (
-    <button type="button" onClick={() => applyTheme(next)} title={labels[theme]} aria-label={`${labels[theme]}. ${labels.switchTo.replace("{next}", next)}`}
+    <button type="button" onClick={() => applyTheme(next)} title={labels[theme]} aria-label={`${labels[theme]}. ${labels.switchTo.replace("{next}", labels[next].split(/[:：]\s*/).pop() || next)}`}
       className="grid h-11 w-11 place-items-center text-ink-2 hover:text-ink">
       <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="square" aria-hidden>
         {theme === "light" && <><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" /></>}

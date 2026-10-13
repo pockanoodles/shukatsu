@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /** The CV as markdown: the checked deliverable when there is one, else the draft without its fact tags. */
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
-  if (!user?.perms.view) return new NextResponse("Sign in first.", { status: 401 });
+  if (!user?.perms["view.review"]) return new NextResponse("Sign in first.", { status: 401 });
   const { id } = await params;
   const { root, packets } = await engine();
   const pk = packets.getPacketRow(root, Number(id));
