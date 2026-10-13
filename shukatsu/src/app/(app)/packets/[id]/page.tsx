@@ -83,7 +83,7 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
           {pk.headerGaps.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 rule px-4 py-4 sm:px-10">
               <p className="text-[14px]">{t("packets.headerGap", { fields: pk.headerGaps.map((g) => t(`packets.headerFields.${g}`)).join(" · ") })}</p>
-              {owner && <Link href="/record#ja-header" className="btn btn-ghost btn-sm">{t("packets.headerGapFix")}</Link>}
+              {owner && <Link href="/settings#ja-header" className="btn btn-ghost btn-sm">{t("packets.headerGapFix")}</Link>}
             </div>
           )}
           {pk.missingJa.length > 0 && (

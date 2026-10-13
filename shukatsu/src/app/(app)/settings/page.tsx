@@ -6,6 +6,7 @@ import { Head } from "@/components/marks";
 import { AddPasskey } from "@/components/auth-forms";
 import { endSessionAction, removePasskeyAction } from "@/app/actions/work";
 import { AccountForm, PasswordForm } from "./forms";
+import { JaHeaderForm } from "../record/forms";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -19,7 +20,7 @@ const device = (ua: string | null) => {
 export default async function SettingsPage() {
   const user = await requireUser();
   const { t } = translator(user.lang);
-  const { root, people, passkeys, llm, gitlog } = await engine();
+  const { root, people, passkeys, llm, gitlog, candidate } = await engine();
   const keys: { id: string; name: string | null; device_type: string; created_at: string; last_used_at: string | null }[] = passkeys.passkeysFor(root, user.id);
   const sessions: { token_hash: string; created_at: string; last_seen_at: string; ip: string | null; user_agent: string | null; method: string }[] = people.sessionsFor(root, user.id);
   // Browsers allow passkeys over HTTPS, or on localhost (never on a bare IP like 127.0.0.1).
@@ -66,6 +67,17 @@ export default async function SettingsPage() {
             ))}
           </ul>
         </section>
+        {user.role === "owner" && (() => {
+          const c = candidate.candidateJa(root);
+          return (
+            <section id="ja-header" className="grid content-start gap-4 border-b-2 rule px-4 py-8 sm:px-10 lg:col-span-2">
+              <h2 className="heading text-[22px]">{t("record.jaHeader")}</h2>
+              <div className="max-w-4xl">
+                <JaHeaderForm values={c.ja} english={c.en} l={{ jaName: t("record.jaName"), jaLocation: t("record.jaLocation"), jaAvailability: t("record.jaAvailability"), jaSave: t("record.jaSave"), working: t("common.loading") }} />
+              </div>
+            </section>
+          );
+        })()}
         {user.role === "owner" && (
           <section className="grid content-start gap-4 border-b-2 rule px-4 py-8 sm:px-10 lg:col-span-2">
             <h2 className="heading text-[22px]">{t("settings.system")}</h2>

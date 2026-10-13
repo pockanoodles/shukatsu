@@ -137,7 +137,7 @@ const en = {
     reason: "Reason",
   },
   comments: {
-    title: "Comments", none: "No comments yet.", placeholder: "Write a comment", post: "Post", resolve: "Resolve", resolved: "Resolved",
+    title: "Comments", none: "No comments yet.", placeholder: "Write a comment", post: "Post", resolve: "Resolve", resolved: "Resolved", reply: "Reply",
   },
   record: {
     title: "Record",

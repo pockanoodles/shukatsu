@@ -29,8 +29,8 @@ const OUTCOME_FOR: Record<Outcome["id"], string> = {
  * need words (a corrected figure, a narrative rewording, a reason) open their
  * form under the grid. Only one is open at a time.
  */
-export function Decide({ itemKey, next, outcomes, rejectLink, text, current, checkRules, labels, stamp }: {
-  itemKey: string; next: string | null; outcomes: Outcome[]; rejectLink?: Outcome; text: string; current: boolean; checkRules: boolean; labels: Labels; stamp: string;
+export function Decide({ itemKey, next, outcomes, text, current, checkRules, labels, stamp }: {
+  itemKey: string; next: string | null; outcomes: Outcome[]; text: string; current: boolean; checkRules: boolean; labels: Labels; stamp: string;
 }) {
   const [open, setOpen] = useState<Outcome["id"] | null>(null);
   const [state, action] = useActionState(decideAction, null);
@@ -46,7 +46,8 @@ export function Decide({ itemKey, next, outcomes, rejectLink, text, current, che
     <div className="grid gap-4">
       <div className="flex flex-wrap gap-2.5" role="group">
         {outcomes.map((o) => {
-          const pill = `btn ${o.primary ? "btn-shu" : open === o.id ? "" : "btn-ghost"}`;
+          // Reject is always the ink pill, so the way out reads as firmly as the way in.
+          const pill = `btn ${o.primary ? "btn-shu" : o.id === "reject" || open === o.id ? "" : "btn-ghost"}`;
           const inner = <><Seal k={SEAL[o.id]} />{o.label}{o.key && <kbd className="hidden sm:inline">{o.key.toUpperCase()}</kbd>}</>;
           if (needsForm(o.id)) {
             return (
@@ -62,11 +63,6 @@ export function Decide({ itemKey, next, outcomes, rejectLink, text, current, che
         })}
       </div>
 
-      {rejectLink && (
-        <button type="button" data-key={rejectLink.key} onClick={() => setOpen(open === "reject" ? null : "reject")} className="justify-self-start text-[13.5px] text-ink-2 underline underline-offset-4 hover:text-ink">
-          {rejectLink.label} →
-        </button>
-      )}
 
       {open && (
         <form action={action} className="fade grid gap-3 border-l-4 border-ink pl-4">

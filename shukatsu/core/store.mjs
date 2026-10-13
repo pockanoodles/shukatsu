@@ -262,6 +262,8 @@ const MIGRATIONS = [
    CREATE INDEX events_start ON events(starts_at);
    CREATE INDEX events_campaign ON events(campaign_id, starts_at);
    CREATE UNIQUE INDEX events_source ON events(source, source_ref) WHERE source_ref IS NOT NULL;`,
+  // 4: replies, so a comment thread reads as a discussion.
+  `ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE;`,
 ];
 
 const open = new Map();
@@ -350,11 +352,15 @@ export function recentActivity(root, { limit = 50, before = null, subject = null
 
 // ---------------------------------------------------------------- comments
 
-export function addComment(root, { actor, subject, body }) {
+export function addComment(root, { actor, subject, body, parentId = null }) {
   const text = String(body || '').trim();
   if (!text) throw new Error('A comment needs some text.');
   if (text.length > 4000) throw new Error('Comments are capped at 4,000 characters.');
-  const r = db(root).prepare('INSERT INTO comments (subject, author_id, body, created_at) VALUES (?, ?, ?, ?)').run(subject, actor.id, text, now());
+  if (parentId != null) {
+    const parent = db(root).prepare('SELECT subject FROM comments WHERE id = ?').get(parentId);
+    if (!parent || parent.subject !== subject) throw new Error('That reply has nothing to answer here.');
+  }
+  const r = db(root).prepare('INSERT INTO comments (subject, author_id, body, created_at, parent_id) VALUES (?, ?, ?, ?, ?)').run(subject, actor.id, text, now(), parentId);
   logActivity(root, { actor, verb: 'comment.added', subject, detail: { comment: Number(r.lastInsertRowid), excerpt: text.slice(0, 140) } });
   return Number(r.lastInsertRowid);
 }

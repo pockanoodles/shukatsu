@@ -48,7 +48,7 @@ export async function reopenAction(form: FormData) {
 }
 
 export async function commentAction(_: ActionResult | null, form: FormData): Promise<ActionResult> {
-  const r = await op("comment.add", { subject: str(form, "subject"), body: str(form, "body") });
+  const r = await op("comment.add", { subject: str(form, "subject"), body: str(form, "body"), ...(num(form, "parent") ? { parent: num(form, "parent") } : {}) });
   if (r.ok) revalidatePath(str(form, "path") || "/review");
   return out(r);
 }

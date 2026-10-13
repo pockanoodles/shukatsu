@@ -105,11 +105,11 @@ export default [
   {
     name: 'comment.add',
     kind: 'command',
-    summary: 'Comment on a review item, fact, packet, application, or campaign. The candidate and helpers see it.',
+    summary: 'Comment on a review item, fact, packet, application, or campaign, or reply to a comment with parent. The candidate and helpers see it.',
     permission: 'comment',
-    input: S.obj({ subject: SUBJECT, body: S.text(null, 4000, { minLength: 1 }) }, ['subject', 'body']),
+    input: S.obj({ subject: SUBJECT, body: S.text(null, 4000, { minLength: 1 }), parent: S.int('Reply to this comment.', { minimum: 1 }) }, ['subject', 'body']),
     output: S.obj({ id: S.int() }, ['id']),
-    run: ({ root, actor, input }) => ({ id: addComment(root, { actor, subject: input.subject, body: input.body }) }),
+    run: ({ root, actor, input }) => ({ id: addComment(root, { actor, subject: input.subject, body: input.body, parentId: input.parent ?? null }) }),
   },
   {
     name: 'comment.resolve',

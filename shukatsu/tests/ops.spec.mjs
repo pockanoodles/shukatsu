@@ -158,3 +158,11 @@ test('every operation has a schema the validator accepts, and the system princip
   assert.equal(sys.user.kind, 'agent');
   assert.equal(can(sys.user, 'review.decide'), false);
 });
+
+test('a reply answers a comment on the same thing, and nothing else', async () => {
+  const { root, ownerP, agentP } = setup();
+  const { id } = await run(root, ownerP, 'comment.add', { subject: 'proposal:1', body: 'Do we need a baseline?' });
+  const reply = await run(root, agentP, 'comment.add', { subject: 'proposal:1', body: 'Yes, the team average.', parent: id });
+  assert.ok(reply.id > id);
+  await assert.rejects(run(root, agentP, 'comment.add', { subject: 'proposal:2', body: 'Wrong thread.', parent: id }), /nothing to answer/);
+});

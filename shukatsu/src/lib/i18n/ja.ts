@@ -130,7 +130,7 @@ const ja: Dict = {
     new: { tags: "タグ", priority: "優先度", ja: "日本語" },
     reason: "理由",
   },
-  comments: { title: "コメント", none: "コメントはまだありません。", placeholder: "コメントを書く", post: "投稿", resolve: "解決", resolved: "解決済み" },
+  comments: { title: "コメント", none: "コメントはまだありません。", placeholder: "コメントを書く", post: "投稿", resolve: "解決", resolved: "解決済み", reply: "返信" },
   record: {
     title: "実績",
     lead: "これまでの実績を、1行に1件。すべての書類はここから選ばれ、箇条書きはすべてこの行にひもづきます。",

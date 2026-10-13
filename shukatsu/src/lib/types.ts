@@ -34,7 +34,7 @@ export type Activity = {
   verb: string; subject: string | null; detail: Record<string, unknown> | null; created_at: string;
 };
 
-export type Comment = { id: number; subject: string; author_id: number; author_name: string; author_role: string; body: string; created_at: string; resolved_at: string | null };
+export type Comment = { id: number; subject: string; author_id: number; author_name: string; author_role: string; body: string; created_at: string; resolved_at: string | null; parent_id: number | null };
 
 export type Bullet = {
   id: string | null; variant: string | null; text: string; kind: string; score: number; original: string | null;

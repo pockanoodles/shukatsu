@@ -20,9 +20,9 @@ function question(it: QueueItem, t: T) {
   return t(`review.q.${it.kind}`, { name: it.author?.name || "" });
 }
 
-function outcomesFor(it: QueueItem, t: T): { outcomes: Outcome[]; rejectLink?: Outcome } {
+function outcomesFor(it: QueueItem, t: T): { outcomes: Outcome[] } {
   const o = (id: Outcome["id"], label: string, lead: string, key?: string, primary = false): Outcome => ({ id, label: t(`review.out.${label}`), lead: t(`review.out.${lead}`), key, primary });
-  const reject = o("reject", "rejectLink", "rejectLead", "r");
+  const reject = o("reject", "reject", "rejectLead", "r");
   if (it.kind === "packet") return { outcomes: [o("approve", "approve", "approveLead", "a", true), o("changes", "changes", "changesLead", "r")] };
   if (it.kind === "proposal.posting") return { outcomes: [o("add", "add", "addLead", "a", true), o("reject", "reject", "rejectLead", "r")] };
   if (it.kind === "proposal.fact.retire") return { outcomes: [o("retire", "retire", "retireLead", "a", true), o("reject", "reject", "rejectLead", "r")] };
@@ -31,9 +31,9 @@ function outcomesFor(it: QueueItem, t: T): { outcomes: Outcome[]; rejectLink?: O
   }
   if (it.kind === "variant") return { outcomes: [o("accept", "accept", "acceptLead", "a", true), o("edit", "edit", "editLead", "e"), o("reject", "reject", "rejectLead", "r")] };
   if (it.hasNumbers && it.kind !== "ja") {
-    return { outcomes: [o("accept", "accept", "acceptLead", "a", true), o("correct", "correct", "correctLead", "e"), o("narrative", "narrative", "narrativeLead", "n"), o("unsure", "unsure", "unsureLead", "u")], rejectLink: reject };
+    return { outcomes: [o("accept", "accept", "acceptLead", "a", true), o("correct", "correct", "correctLead", "e"), o("narrative", "narrative", "narrativeLead", "n"), o("unsure", "unsure", "unsureLead", "u"), reject] };
   }
-  return { outcomes: [o("accept", "accept", "acceptLead", "a", true), o("edit", "edit", "editLead", "e"), o("unsure", "unsure", "unsureLead", "u")], rejectLink: reject };
+  return { outcomes: [o("accept", "accept", "acceptLead", "a", true), o("edit", "edit", "editLead", "e"), o("unsure", "unsure", "unsureLead", "u"), reject] };
 }
 
 /** What the queue noticed about an item, as rows of its ledger: shu when it blocks or has gone stale. */
@@ -70,7 +70,7 @@ function Row({ label, tone, primary = false, children }: { label: string; tone?:
 
 function ItemCard({ it, next, user, t }: { it: QueueItem; next: string | null; user: Parameters<typeof Comments>[0]["user"]; t: T }) {
   const owner = allowed(user, "review.decide");
-  const { outcomes, rejectLink } = outcomesFor(it, t);
+  const { outcomes } = outcomesFor(it, t);
   const showPath = allowed(user, "view.evidence-path");
   const isEdit = it.kind === "proposal.fact.edit" && it.before && it.after;
   const n = it.after ? figureCount(it.after) : 0;
@@ -160,7 +160,7 @@ function ItemCard({ it, next, user, t }: { it: QueueItem; next: string | null; u
         {owner ? (
           <>
             {it.hasNumbers && it.kind !== "ja" && it.kind !== "variant" && <p className="font-bold">{n === 1 ? t("review.figuresOne") : t("review.figures", { n })}</p>}
-            <Decide itemKey={it.key} next={next} outcomes={outcomes} rejectLink={rejectLink} text={it.after || ""}
+            <Decide itemKey={it.key} next={next} outcomes={outcomes} text={it.after || ""}
               current={it.entity?.ended === false} checkRules={it.kind !== "ja"} stamp={t("review.done.accept")}
               labels={{
                 reasonLabel: t("review.reasonLabel"), reasonPlaceholder: t("review.reasonPlaceholder"), editLabel: t("review.editLabel"),

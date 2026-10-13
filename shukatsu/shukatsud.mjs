@@ -125,6 +125,9 @@ export async function start(opts = args(process.argv.slice(2))) {
       if (!res.headersSent) { res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Something went wrong.'); }
     }
   });
+  // Next's own WebSocket (hot reload in dev) arrives as an upgrade, not a request.
+  const upgrade = app.getUpgradeHandler();
+  server.on('upgrade', (req, socket, head) => { upgrade(req, socket, head).catch(() => socket.destroy()); });
   await new Promise((resolve) => server.listen(opts.port, opts.host, resolve));
   log(`shukatsu on http://${opts.host}:${opts.port} (${opts.dev ? 'dev' : 'production'}), data root ${root}`);
   log(`routes: app, /api/v1, /cal${oauth ? ', /oauth' : ''}${mcp ? ', /mcp' : ''}${connectors ? ', /connectors' : ''}`);

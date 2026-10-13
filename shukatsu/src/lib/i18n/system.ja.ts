@@ -2,6 +2,7 @@
 const sys = {
   "password.same": "今と違う新しいパスワードを選んでください。",
   sys: {
+    sheet: { all: "すべて", id: "ID", statement: "内容", used: "使用", status: "状態", empty: "まだありません。", proposed: "提案{n}件" },
     row: { flag: "注意", packet: "応募書類", english: "英語", japanese: "日本語", retire: "引退", reworded: "言い換え", wording: "表現", check: "チェック" },
     familyFeed: "カレンダーリンク", familyFeedMade: "{name}さん用の非公開カレンダーリンクです。時刻と場所が表示され、メモや会議リンクは表示されません。本人に送ってください。もう一度は表示されません。",
     upcoming: "これからの予定", upcomingNone: "3週間先まで予定はありません。",
