@@ -1,0 +1,11 @@
+{
+  "id": "ics-in",
+  "name": "Calendar feed",
+  "description": "Any calendar feed address (the Canvas calendar feed first), read so classes and exams count as busy time and due dates are listed.",
+  "capabilities": ["feed.read"],
+  "auth": "url",
+  "allowedHosts": [],
+  "hostFromSettings": "host",
+  "intervalMinutes": 60,
+  "scopes": []
+}

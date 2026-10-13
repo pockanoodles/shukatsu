@@ -1,0 +1,10 @@
+{
+  "id": "gmail",
+  "name": "Gmail",
+  "description": "Read-only search of the mailbox for replies from employers, applicant tracking systems, and the school's job platforms.",
+  "capabilities": ["mail.read"],
+  "auth": "oauth2",
+  "allowedHosts": ["gmail.googleapis.com", "oauth2.googleapis.com"],
+  "intervalMinutes": 15,
+  "scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+}

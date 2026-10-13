@@ -25,7 +25,7 @@ import { lintWording } from './validate.mjs';
 import { readManifest, writeManifest } from './manifests.mjs';
 import { addTrackerRow, readTracker, setStatus } from './tracker.mjs';
 import { assertCan, can } from './people.mjs';
-import { db, logActivity, now } from './store.mjs';
+import { db, logActivity, now, recentActivity } from './store.mjs';
 import { readText } from '../audit-materials.mjs';
 import { check as charCheck, styleWarnings } from '../char-count.mjs';
 
@@ -142,8 +142,11 @@ export function getPacket(root, id, viewer) {
   const missingJa = ja ? candidates(p, pk.archetype, jdText).filter((c) => !hasJa(c.f)).sort((a, b) => b.score - a.score).slice(0, 8)
     .map((c) => ({ id: c.f.id, entityLabel: c.e.label, text: c.f.text, pending: Boolean(c.f.ja?.text), review: c.f.ja?.text ? `draft:ja:${c.f.id}` : null })) : [];
   const answers = (parseJson(pk.answers) || []).map((a) => ({ ...a, check: answerCheck(p, a, pk.lang) }));
+  // Why it was sent back: the candidate's last "ask for changes" note (older ones were logged as a rejection).
+  const sentBack = pk.status === 'changes_requested'
+    ? recentActivity(root, { subject: `packet:${id}`, limit: 40 }).find((a) => ['review.changes', 'review.reject'].includes(a.verb) && a.detail?.kind === 'packet') : null;
   return {
-    ...pk, jdText, sections, pool, budget, count: chosen.size, missingJa, answers, headerGaps: ja ? jaHeaderGaps(root) : [],
+    ...pk, changesNote: sentBack?.detail?.reason || null, jdText, sections, pool, budget, count: chosen.size, missingJa, answers, headerGaps: ja ? jaHeaderGaps(root) : [],
     manifest: m ? { name: m.name, status: m.status, finalized: m.finalized, deliverable: m.deliverable || null, sent_on: m.sent_on || null, gates: m.gates || null, problems: m.problems || null } : null,
     archetypes: Object.entries(p.archetypes || {}).map(([k, v]) => ({ id: k, name: v.name })),
     coverCheck: pk.cover_letter ? coverCheck(p, pk.cover_letter) : [],
@@ -338,7 +341,7 @@ export function markReady(root, { actor, id }) {
  * new row is added the canonical way.
  */
 export function markSent(root, { actor, id, on = today() }) {
-  assertCan(actor, 'tracker.write');
+  assertCan(actor, 'packet.send');
   const pk = getPacketRow(root, id);
   if (!pk) throw new Error('No such packet.');
   const m = readManifest(root, pk.manifest);

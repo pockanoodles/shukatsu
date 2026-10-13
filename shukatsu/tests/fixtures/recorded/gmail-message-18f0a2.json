@@ -1,0 +1,46 @@
+{
+  "id": "18f0a2",
+  "threadId": "t-globex",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Dear Sam,\n\nThank you for your interest in the Data Analyst Co-op at Globex. Un",
+  "internalDate": "1792003600000",
+  "payload": {
+    "mimeType": "multipart/alternative",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Globex Talent <no-reply@globex.example.org>"
+      },
+      {
+        "name": "To",
+        "value": "Sam Candidate <sam@example.com>"
+      },
+      {
+        "name": "Subject",
+        "value": "Update on your Globex application"
+      },
+      {
+        "name": "Date",
+        "value": "Tue, 13 Oct 2026 14:05:00 -0400"
+      }
+    ],
+    "parts": [
+      {
+        "mimeType": "text/plain",
+        "body": {
+          "size": 241,
+          "data": "RGVhciBLYWl0bywKClRoYW5rIHlvdSBmb3IgeW91ciBpbnRlcmVzdCBpbiB0aGUgRGF0YSBBbmFseXN0IENvLW9wIGF0IEdsb2JleC4gVW5mb3J0dW5hdGVseSwgd2Ugd2lsbCBub3QgYmUgbW92aW5nIGZvcndhcmQgd2l0aCB5b3VyIGFwcGxpY2F0aW9uIGF0IHRoaXMgdGltZS4gV2UgcmVncmV0IHRvIGluZm9ybSB5b3UgdGhhdCB0aGUgcG9zaXRpb24gaGFzIGJlZW4gZmlsbGVkLgoKVGhlIEdsb2JleCBUYWxlbnQgVGVhbQ"
+        }
+      },
+      {
+        "mimeType": "text/html",
+        "body": {
+          "size": 10,
+          "data": "PHA-RGVhciBLYWl0bywKClRoYW5rIHlvdSBmb3IgeW91ciBpbnRlcmVzdCBpbiB0aGUgRGF0YSBBbmFseXN0IENvLW9wIGF0IEdsb2JleC4gVW5mb3J0dW5hdGVseSwgd2Ugd2lsbCBub3QgYmUgbW92aW5nIGZvcndhcmQgd2l0aCB5b3VyIGFwcGxpY2F0aW9uIGF0IHRoaXMgdGltZS4gV2UgcmVncmV0IHRvIGluZm9ybSB5b3UgdGhhdCB0aGUgcG9zaXRpb24gaGFzIGJlZW4gZmlsbGVkLgoKVGhlIEdsb2JleCBUYWxlbnQgVGVhbTwvcD4"
+        }
+      }
+    ]
+  }
+}

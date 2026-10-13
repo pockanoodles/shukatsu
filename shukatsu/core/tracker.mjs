@@ -51,7 +51,8 @@ export function statusLog(root) {
   return out;
 }
 
-function runEngine(script, args, root) {
+/** Run an upstream CLI against this data root (its own lock, validation, and log). */
+export function runEngine(script, args, root) {
   const r = spawnSync(process.execPath, [join(ENGINE, script), ...args], {
     cwd: ENGINE, encoding: 'utf-8', env: { ...process.env, CAREER_OPS_DATA_DIR: root },
   });

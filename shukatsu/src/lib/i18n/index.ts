@@ -1,8 +1,17 @@
-import en, { type Dict } from "./en";
-import ja from "./ja";
+import base, { type Dict } from "./en";
+import baseJa from "./ja";
+import sysEn from "./system.en";
+import sysJa from "./system.ja";
+import connectorsEn from "./connectors.en";
+import connectorsJa from "./connectors.ja";
+import oauthEn from "./oauth.en";
+import oauthJa from "./oauth.ja";
 
 export type Lang = "en" | "ja";
-export const DICTS: Record<Lang, Dict> = { en, ja };
+// The original dictionary plus one per area of the headless system, each owning its own top-level keys.
+const en = { ...base, ...sysEn, ...connectorsEn, ...oauthEn } as Dict & typeof sysEn;
+const ja = { ...baseJa, ...sysJa, ...connectorsJa, ...oauthJa };
+export const DICTS: Record<Lang, unknown> = { en, ja };
 
 type Vars = Record<string, string | number | null | undefined>;
 

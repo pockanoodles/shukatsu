@@ -1,0 +1,13 @@
+{
+  "messages": [
+    {
+      "id": "18f0a1",
+      "threadId": "t-acme"
+    },
+    {
+      "id": "18f0a2",
+      "threadId": "t-globex"
+    }
+  ],
+  "resultSizeEstimate": 2
+}

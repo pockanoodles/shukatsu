@@ -21,8 +21,8 @@
 
 import { getCareerOpsRoot } from '../path-resolver.mjs';
 import { isMainModule } from '../lib/is-main-module.mjs';
-import { decide, decided, item, queue, reopen } from './core/review.mjs';
-import { owner } from './core/people.mjs';
+import { decided, item, queue } from './core/review.mjs';
+import { callOp } from './core/client.mjs';
 import { numbers } from './core/facts.mjs';
 
 function args(argv) {
@@ -55,7 +55,7 @@ function show(it) {
   if (it.hasNumbers) console.log(`  figures [${numbers(it.after).join(', ')}]: accept, accept --text (corrected), narrative --text, or unsure`);
 }
 
-function cli(argv) {
+async function cli(argv) {
   const root = getCareerOpsRoot();
   const a = args(argv);
   const [cmd, key] = a._;
@@ -85,16 +85,15 @@ function cli(argv) {
     show(it);
     return 0;
   }
-  const actor = owner(root);
-  if (!actor) throw new Error('No owner yet. Create one first: node shukatsu/people.mjs init --name "Your Name"');
-  if (cmd === 'reopen') { reopen(root, { actor, key }); console.log(`${key} is back in the queue.`); return 0; }
+  // Decisions go through the operations registry (via the daemon when it's running), as the owner.
+  if (cmd === 'reopen') { await callOp(root, 'review.reopen', { key }); console.log(`${key} is back in the queue.`); return 0; }
   const outcome = { accept: 'accept', narrative: 'narrative', unsure: 'cannot-confirm', reject: 'reject' }[cmd];
   if (!outcome) throw new Error(`Unknown command "${cmd}"`);
-  const r = decide(root, { actor, key, outcome, text: typeof a.text === 'string' ? a.text : null, reason: typeof a.reason === 'string' ? a.reason : '' });
+  const r = await callOp(root, 'review.decide', { key, outcome, ...(typeof a.text === 'string' ? { text: a.text } : {}), reason: typeof a.reason === 'string' ? a.reason : '' });
   console.log(`${cmd}: ${key}${r.commit?.committed ? ` (commit ${r.commit.sha})` : ''}`);
   return 0;
 }
 
 if (isMainModule(import.meta.url)) {
-  try { process.exitCode = cli(process.argv.slice(2)); } catch (e) { console.error(e.message); process.exitCode = 1; }
+  cli(process.argv.slice(2)).then((code) => { process.exitCode = code; }, (e) => { console.error(e.message); process.exitCode = 1; });
 }

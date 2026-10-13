@@ -8,13 +8,16 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "node shukatsud.mjs --dev",
+    "dev:next": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_ENV=production node shukatsud.mjs",
+    "mcp": "node mcp-stdio.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"tests/*.spec.mjs\""
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@simplewebauthn/browser": "14.0.0",
     "@simplewebauthn/server": "14.0.3",
     "next": "16.3.8",

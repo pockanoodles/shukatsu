@@ -41,7 +41,8 @@ export function proxy(request: NextRequest) {
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "same-origin");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
-  response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  // The capture window is opened by a job board's page and must stay reachable from it, so it alone keeps its opener.
+  response.headers.set("Cross-Origin-Opener-Policy", pathname === "/capture" ? "unsafe-none" : "same-origin");
   if (https) response.headers.set("Strict-Transport-Security", "max-age=31536000");
   return response;
 }

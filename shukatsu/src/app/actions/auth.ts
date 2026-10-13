@@ -3,7 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { engine } from "@/lib/server/engine";
-import { LANG_COOKIE, clientIp, getLang, getUser, requireUser, startSession, stopSession } from "@/lib/server/session";
+import { LANG_COOKIE, clientIp, getLang, getUser, requestOrigin, requireUser, startSession, stopSession } from "@/lib/server/session";
 import { errorText } from "@/lib/server/errors";
 import { translator } from "@/lib/i18n";
 import type { ActionResult } from "@/lib/types";
@@ -29,7 +29,8 @@ export async function signOutAction() {
 }
 
 export async function acceptInviteAction(_: ActionResult | null, form: FormData): Promise<ActionResult> {
-  const lang = await getLang();
+  // Errors speak the language the invite page is showing, which isn't always the cookie's.
+  const lang = form.get("ui") === "ja" ? "ja" : form.get("ui") === "en" ? "en" : await getLang();
   const { t } = translator(lang);
   let user;
   const { root, people } = await engine();
@@ -49,7 +50,7 @@ export async function acceptInviteAction(_: ActionResult | null, form: FormData)
 export async function setLangAction(form: FormData) {
   const lang = form.get("lang") === "ja" ? "ja" : "en";
   const user = await getUser();
-  if (user) { const { root, people } = await engine(); people.updateUser(root, { actor: user, id: user.id, changes: { lang } }); }
+  if (user) { const { root, ops } = await engine(); await ops.run(root, ops.sessionPrincipal(user), "account.update", { lang }); }
   (await cookies()).set(LANG_COOKIE, lang, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
   // Back to the same page: the form says where, else the referring page on this site.
   let back = form.get("back");
@@ -63,7 +64,7 @@ export async function setLangAction(form: FormData) {
 
 export async function passkeyLoginOptions() {
   const { root, passkeys } = await engine();
-  return passkeys.authenticationOptions(root);
+  return passkeys.authenticationOptions(root, { origin: await requestOrigin() });
 }
 
 export async function passkeyLoginVerify(response: unknown, next: string): Promise<ActionResult> {
@@ -71,7 +72,7 @@ export async function passkeyLoginVerify(response: unknown, next: string): Promi
   const { t } = translator(lang);
   try {
     const { root, passkeys } = await engine();
-    const user = await passkeys.finishAuthentication(root, response);
+    const user = await passkeys.finishAuthentication(root, response, { origin: await requestOrigin() });
     await startSession(user, "passkey");
     return { ok: true, data: safeNext(next) };
   } catch (e) {
@@ -82,7 +83,7 @@ export async function passkeyLoginVerify(response: unknown, next: string): Promi
 export async function passkeyRegisterOptions() {
   const user = await requireUser();
   const { root, passkeys } = await engine();
-  return passkeys.registrationOptions(root, user);
+  return passkeys.registrationOptions(root, user, { origin: await requestOrigin() });
 }
 
 export async function passkeyRegisterVerify(response: unknown, name: string): Promise<ActionResult> {
@@ -91,7 +92,7 @@ export async function passkeyRegisterVerify(response: unknown, name: string): Pr
   const { t } = translator(lang);
   try {
     const { root, passkeys } = await engine();
-    await passkeys.finishRegistration(root, user, response, name);
+    await passkeys.finishRegistration(root, user, response, name, { origin: await requestOrigin() });
     return { ok: true, message: t("settings.passkeyAdded") };
   } catch (e) {
     return { ok: false, error: errorText(e, t, lang) };

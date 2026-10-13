@@ -9,6 +9,11 @@
 # Optional second lock: put a Cloudflare Access application (email one-time code)
 # in front of the hostname, allowing only the people you invite. The app's own
 # sign-in still applies behind it.
+#
+# With Access on, add a bypass policy for the paths that machines call, since a
+# remote MCP client or a calendar app can't complete an Access login. They carry
+# their own authentication (tokens, OAuth, private feed links):
+#   /mcp   /oauth/*   /.well-known/oauth-*   /cal/*   /api/v1/*   /connectors/*
 
 tunnel: shukatsu
 credentials-file: /home/shukatsu/.cloudflared/shukatsu.json

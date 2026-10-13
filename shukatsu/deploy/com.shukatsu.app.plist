@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- launchd agent for a Mac mini.
+<!-- launchd agent for shukatsud (the app, the API, MCP, calendar feeds, and connector sync) on a Mac.
+       Build first: cd shukatsu && npm run build.
        cp shukatsu/deploy/com.shukatsu.app.plist ~/Library/LaunchAgents/
        launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.shukatsu.app.plist
        tail -f ~/Library/Logs/shukatsu.log
@@ -12,10 +13,9 @@
   <key>ProgramArguments</key>
   <array>
     <string>/opt/homebrew/bin/node</string>
-    <string>node_modules/next/dist/bin/next</string>
-    <string>start</string>
-    <string>-p</string><string>3000</string>
-    <string>-H</string><string>127.0.0.1</string>
+    <string>shukatsud.mjs</string>
+    <string>--port</string><string>3000</string>
+    <string>--host</string><string>127.0.0.1</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict><key>NODE_ENV</key><string>production</string></dict>

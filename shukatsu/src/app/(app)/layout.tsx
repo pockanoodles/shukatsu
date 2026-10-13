@@ -12,10 +12,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const waiting = allowed(user, "view.review") ? review.summary(root) : null;
   const items: NavItem[] = [
     { href: "/today", label: t("nav.today") },
-    ...(waiting ? [{ href: "/review", label: t("nav.review"), badge: user.role === "owner" ? waiting.total : waiting.fromPeople || undefined }] : []),
+    // The same count the queue page shows, for everyone who can see it.
+    ...(waiting ? [{ href: "/review", label: t("nav.review"), badge: waiting.total || undefined }] : []),
     { href: "/record", label: t("nav.record") },
     { href: "/applications", label: t("nav.applications") },
-    { href: "/packets", label: t("nav.packets") },
+    { href: "/campaigns", label: t("sys.nav.campaigns") },
+    ...(allowed(user, "calendar.read") ? [{ href: "/calendar", label: t("sys.nav.calendar") }] : []),
+    ...(allowed(user, "inbox.read") ? [{ href: "/inbox", label: t("sys.nav.inbox") }] : []),
+    ...(allowed(user, "view.review") ? [{ href: "/packets", label: t("nav.packets") }] : []),
     { href: "/digest", label: t("nav.digest") },
     ...(user.role === "owner" ? [{ href: "/people", label: t("nav.people") }] : []),
   ];
@@ -42,15 +46,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </summary>
             <div className="absolute right-0 top-[calc(100%+2px)] z-40 w-64 border-2 rule bg-paper">
               <div className="border-b hair px-4 py-3"><p className="font-bold">{user.name}</p><p className="label text-ink-3">{t(`role.${user.role}`)} · {user.login}</p></div>
-              <Link href="/activity" className="block border-b hair px-4 py-3 hover:bg-paper-2">{t("nav.activity")}</Link>
+              {allowed(user, "view.review") && <Link href="/activity" className="block border-b hair px-4 py-3 hover:bg-paper-2">{t("nav.activity")}</Link>}
               <Link href="/settings" className="block border-b hair px-4 py-3 hover:bg-paper-2">{t("nav.settings")}</Link>
+              {allowed(user, "connector.manage") && <Link href="/settings/connectors" className="block border-b hair px-4 py-3 hover:bg-paper-2">{t("connectors.title")}</Link>}
+              {allowed(user, "agent.manage") && <Link href="/settings/agents" className="block border-b hair px-4 py-3 hover:bg-paper-2">{t("sys.nav.agents")}</Link>}
               <form action={signOutAction}><button className="w-full px-4 py-3 text-left hover:bg-paper-2">{t("nav.signOut")}</button></form>
             </div>
           </details>
         </div>
       </header>
       <main id="main" className="flex-1">{children}</main>
-      <NavLinks items={items.slice(0, 5)} variant="bottom" />
+      {/* The phone bar holds five: the day, the queue, and what a fair week runs on. */}
+      <NavLinks items={["/today", "/review", "/applications", "/campaigns", "/calendar"].map((h) => items.find((i) => i.href === h)).filter((i): i is NavItem => Boolean(i)).slice(0, 5)} variant="bottom" />
     </div>
   );
 }

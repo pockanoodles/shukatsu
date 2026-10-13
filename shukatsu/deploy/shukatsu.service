@@ -15,7 +15,7 @@ User=shukatsu
 WorkingDirectory=/home/shukatsu/shukatsu/shukatsu
 EnvironmentFile=/home/shukatsu/shukatsu/shukatsu/.env
 Environment=NODE_ENV=production PORT=3000 HOSTNAME=127.0.0.1
-ExecStart=/usr/bin/env npx next start -p 3000 -H 127.0.0.1
+ExecStart=/usr/bin/env node shukatsud.mjs --port 3000 --host 127.0.0.1
 Restart=on-failure
 RestartSec=5
 

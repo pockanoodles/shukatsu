@@ -17,7 +17,8 @@
 
 import { getCareerOpsRoot } from '../path-resolver.mjs';
 import { isMainModule } from '../lib/is-main-module.mjs';
-import { ROLES, createInvite, disableUser, hasOwner, listUsers, openInvites, owner } from './core/people.mjs';
+import { PERSON_ROLES, createInvite, hasOwner, listUsers, openInvites, owner } from './core/people.mjs';
+import { callOp } from './core/client.mjs';
 
 function args(argv) {
   const out = { _: [] };
@@ -33,7 +34,7 @@ function args(argv) {
 const base = () => (process.env.SHUKATSU_URL || 'http://localhost:3000').replace(/\/$/, '');
 const link = (token) => `${base()}/invite/${token}`;
 
-function cli(argv) {
+async function cli(argv) {
   const root = getCareerOpsRoot();
   const a = args(argv);
   const [cmd, target] = a._;
@@ -44,27 +45,26 @@ function cli(argv) {
     console.log(`Open this within 24 hours to create the owner account:\n\n  ${link(token)}\n`);
     return 0;
   }
-  const me = owner(root);
-  if (!me) throw new Error('No owner yet. Run: node shukatsu/people.mjs init --name "Your Name"');
+  if (!owner(root)) throw new Error('No owner yet. Run: node shukatsu/people.mjs init --name "Your Name"');
   if (cmd === 'invite') {
     if (!a.name) throw new Error('invite needs --name');
     const role = String(a.role || 'reviewer');
-    if (!ROLES.includes(role) || role === 'owner') throw new Error(`--role is one of ${ROLES.filter((r) => r !== 'owner').join(', ')}`);
-    const token = createInvite(root, { actor: me, role, name: String(a.name), relation: a.relation ? String(a.relation) : null, lang: a.lang === 'ja' ? 'ja' : 'en', days: Number(a.days) || 7 });
+    if (!PERSON_ROLES.includes(role) || role === 'owner') throw new Error(`--role is one of ${PERSON_ROLES.filter((r) => r !== 'owner').join(', ')}`);
+    const { token } = await callOp(root, 'people.invite', { name: String(a.name), role, ...(a.relation ? { relation: String(a.relation) } : {}), lang: a.lang === 'ja' ? 'ja' : 'en', days: Number(a.days) || 7 });
     console.log(`Send this to ${a.name} (${role}). It works once:\n\n  ${link(token)}\n`);
     return 0;
   }
   if (cmd === 'reset') {
     const user = listUsers(root).find((u) => u.login.toLowerCase() === String(target || '').toLowerCase());
     if (!user) throw new Error(`No one signs in as "${target}"`);
-    const token = createInvite(root, { actor: me, role: user.role, name: user.name, userId: user.id, days: 2 });
+    const { token } = await callOp(root, 'people.reset', { id: user.id });
     console.log(`A new sign-in link for ${user.name}. It works once, for 48 hours, and signs out their other sessions:\n\n  ${link(token)}\n`);
     return 0;
   }
   if (cmd === 'disable') {
     const user = listUsers(root).find((u) => u.login.toLowerCase() === String(target || '').toLowerCase());
     if (!user) throw new Error(`No one signs in as "${target}"`);
-    disableUser(root, { actor: me, id: user.id });
+    await callOp(root, 'people.disable', { id: user.id });
     console.log(`${user.name} is disabled and signed out everywhere.`);
     return 0;
   }
@@ -79,5 +79,5 @@ function cli(argv) {
 }
 
 if (isMainModule(import.meta.url)) {
-  try { process.exitCode = cli(process.argv.slice(2)); } catch (e) { console.error(e.message); process.exitCode = 1; }
+  cli(process.argv.slice(2)).then((code) => { process.exitCode = code; }, (e) => { console.error(e.message); process.exitCode = 1; });
 }

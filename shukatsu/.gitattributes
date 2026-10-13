@@ -1,0 +1,2 @@
+# Recorded calendar feeds keep the CRLF line endings real feeds use, which the ICS parser tests depend on.
+tests/fixtures/recorded/*.ics -text

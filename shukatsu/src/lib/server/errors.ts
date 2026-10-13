@@ -23,9 +23,10 @@ const JA: [RegExp, string][] = [
 export function errorText(e: unknown, t: T, lang: string): string {
   const err = e as { code?: string; status?: number; message?: string };
   if (err?.code) {
-    for (const ns of ["login", "invite"]) {
-      const msg = t(`${ns}.${err.code}`);
-      if (msg !== `${ns}.${err.code}`) return msg;
+    // An engine code may name a string itself (settings.wrongPassword) or one under sign-in's namespaces.
+    for (const key of [err.code, `login.${err.code}`, `invite.${err.code}`]) {
+      const msg = t(key);
+      if (msg !== key) return msg;
     }
   }
   const message = String(err?.message || e);

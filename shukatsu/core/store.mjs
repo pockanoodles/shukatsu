@@ -146,6 +146,122 @@ const MIGRATIONS = [
    );`,
   // 2: written answers on application forms (ES, 志望動機, "Why us?"), with their limits.
   `ALTER TABLE packets ADD COLUMN answers TEXT;`,
+  // 3: the headless system. Agents are users of kind 'agent' (so the activity
+  // log names them), tokens let agents and tools in without a session, OAuth
+  // gives remote MCP clients a token, campaigns group a fair's applications,
+  // and events are the one calendar: interviews, deadlines, follow-ups, and a
+  // campaign's slots, each in its own timezone.
+  `CREATE TABLE users_v3 (
+     id INTEGER PRIMARY KEY,
+     login TEXT NOT NULL UNIQUE COLLATE NOCASE,
+     name TEXT NOT NULL,
+     email TEXT,
+     relation TEXT,
+     kind TEXT NOT NULL DEFAULT 'person' CHECK (kind IN ('person', 'agent')),
+     role TEXT NOT NULL CHECK (role IN ('owner', 'editor', 'reviewer', 'viewer', 'agent')),
+     lang TEXT NOT NULL DEFAULT 'en' CHECK (lang IN ('en', 'ja')),
+     password_hash TEXT,
+     can_see_comp INTEGER NOT NULL DEFAULT 0,
+     can_see_contacts INTEGER NOT NULL DEFAULT 0,
+     seen_activity_id INTEGER NOT NULL DEFAULT 0,
+     created_at TEXT NOT NULL,
+     last_seen_at TEXT,
+     disabled_at TEXT,
+     CHECK ((kind = 'agent') = (role = 'agent'))
+   );
+   INSERT INTO users_v3 (id, login, name, email, relation, role, lang, password_hash, can_see_comp, seen_activity_id, created_at, last_seen_at, disabled_at)
+     SELECT id, login, name, email, relation, role, lang, password_hash, can_see_comp, seen_activity_id, created_at, last_seen_at, disabled_at FROM users;
+   DROP TABLE users;
+   ALTER TABLE users_v3 RENAME TO users;
+   CREATE TABLE tokens (
+     id INTEGER PRIMARY KEY,
+     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     kind TEXT NOT NULL CHECK (kind IN ('agent', 'capture', 'feed', 'cli', 'oauth', 'refresh')),
+     name TEXT NOT NULL,
+     token_hash TEXT NOT NULL UNIQUE,
+     prefix TEXT NOT NULL,
+     scopes TEXT,
+     client_id TEXT,
+     parent_id INTEGER REFERENCES tokens(id) ON DELETE CASCADE,
+     created_by INTEGER REFERENCES users(id),
+     created_at TEXT NOT NULL,
+     expires_at TEXT,
+     last_used_at TEXT,
+     last_ip TEXT,
+     revoked_at TEXT
+   );
+   CREATE INDEX tokens_user ON tokens(user_id);
+   CREATE TABLE oauth_clients (
+     client_id TEXT PRIMARY KEY,
+     kind TEXT NOT NULL CHECK (kind IN ('metadata', 'registered')),
+     name TEXT,
+     metadata TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     last_used_at TEXT
+   );
+   CREATE TABLE oauth_codes (
+     code_hash TEXT PRIMARY KEY,
+     client_id TEXT NOT NULL,
+     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     redirect_uri TEXT NOT NULL,
+     code_challenge TEXT NOT NULL,
+     scope TEXT,
+     resource TEXT,
+     granted_by INTEGER REFERENCES users(id),
+     created_at TEXT NOT NULL,
+     expires_at TEXT NOT NULL,
+     used_at TEXT
+   );
+   CREATE TABLE campaigns (
+     id INTEGER PRIMARY KEY,
+     name TEXT NOT NULL,
+     kind TEXT NOT NULL DEFAULT 'fair' CHECK (kind IN ('fair', 'cycle')),
+     url TEXT,
+     venue TEXT,
+     timezone TEXT NOT NULL DEFAULT 'America/New_York',
+     starts_on TEXT,
+     ends_on TEXT,
+     notes TEXT,
+     copied_from INTEGER REFERENCES campaigns(id) ON DELETE SET NULL,
+     created_by INTEGER REFERENCES users(id),
+     created_at TEXT NOT NULL,
+     updated_at TEXT NOT NULL,
+     archived_at TEXT
+   );
+   CREATE TABLE campaign_rows (
+     campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+     tracker_num INTEGER NOT NULL,
+     channel TEXT,
+     note TEXT,
+     added_by INTEGER REFERENCES users(id),
+     added_at TEXT NOT NULL,
+     PRIMARY KEY (campaign_id, tracker_num)
+   );
+   CREATE TABLE events (
+     id INTEGER PRIMARY KEY,
+     kind TEXT NOT NULL CHECK (kind IN ('interview', 'deadline', 'followup', 'fair', 'task', 'other')),
+     title TEXT NOT NULL,
+     starts_at TEXT NOT NULL,
+     ends_at TEXT,
+     all_day INTEGER NOT NULL DEFAULT 0,
+     timezone TEXT NOT NULL,
+     location TEXT,
+     meeting_url TEXT,
+     tracker_num INTEGER,
+     campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
+     round TEXT,
+     source TEXT,
+     source_ref TEXT,
+     note TEXT,
+     created_by INTEGER REFERENCES users(id),
+     created_at TEXT NOT NULL,
+     updated_at TEXT NOT NULL,
+     done_at TEXT,
+     cancelled_at TEXT
+   );
+   CREATE INDEX events_start ON events(starts_at);
+   CREATE INDEX events_campaign ON events(campaign_id, starts_at);
+   CREATE UNIQUE INDEX events_source ON events(source, source_ref) WHERE source_ref IS NOT NULL;`,
 ];
 
 const open = new Map();
@@ -156,7 +272,10 @@ export function db(root) {
   const dir = stateDir(root);
   mkdirSync(dir, { recursive: true });
   const d = new DatabaseSync(join(dir, 'app.db'));
-  d.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+  // Foreign keys stay off while migrating: a migration that rebuilds a table
+  // (SQLite can't change a CHECK in place) would otherwise cascade its drop
+  // into every row that points at it. They're checked once it's done.
+  d.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = OFF; PRAGMA busy_timeout = 5000;');
   d.exec('CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)');
   const row = d.prepare('SELECT version FROM schema_version').get();
   let version = row ? row.version : 0;
@@ -173,6 +292,9 @@ export function db(root) {
       throw err;
     }
   }
+  const broken = d.prepare('PRAGMA foreign_key_check').all();
+  if (broken.length) throw new Error(`app.db has ${broken.length} broken references after migrating (first: ${JSON.stringify(broken[0])}).`);
+  d.exec('PRAGMA foreign_keys = ON;');
   open.set(root, d);
   return d;
 }
