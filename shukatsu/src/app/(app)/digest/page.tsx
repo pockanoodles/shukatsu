@@ -35,7 +35,7 @@ export default async function DigestPage({ searchParams }: { searchParams: Promi
   );
   return (
     <div>
-      <Head eyebrow={t("digest.period", { from: formatDate(d.period.from, user.lang), to: formatDate(d.period.to, user.lang) })} title={t("digest.title")} lead={t("digest.lead")}>
+      <Head eyebrow={t("digest.period", { from: formatDate(d.period.from, user.lang), to: formatDate(d.period.to, user.lang) })} title={t("digest.title")}>
         <nav className="seg" aria-label={t("digest.title")}>
           {[7, 14, 30].map((n) => (
             <Link key={n} href={`/digest?days=${n}`} aria-current={n === days ? "page" : undefined}>{t("digest.days", { n })}</Link>

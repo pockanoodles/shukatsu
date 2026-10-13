@@ -22,7 +22,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
 
   return (
     <div>
-      <Head eyebrow="就活 · フォーラム" title={t("campaigns.title")} lead={t("campaigns.lead")} />
+      <Head eyebrow="就活 · フォーラム" title={t("campaigns.title")} />
       <div className="grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <section className="border-b-2 rule lg:border-b-0 lg:border-r-2">
           {campaigns.length === 0 ? <p className="px-4 py-8 text-ink-3 sm:px-10">{t("campaigns.none")}</p> : (
@@ -62,8 +62,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
               <label className="grid gap-1.5"><span className="label text-ink-2">{t("campaigns.endsOn")}</span><input name="ends_on" type="date" className="field" /></label>
               <label className="grid gap-1.5 sm:col-span-2"><span className="label text-ink-2">{t("campaigns.url")}</span><input name="url" type="url" className="field" placeholder="https://" /></label>
               <label className="grid gap-1.5 sm:col-span-2"><span className="label text-ink-2">{t("campaigns.timezone")}</span>
-                <select name="timezone" className="field" defaultValue={homeZone()}>{zones().map((z) => <option key={z} value={z}>{z}</option>)}</select>
-                <span className="text-[13px] text-ink-3">{t("campaigns.timezoneHelp")}</span></label>
+                <select name="timezone" className="field" defaultValue={homeZone()}>{zones().map((z) => <option key={z} value={z}>{z}</option>)}</select></label>
               {campaigns.length > 0 && (
                 <label className="grid gap-1.5 sm:col-span-2"><span className="label text-ink-2">{t("campaigns.copyFrom")}</span>
                   <select name="copy_from" className="field" defaultValue=""><option value="">{t("campaigns.copyNone")}</option>{campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>

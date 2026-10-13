@@ -39,7 +39,6 @@ export default async function SettingsPage() {
         </section>
         <section className="grid content-start gap-5 border-b-2 rule px-4 py-8 sm:px-10 lg:border-r-2">
           <h2 className="heading text-[22px]">{t("settings.passkeys")}</h2>
-          <p className="text-ink-2">{t("settings.passkeysLead")}</p>
           {keys.length === 0 ? <p className="text-ink-3">{t("settings.passkeyNone")}</p> : (
             <ul className="border-t hair">
               {keys.map((k) => (

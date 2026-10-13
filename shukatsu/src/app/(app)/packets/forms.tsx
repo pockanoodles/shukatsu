@@ -28,7 +28,6 @@ export function NewPacketForm({ archetypes, defaults, l }: { archetypes: { id: s
         </div>
       </fieldset>
       <label className="grid gap-1.5"><span className="label text-ink-2">{l.jd}</span>
-        <span className="text-[13.5px] text-ink-3">{l.jdHelp}</span>
         <textarea name="jd" rows={12} className="field code text-[13px] leading-[1.6]" maxLength={60000} /></label>
       <fieldset className="grid gap-2">
         <legend className="label mb-2 text-ink-2">{l.lang}</legend>
@@ -37,7 +36,6 @@ export function NewPacketForm({ archetypes, defaults, l }: { archetypes: { id: s
             <label key={v} className="cursor-pointer has-[:checked]:bg-ink has-[:checked]:text-on-ink"><input type="radio" name="lang" value={v} defaultChecked={v === defaults.lang} className="sr-only" />{label}</label>
           ))}
         </div>
-        <span className="text-[13px] text-ink-3">{l.langHelp}</span>
       </fieldset>
       <div className="flex flex-wrap items-center gap-4">
         <Submit className="btn btn-shu" pending={l.working}>{l.submit}</Submit>
@@ -101,7 +99,6 @@ export function CoverForm({ packet, cover, notes, l }: { packet: number; cover: 
       <form action={action} className="grid gap-2">
         <input type="hidden" name="packet" value={packet} />
         <label className="grid gap-1.5"><span className="label text-ink-2">{l.cover}</span>
-          <span className="text-[13px] text-ink-3">{l.coverHelp}</span>
           <textarea name="cover" rows={10} defaultValue={cover} className="field leading-[1.6]" maxLength={8000} /></label>
         <div className="flex items-center gap-3"><Submit className="btn btn-ghost btn-sm" pending={l.working}>{l.saveCover}</Submit>
           {state && <span className={`text-[13px] ${state.ok ? "" : "text-shu"}`}>{state.ok ? state.message : state.error}</span>}</div>

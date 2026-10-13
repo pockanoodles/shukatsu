@@ -139,7 +139,6 @@ function ItemCard({ it, next, user, t }: { it: QueueItem; next: string | null; u
                 submitNarrative: t("review.submitNarrative"), submitReject: t("review.submitReject"), submitChanges: t("review.submitChanges"),
                 chars: t("common.chars"), pass: t("review.rules.pass"), figures: t("record.figuresChanged"), working: t("common.loading"),
               }} />
-            <p className="label hidden text-ink-3 md:block">{t("review.keys")}</p>
           </>
         ) : <p className="text-[15px] text-ink-2">{t("review.onlyOwner")}</p>}
       </div>
@@ -178,7 +177,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
         <Flash tone={done === "accept" ? "shu" : "ink"}>
           <span className="flex items-center gap-4">
             {done === "accept" && <Stamp size="sm" tone="on" press>確認</Stamp>}
-            {t(`review.done.${done}`)}{stampedLabel ? <span className="clamp-2 normal-case opacity-80">{stampedLabel}</span> : null}
+            {done === "accept" ? null : t(`review.done.${done}`)}{stampedLabel ? <span className="clamp-2 normal-case opacity-80">{stampedLabel}</span> : null}
           </span>
         </Flash>
       )}
@@ -196,12 +195,11 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
         <div className="grid flex-1 place-content-center gap-5 px-4 py-20 text-center">
           <div className="justify-self-center"><Stamp size="lg" tone="ink">完了</Stamp></div>
           <h2 className="heading text-[28px]">{t("review.empty")}</h2>
-          <p className="max-w-md text-ink-2">{t("review.emptyLead")}</p>
         </div>
       ) : (
         <div className="grid flex-1 md:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
           <aside className={`scroll-thin min-w-0 border-r-2 rule md:sticky md:top-14 md:block md:h-[calc(100dvh-56px-78px)] md:overflow-y-auto ${hasItem ? "hidden" : ""}`} aria-label={t("review.title")}>
-            <p className="border-b hair px-4 py-3 text-[13.5px] text-ink-2 sm:px-6">{user.role === "owner" ? t("review.lead") : t("review.leadHelper")}</p>
+            
             {groups.map(([g, list]) => (
               <div key={g}>
                 <div className="label sticky top-0 z-10 flex justify-between border-b hair bg-paper-2 px-4 py-2 text-ink-2 sm:px-6"><span>{g}</span><span className="num">{list.length}</span></div>

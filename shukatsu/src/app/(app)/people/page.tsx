@@ -40,7 +40,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
   return (
     <div>
       {sp.error && <Flash tone="shu">{errorText(new Error(sp.error), t, user.lang)}</Flash>}
-      <Head title={t("people.title")} lead={t("people.lead")} />
+      <Head title={t("people.title")} />
       <section className="grid border-b-2 rule lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <div className="border-b-2 rule lg:border-b-0 lg:border-r-2">
           <h2 className="label border-b-2 rule bg-paper-2 px-4 py-2.5 text-ink-2 sm:px-10">{t("people.list")} · {list.filter((p) => !p.disabled_at).length}</h2>

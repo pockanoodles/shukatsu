@@ -51,15 +51,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
                 <span className="display num text-[88px] leading-[0.8] text-shu">{sum.total}</span>
                 {sum.total ? <Stamp tone="shu" two>確認<br />待ち</Stamp> : <Stamp tone="ink">完了</Stamp>}
               </span>
-              <span className="text-[15px] text-ink-2">{sum.total ? t("today.waitingLead", { n: sum.total, people: sum.fromPeople }) : t("today.waitingNone")}</span>
               <span className="label text-ink">{t("today.review")} →</span>
             </Link>
           ) : (
             <div className="grid gap-3">
               <span className="label text-ink-2">{t("today.helperTitle")}</span>
-              {allowed(user, "suggest.posting") && <Link href="/applications#suggest" className="grid gap-1 border-2 rule p-4 hover:bg-paper-2"><span className="heading text-[18px]">{t("today.helperSuggest")} →</span><span className="text-[14px] text-ink-2">{t("today.helperSuggestLead")}</span></Link>}
-              {allowed(user, "packet.create") && <Link href="/packets/new" className="grid gap-1 border-2 rule p-4 hover:bg-paper-2"><span className="heading text-[18px]">{t("today.helperPacket")} →</span><span className="text-[14px] text-ink-2">{t("today.helperPacketLead")}</span></Link>}
-              {allowed(user, "propose.profile") && <Link href="/record" className="grid gap-1 border-2 rule p-4 hover:bg-paper-2"><span className="heading text-[18px]">{t("today.helperFact")} →</span><span className="text-[14px] text-ink-2">{t("today.helperFactLead")}</span></Link>}
+              {allowed(user, "suggest.posting") && <Link href="/applications#suggest" className="grid gap-1 border-2 rule p-4 hover:bg-paper-2"><span className="heading text-[18px]">{t("today.helperSuggest")} →</span></Link>}
+              {allowed(user, "packet.create") && <Link href="/packets/new" className="grid gap-1 border-2 rule p-4 hover:bg-paper-2"><span className="heading text-[18px]">{t("today.helperPacket")} →</span></Link>}
+              {allowed(user, "propose.profile") && <Link href="/record" className="grid gap-1 border-2 rule p-4 hover:bg-paper-2"><span className="heading text-[18px]">{t("today.helperFact")} →</span></Link>}
               <Link href="/digest" className="link mt-2 text-[15px]">{t("today.digest")} →</Link>
             </div>
           )}

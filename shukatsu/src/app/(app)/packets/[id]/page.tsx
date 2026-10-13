@@ -89,7 +89,6 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
           {pk.missingJa.length > 0 && (
             <div className="grid gap-3 border-b-2 rule bg-shu-soft px-4 py-5 sm:px-10">
               <h3 className="heading text-[20px]">{t("packets.missingJa")} · {pk.missingJa.length}</h3>
-              <p className="text-[14px] text-ink-2">{t("packets.missingJaLead")}</p>
               <ul className="grid">
                 {pk.missingJa.map((m) => (
                   <li key={m.id} className="grid gap-1 border-t hair py-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4">
@@ -136,7 +135,7 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
             <details className="border-b-2 rule">
               <summary className="flex cursor-pointer items-baseline justify-between px-4 py-3 hover:bg-paper-2 sm:px-10">
                 <span className="label text-ink-2">{t("packets.pool")} · {pk.pool.length}</span>
-                <span className="text-[13px] text-ink-3">{pk.count >= pk.budget ? t("packets.budgetFull", { budget: pk.budget }) : t("packets.poolLead")}</span>
+                <span className="text-[13px] text-ink-3">{pk.count >= pk.budget ? t("packets.budgetFull", { budget: pk.budget }) : null}</span>
               </summary>
               <ul>
                 {pk.pool.map((f) => (
@@ -163,7 +162,6 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
         <aside className="grid content-start">
           <section id="check" aria-labelledby="check-h" className="scroll-mt-20 grid gap-4 border-b-2 rule px-4 py-6 sm:px-8">
             <h2 id="check-h" className="heading text-[22px]">{t("packets.check")}</h2>
-            <p className="text-[14px] text-ink-2">{t("packets.checkLead")}</p>
             {checked ? (
               <div className="grid gap-3">
                 <p className={`font-bold ${final ? "" : "text-shu"}`}>{final ? t("packets.passed") : t("packets.failed")}</p>
@@ -185,16 +183,15 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
 
           <section aria-label={t("packets.title")} className="grid gap-4 border-b-2 rule px-4 py-6 sm:px-8">
             {!owner && (pk.status === "drafting" || pk.status === "changes_requested") && allowed(user, "packet.edit") && (
-              <><p className="text-[14px] text-ink-2">{t("packets.submitReviewLead")}</p><Step id={pk.id} step="submit" label={t("packets.submitReview")} tone="btn btn-shu" /></>
+              <><Step id={pk.id} step="submit" label={t("packets.submitReview")} tone="btn btn-shu" /></>
             )}
             {pk.status === "in_review" && !owner && pk.created_by === user.id && <Step id={pk.id} step="withdraw" label={t("packets.withdraw")} tone="btn btn-ghost" />}
             {pk.status === "in_review" && owner && <Link href={`/review?item=${encodeURIComponent(`packet:${pk.id}`)}`} className="btn btn-shu justify-self-start"><Seal k="承" />{t("review.out.approve")} / {t("review.out.changes")} →</Link>}
             {owner && (pk.status === "drafting" || pk.status === "changes_requested") && (
-              <><p className="text-[14px] text-ink-2">{t("packets.markReadyLead")}</p><Step id={pk.id} step="ready" label={t("packets.markReady")} tone={final ? "btn btn-shu" : "btn btn-ghost"} /></>
+              <><Step id={pk.id} step="ready" label={t("packets.markReady")} tone={final ? "btn btn-shu" : "btn btn-ghost"} /></>
             )}
             {owner && pk.status === "ready" && (
               <Step id={pk.id} step="sent" label={t("packets.sent")} tone="btn btn-shu">
-                <p className="text-[14px] text-ink-2">{t("packets.sentLead")}</p>
                 <label className="grid gap-1.5"><span className="label text-ink-2">{t("packets.sentOn")}</span><input type="date" name="on" defaultValue={new Date().toISOString().slice(0, 10)} className="field max-w-[220px]" /></label>
               </Step>
             )}
@@ -206,7 +203,6 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
 
           <section aria-labelledby="answers-h" className="grid gap-4 border-b-2 rule px-4 py-6 sm:px-8">
             <h2 id="answers-h" className="heading text-[22px]">{t("packets.answers")}</h2>
-            <p className="text-[14px] text-ink-2">{t("packets.answersLead")}</p>
             <AnswersEditor packet={pk.id} lang={pk.lang} editable={editable} initial={pk.answers.map(({ check: _c, ...a }) => a)} checks={pk.answers.map((a) => a.check)} l={{
               question: t("packets.question"), limit: t("packets.limit"), unit: t("packets.unit"), chars: t("packets.chars"), words: t("packets.words"), answer: t("packets.answer"),
               removeAnswer: t("packets.removeAnswer"), saveAnswers: t("packets.saveAnswers"), addAnswer: t("packets.addAnswer"), used: t("packets.used"),

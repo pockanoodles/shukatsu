@@ -30,6 +30,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { getCareerOpsRoot } from '../path-resolver.mjs';
 import { createInvite, hasOwner, owner as ownerOf, issueToken, tokenUser } from './core/people.mjs';
 import { db } from './core/store.mjs';
+import { loadProfile } from './core/facts.mjs';
 import { stateDir } from './core/lock.mjs';
 import { makeCtx } from './core/http.mjs';
 import { handleApi } from './core/api.mjs';
@@ -66,7 +67,10 @@ function firstRun(root, base) {
   if (!hasOwner(root)) {
     // The raw token of an earlier link isn't kept, so each start without an owner makes a new one.
     db(root).prepare("UPDATE invites SET revoked_at = ? WHERE role = 'owner' AND used_at IS NULL AND revoked_at IS NULL").run(new Date().toISOString());
-    const token = createInvite(root, { actor: null, role: 'owner', name: 'Candidate', days: 1 });
+    // The invite carries the candidate's name from the record, so the account isn't called "Candidate".
+    let name = 'Candidate';
+    try { name = loadProfile(root).candidate?.name || name; } catch {}
+    const token = createInvite(root, { actor: null, role: 'owner', name, days: 1 });
     log(`No account yet. Open this within 24 hours to create the candidate's account:\n\n    ${base}/invite/${token}\n`);
     return;
   }

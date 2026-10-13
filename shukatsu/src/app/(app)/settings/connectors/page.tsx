@@ -48,11 +48,10 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
     <div>
       {sp.connected && <Flash>{t("connectors.connected")}</Flash>}
       {sp.error && <Flash tone="shu">{sp.error}</Flash>}
-      <Head eyebrow={t("connectors.eyebrow")} title={t("connectors.title")} lead={t("connectors.lead")} />
+      <Head eyebrow={t("connectors.eyebrow")} title={t("connectors.title")} />
       <div className="grid lg:grid-cols-2">
         <section className="grid content-start gap-5 border-b-2 rule px-4 py-8 sm:px-10 lg:border-r-2">
           <h2 className="heading text-[22px]">{t("connectors.feeds.title")}</h2>
-          <p className="text-ink-2">{t("connectors.feeds.lead")}</p>
           <div className="grid gap-1">
             <h3 className="label text-ink-2">{t("connectors.feeds.howTitle")}</h3>
             <p className="max-w-xl text-[15px] text-ink-2">{t("connectors.feeds.how")}</p>
@@ -64,7 +63,6 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
         </section>
         <section className="grid content-start gap-5 border-b-2 rule px-4 py-8 sm:px-10">
           <h2 className="heading text-[22px]">{t("connectors.gmail.title")}</h2>
-          <p className="text-ink-2">{t("connectors.gmail.lead")}</p>
           <div className="grid gap-1">
             <h3 className="label text-ink-2">{t("connectors.gmail.stepsTitle")}</h3>
             <p className="max-w-xl text-[15px] text-ink-2">{t("connectors.gmail.steps")}</p>
@@ -84,7 +82,6 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
         </section>
         <section className="grid content-start gap-4 border-b-2 rule px-4 py-8 sm:px-10 lg:col-span-2">
           <h2 className="heading text-[22px]">{t("connectors.data.title")}</h2>
-          <p className="max-w-3xl text-ink-2">{t("connectors.data.lead")}</p>
           {copied ? (
             <div className="flex flex-wrap gap-x-8 gap-y-3">
               {[...new Set(list.accounts.filter((a) => a.records > 0).map((a) => a.connector))].map((c) => (

@@ -20,7 +20,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   const shown = await withLabels(user.role === "owner" ? list : list.filter((a) => !a.verb.startsWith("person.") && !a.verb.startsWith("invite.")));
   return (
     <div>
-      <Head title={t("activity.title")} lead={t("activity.lead")} />
+      <Head title={t("activity.title")} />
       <div className="px-4 sm:px-10">
         {shown.length === 0 ? <p className="py-10 text-ink-2">{t("activity.none")}</p> : <ul>{shown.map((a) => <ActivityLine key={a.id} a={a} t={t} lang={user.lang} />)}</ul>}
         {list.length === 60 && <Link href={`/activity?before=${list.at(-1)!.id}`} className="btn btn-ghost btn-sm my-6">{t("activity.older")} →</Link>}

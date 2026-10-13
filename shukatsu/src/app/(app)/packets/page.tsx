@@ -16,7 +16,7 @@ export default async function PacketsPage() {
   const rows: Row[] = packets.listPackets(root);
   return (
     <div>
-      <Head title={t("packets.title")} lead={t("packets.lead")}>
+      <Head title={t("packets.title")}>
         {allowed(user, "packet.create") && <Link href="/packets/new" className="btn btn-shu">+ {t("packets.new")}</Link>}
       </Head>
       {rows.length === 0 ? <p className="px-4 py-10 text-ink-2 sm:px-10">{t("packets.empty")}</p> : (

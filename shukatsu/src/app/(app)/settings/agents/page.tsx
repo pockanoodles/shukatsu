@@ -40,7 +40,7 @@ export default async function AgentsPage() {
 
   return (
     <div>
-      <Head eyebrow={t("nav.settings")} title={t("agents.title")} lead={t("agents.lead")} />
+      <Head eyebrow={t("nav.settings")} title={t("agents.title")} />
       <div className="grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <section className="border-b-2 rule lg:border-r-2">
           {agents.length === 0 ? <p className="px-4 py-8 text-ink-3 sm:px-10">{t("agents.none")}</p> : agents.map((a) => (
@@ -93,20 +93,16 @@ export default async function AgentsPage() {
           <section className="grid gap-4 border-b-2 rule px-4 py-7 sm:px-10">
             <h2 className="heading text-[22px]">{t("agents.connect")}</h2>
             <h3 className="label text-ink-2">{t("agents.claudeCode")}</h3>
-            <p className="text-[14px] text-ink-2">{t("agents.claudeCodeLead")}</p>
             <Snippet {...copy} text={`claude mcp add --transport http shukatsu ${base}/mcp --header "Authorization: Bearer shk_agent_…"`} />
             <p className="text-[14px] text-ink-2">{t("agents.stdio")}</p>
             <Snippet {...copy} text={`SHUKATSU_URL=${base} SHUKATSU_TOKEN=shk_agent_… node shukatsu/mcp-stdio.mjs`} />
             <h3 className="label mt-2 text-ink-2">{t("agents.remote")}</h3>
-            <p className="text-[14px] text-ink-2">{t("agents.remoteLead")}</p>
             <Snippet {...copy} text={`${base}/mcp`} />
             <h3 className="label mt-2 text-ink-2">{t("agents.api")}</h3>
-            <p className="text-[14px] text-ink-2">{t("agents.apiLead")}</p>
             <Snippet {...copy} text={`curl -s -X POST ${base}/api/v1/ops/tracker.list -H "Authorization: Bearer shk_agent_…" -H "Content-Type: application/json" -d '{}'`} />
           </section>
           <section className="grid gap-4 px-4 py-7 sm:px-10">
             <h2 className="heading text-[22px]">{t("agents.capture")}</h2>
-            <p className="text-[14.5px] text-ink-2">{t("agents.captureLead")}</p>
             <Bookmarklet href={bookmarklet(base)} label={t("agents.bookmarklet")} hint={t("agents.dragHint")} />
           </section>
         </div>

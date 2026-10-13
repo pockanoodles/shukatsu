@@ -28,7 +28,6 @@ export default async function DecidedPage({ searchParams }: { searchParams: Prom
           <Link href="/review/decided" aria-current="page">{t("review.decided")}</Link>
         </nav>
       </div>
-      <p className="border-b hair px-4 py-3 text-ink-2 sm:px-10">{t("review.decidedLead")}</p>
       {!d.drafts.length && !d.proposals.length && <p className="px-4 py-10 text-ink-2 sm:px-10">{t("review.decidedNone")}</p>}
       <ul>
         {d.drafts.map((x) => (

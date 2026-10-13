@@ -61,11 +61,6 @@ export function Decide({ itemKey, next, outcomes, rejectLink, text, current, che
           );
         })}
       </div>
-      <dl className="grid gap-x-6 gap-y-1 text-[13px] text-ink-2 sm:grid-cols-2">
-        {outcomes.map((o) => (
-          <div key={o.id} className="flex gap-2"><dt className="font-semibold text-ink">{o.label}</dt><dd>{o.lead}</dd></div>
-        ))}
-      </dl>
 
       {rejectLink && (
         <button type="button" data-key={rejectLink.key} onClick={() => setOpen(open === "reject" ? null : "reject")} className="justify-self-start text-[13.5px] text-ink-2 underline underline-offset-4 hover:text-ink">
@@ -79,7 +74,6 @@ export function Decide({ itemKey, next, outcomes, rejectLink, text, current, che
           {(open === "correct" || open === "narrative" || open === "edit") && (
             <>
               <label className="label text-ink-2" htmlFor="wording">{labels.editLabel}</label>
-              <p className="-mt-1 text-[13.5px] text-ink-2">{open === "narrative" ? labels.narrativeHelp : open === "correct" ? labels.correctHelp : ""}</p>
               <WordingField name="text" defaultValue={text} original={text} current={current} lint={lintAction} autoFocus checkRules={checkRules}
                 labels={{ chars: labels.chars, pass: labels.pass, figures: labels.figures }} />
               <div><Submit className="btn" pending={labels.working}><Seal k={SEAL[open]} />{open === "narrative" ? labels.submitNarrative : labels.submitEdit}</Submit></div>

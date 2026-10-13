@@ -32,7 +32,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
               <div className="flex items-start justify-between gap-6">
                 <div>
                   <h1 className="display text-[44px] sm:text-[56px]">{reset ? t("invite.resetTitle") : t("invite.title")}</h1>
-                  <p className="mt-4 text-[17px] text-ink-2">{reset ? t("invite.resetLead", { name: inv.user.name }) : inv.role === "owner" ? t("invite.ownerLead") : t("invite.lead", { role: t(`role.${inv.role}`) })}</p>
+                  {reset && <p className="mt-4 text-[17px] text-ink-2">{t("invite.resetLead", { name: inv.user.name })}</p>}
                 </div>
                 <Stamp tone="shu">招待</Stamp>
               </div>
@@ -40,7 +40,6 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
                 <div className="grid gap-1 border-2 rule p-4">
                   <span className="label text-ink-3">{t("invite.roleIs")}</span>
                   <span className="heading text-[20px]">{t(`role.${inv.role}`)}</span>
-                  <span className="text-[14px] text-ink-2">{t(`role.${inv.role}Help`)}</span>
                 </div>
               )}
               <InviteForm token={token} reset={reset} defaults={{ name: inv.name, lang }} l={{

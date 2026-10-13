@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="grid content-center px-4 py-12 sm:px-10">
           <div className="w-full max-w-md">
             <h1 className="display text-[44px] sm:text-[56px]">{t("login.title")}</h1>
-            <p className="mb-8 mt-4 text-ink-2">{t("login.lead")}</p>
+            <div className="mb-8" />
             {fresh && (
               <div role="status" className="mb-8 grid gap-3 border-2 border-shu p-4">
                 <p className="heading text-[18px]">{t("login.setupTitle")}</p>

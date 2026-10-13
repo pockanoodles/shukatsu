@@ -16,7 +16,6 @@ export function FeedForm({ zone, l }: { zone: string; l: L }) {
       <label className="grid gap-1.5">
         <span className="label text-ink-2">{l.url}</span>
         <input name="url" type="text" inputMode="url" required autoComplete="off" spellCheck={false} placeholder="webcal://…" className="field code" maxLength={2000} />
-        <span className="text-[14px] text-ink-3">{l.urlHint}</span>
       </label>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1.5"><span className="label text-ink-2">{l.label}</span><input name="label" placeholder={l.labelPlaceholder} className="field" maxLength={80} /></label>

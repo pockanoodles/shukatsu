@@ -32,7 +32,7 @@ export default async function ApplicationsPage() {
   };
   return (
     <div>
-      <Head title={t("apps.title")} lead={t("apps.lead")} />
+      <Head title={t("apps.title")} />
       <section aria-labelledby="tracker" className="border-b-2 rule">
         <h2 id="tracker" className="label border-b-2 rule bg-paper-2 px-4 py-2.5 text-ink-2 sm:px-10">{t("apps.tracker")} · {rows.length}</h2>
         {rows.length === 0 ? <p className="px-4 py-8 text-ink-2 sm:px-10">{t("apps.empty")}</p> : (
@@ -74,7 +74,6 @@ export default async function ApplicationsPage() {
       <section aria-labelledby="inbox" className="grid grid-cols-[minmax(0,1fr)] border-b-2 rule lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <div className="border-b-2 rule lg:border-b-0 lg:border-r-2">
           <h2 id="inbox" className="label border-b-2 rule bg-paper-2 px-4 py-2.5 text-ink-2 sm:px-10">{t("apps.inbox")} · {inbox.length}</h2>
-          <p className="border-b hair px-4 py-3 text-[14px] text-ink-2 sm:px-10">{t("apps.inboxLead")}</p>
           {inbox.length === 0 ? <p className="px-4 py-8 text-ink-2 sm:px-10">{t("apps.inboxEmpty")}</p> : (
             <ul>
               {inbox.map((x) => (
@@ -98,7 +97,7 @@ export default async function ApplicationsPage() {
         {allowed(user, "suggest.posting") && (
           <div id="suggest" className="scroll-mt-20 px-4 py-6 sm:px-10">
             <h2 className="heading text-[24px]">{owner ? t("apps.addOwner") : t("apps.suggest")}</h2>
-            <p className="mb-5 mt-2 text-ink-2">{owner ? t("apps.addOwnerLead") : t("apps.suggestLead")}</p>
+            
             <PostingForm owner={owner} l={l} />
           </div>
         )}

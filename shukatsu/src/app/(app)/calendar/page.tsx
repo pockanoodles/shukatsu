@@ -28,7 +28,7 @@ export default async function CalendarPage() {
 
   return (
     <div>
-      <Head eyebrow="就活 · 予定" title={t("calendar.title")} lead={t("calendar.lead")} />
+      <Head eyebrow="就活 · 予定" title={t("calendar.title")} />
       <div className="grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <section className="border-b-2 rule lg:border-b-0 lg:border-r-2">
           {groups.size === 0 ? <p className="px-4 py-8 text-ink-3 sm:px-10">{t("calendar.none", { n: days })}</p> : [...groups.entries()].map(([day, list]) => (
@@ -91,13 +91,11 @@ export default async function CalendarPage() {
           {owner && (
             <section className="grid gap-4 px-4 py-7 sm:px-10">
               <h2 className="heading text-[22px]">{t("calendar.subscribe")}</h2>
-              <p className="text-[14.5px] text-ink-2">{t("calendar.subscribeLead")}</p>
               <ActionForm action={tokenAction} submit={t("calendar.makeFeed")} pending={t("common.loading")} buttonClass="btn btn-ghost"
                 secret={{ lead: t("calendar.feedMade"), copy: t("calendar.copy"), copied: t("calendar.copied"), template: `${base}/cal/{token}.ics` }}>
                 <input type="hidden" name="user_id" value={user.id} /><input type="hidden" name="kind" value="feed" /><input type="hidden" name="name" value={t("calendar.title")} />
               </ActionForm>
               <p className="text-[13px] text-ink-3">{t("calendar.howApple")}<br />{t("calendar.howGoogle")}</p>
-              <p className="text-[13px] text-ink-3">{t("calendar.family")}</p>
               <h3 className="label mt-2 text-ink-2">{t("calendar.feeds")}</h3>
               {feeds.length === 0 ? <p className="text-ink-3">{t("calendar.feedsNone")}</p> : (
                 <ul className="border-t hair">

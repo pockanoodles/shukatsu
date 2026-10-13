@@ -85,7 +85,7 @@ export default async function RecordPage() {
   let n = 0;
   return (
     <div>
-      <Head eyebrow={t("record.counts", { live, pending, aside: all.length - live - pending })} title={t("record.title")} lead={owner ? t("record.lead") : allowed(user, "propose.profile") ? t("record.leadHelper") : t("record.leadViewer")}>
+      <Head eyebrow={t("record.counts", { live, pending, aside: all.length - live - pending })} title={t("record.title")}>
         {canPropose && <div className="w-full sm:w-auto"><NewRole owner={owner} l={l} /></div>}
       </Head>
       <nav className="scroll-thin flex gap-0 overflow-x-auto border-b-2 rule" aria-label={t("record.title")}>
@@ -139,7 +139,6 @@ export default async function RecordPage() {
           <section id="ja-header" className="scroll-mt-16 border-t-2 rule">
             <h2 className="label border-b-2 rule bg-paper-2 px-4 py-2.5 text-ink-2 sm:px-10">{t("record.jaHeader")}</h2>
             <div className="grid max-w-4xl gap-4 px-4 py-6 sm:px-10">
-              <p className="text-[14px] text-ink-2">{t("record.jaHeaderLead")}</p>
               <JaHeaderForm values={c.ja} english={c.en} l={{ jaName: t("record.jaName"), jaLocation: t("record.jaLocation"), jaAvailability: t("record.jaAvailability"), jaSave: t("record.jaSave"), working: t("common.loading") }} />
             </div>
           </section>

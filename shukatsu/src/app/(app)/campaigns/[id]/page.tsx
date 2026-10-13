@@ -85,7 +85,6 @@ export default async function CampaignPage({ params, searchParams }: { params: P
       <section className="border-b-2 rule">
         <div className="px-4 pb-3 pt-7 sm:px-10">
           <h2 className="heading text-[22px]">{t("campaigns.applications")}</h2>
-          <p className="mt-1 text-[14.5px] text-ink-2">{t("campaigns.applicationsLead")}</p>
         </div>
         {c.rows.length === 0 ? <p className="px-4 pb-6 text-ink-3 sm:px-10">{t("campaigns.applicationsNone")}</p> : (
           <div className="overflow-x-auto">
@@ -128,8 +127,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                     <select name="tracker_num" required className="field">{unlinked.map((r) => <option key={r.num} value={r.num}>#{r.num} {r.company} · {r.role}</option>)}</select></label>
                   <label className="grid gap-1.5"><span className="label text-ink-2">{t("campaigns.channel")}</span>
                     <input name="channel" maxLength={80} className="field" list="channels" />
-                    <datalist id="channels"><option value="CareerForum.Net" /><option value="Avature" /><option value="Workday" /><option value="Handshake" /><option value="NUworks" /><option value="Company site" /></datalist>
-                    <span className="text-[13px] text-ink-3">{t("campaigns.channelHelp")}</span></label>
+                    <datalist id="channels"><option value="CareerForum.Net" /><option value="Avature" /><option value="Workday" /><option value="Handshake" /><option value="NUworks" /><option value="Company site" /></datalist></label>
                 </ActionForm>
               )}
             </div>

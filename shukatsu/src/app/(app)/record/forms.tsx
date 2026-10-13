@@ -39,7 +39,6 @@ function RewordForm({ id, part, text, current, owner, l, done }: { id: string; p
       <WordingField name="text" defaultValue={text} original={text} current={current} lint={lintAction} autoFocus checkRules={part !== "ja"}
         labels={{ chars: l.chars, pass: l.pass, figures: l.figures }} />
       {!owner && <label className="grid gap-1.5"><span className="label text-ink-2">{l.note}</span><input name="note" className="field" maxLength={1000} /></label>}
-      <p className="text-[13.5px] text-ink-3">{owner ? l.directHelp : l.proposeHelp}</p>
       <div><Submit className="btn btn-sm" pending={l.working}>{owner ? l.submitDirect : l.submitPropose}</Submit></div>
       <Result state={state} />
     </form>
@@ -87,7 +86,6 @@ function NewFactForm({ entity, tags, current, owner, l, done }: { entity: string
       <input type="hidden" name="entity" value={entity} />
       <div className="grid gap-1.5">
         <span className="label text-ink-2">{l.newText}</span>
-        <p className="text-[13.5px] text-ink-3">{l.newTextHelp}</p>
         <WordingField name="text" defaultValue="" current={current} lint={lintAction} autoFocus labels={{ chars: l.chars, pass: l.pass, figures: l.figures }} />
       </div>
       <fieldset className="grid gap-2"><legend className="label mb-2 text-ink-2">{l.tags}</legend>
@@ -105,7 +103,6 @@ function NewFactForm({ entity, tags, current, owner, l, done }: { entity: string
         <label className="grid gap-1.5"><span className="label text-ink-2">{l.newJa} <span className="text-ink-3">({l.optional})</span></span><input name="ja" lang="ja" className="field" maxLength={400} /></label>
       </div>
       {!owner && <label className="grid gap-1.5"><span className="label text-ink-2">{l.note}</span><input name="note" className="field" maxLength={1000} /></label>}
-      <p className="text-[13.5px] text-ink-3">{owner ? l.directHelp : l.proposeHelp}</p>
       <div><Submit className="btn btn-sm" pending={l.working}>{owner ? l.submitDirect : l.submitPropose}</Submit></div>
       <Result state={state} />
     </form>

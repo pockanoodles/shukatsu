@@ -16,7 +16,7 @@ export default async function NewPacketPage({ searchParams }: { searchParams: Pr
   const archetypes = Object.entries(p.archetypes || {}).map(([id, a]) => ({ id, name: (a as { name: string }).name, tags: (a as { tags: string[] }).tags }));
   return (
     <div>
-      <Head eyebrow={sp.url ? t("packets.form.from") : undefined} title={t("packets.new")} lead={t("packets.lead")} />
+      <Head eyebrow={sp.url ? t("packets.form.from") : undefined} title={t("packets.new")} />
       <div className="max-w-4xl px-4 py-8 sm:px-10">
         <NewPacketForm archetypes={archetypes} defaults={{ url: sp.url || "", company: sp.company || "", role: sp.role || "", lang: sp.lang === "ja" || sp.lang === "en" ? sp.lang : "en" }} l={{
           company: t("packets.form.company"), role: t("packets.form.role"), url: t("packets.form.url"), jd: t("packets.form.jd"), jdHelp: t("packets.form.jdHelp"),

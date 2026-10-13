@@ -31,7 +31,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     <div>
       {sp.done && <Flash>{t("common.saved")}</Flash>}
       {sp.error && <Flash tone="shu">{sp.error}</Flash>}
-      <Head eyebrow="就活 · 受信" title={t("inbox.title")} lead={t("inbox.lead")}>
+      <Head eyebrow="就活 · 受信" title={t("inbox.title")}>
         {allowed(user, "connector.manage") && <Link href="/settings/connectors" className="btn btn-ghost btn-sm">{t("inbox.connectors")}</Link>}
       </Head>
       {signals.length === 0 ? <p className="px-4 py-8 text-ink-3 sm:px-10">{t("inbox.none")}</p> : (
