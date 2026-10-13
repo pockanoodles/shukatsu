@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { engine, ENGINE_DIR } from "@/lib/server/engine";
-import { requireUser } from "@/lib/server/session";
+import { requestOrigin, requireUser } from "@/lib/server/session";
 import { relative, translator } from "@/lib/i18n";
 import { Head } from "@/components/marks";
 import { AddPasskey } from "@/components/auth-forms";
@@ -22,8 +22,9 @@ export default async function SettingsPage() {
   const { root, people, passkeys, llm, gitlog } = await engine();
   const keys: { id: string; name: string | null; device_type: string; created_at: string; last_used_at: string | null }[] = passkeys.passkeysFor(root, user.id);
   const sessions: { token_hash: string; created_at: string; last_seen_at: string; ip: string | null; user_agent: string | null; method: string }[] = people.sessionsFor(root, user.id);
-  const url = process.env.SHUKATSU_URL || "http://localhost:3000";
-  const https = url.startsWith("https://") || url.startsWith("http://localhost");
+  // Browsers allow passkeys over HTTPS, or on localhost (never on a bare IP like 127.0.0.1).
+  const here = new URL(process.env.SHUKATSU_URL || (await requestOrigin()));
+  const https = here.protocol === "https:" || here.hostname === "localhost" || here.hostname.endsWith(".localhost");
   return (
     <div>
       <Head title={t("settings.title")} />
@@ -59,7 +60,7 @@ export default async function SettingsPage() {
               <li key={s.token_hash} className="flex flex-wrap items-center justify-between gap-3 border-b hair py-3">
                 <span className="grid gap-0.5">
                   <span>{device(s.user_agent)} {s.token_hash === user.session.hash && <span className="label ml-2 text-shu">{t("settings.thisDevice")}</span>}</span>
-                  <span className="label text-ink-3">{s.method} · {relative(s.last_seen_at, user.lang)}</span>
+                  <span className="label text-ink-3">{t(`settings.method.${s.method}`)} · {relative(s.last_seen_at, user.lang)}</span>
                 </span>
                 {s.token_hash !== user.session.hash && <form action={endSessionAction}><input type="hidden" name="hash" value={s.token_hash} /><button className="label text-ink-2 underline underline-offset-4">{t("settings.signOutOther")}</button></form>}
               </li>
@@ -70,7 +71,7 @@ export default async function SettingsPage() {
           <section className="grid content-start gap-4 border-b-2 rule px-4 py-8 sm:px-10 lg:col-span-2">
             <h2 className="heading text-[22px]">{t("settings.system")}</h2>
             <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-              <dt className="label text-ink-3">{t("settings.url")}</dt><dd className="code break-all">{url}</dd>
+              <dt className="label text-ink-3">{t("settings.url")}</dt><dd className="code break-all">{here.origin}</dd>
               <dt className="label text-ink-3">{t("settings.dataRoot")}</dt><dd className="code break-all">{root}</dd>
               <dt className="label text-ink-3">Engine</dt><dd className="code break-all">{ENGINE_DIR}</dd>
               <dt className="label text-ink-3">{t("settings.ai")}</dt><dd>{llm.llmEnabled() ? t("settings.aiOn", { model: llm.MODEL }) : t("settings.aiOff")}</dd>

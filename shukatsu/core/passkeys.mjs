@@ -3,9 +3,10 @@
  * sign-in, so a parent never has to remember a password.
  *
  * A passkey is bound to the site's domain (the relying party ID), which comes
- * from SHUKATSU_URL. Passkeys made on http://localhost work only there; the
- * served domain needs HTTPS, which the tunnel in shukatsu/deploy provides.
- * A password always remains as the fallback.
+ * from SHUKATSU_URL, or, when that isn't set, from the address the browser
+ * used, so a dev server on any port works. Passkeys made on http://localhost
+ * work only there; the served domain needs HTTPS, which the tunnel in
+ * shukatsu/deploy provides. A password always remains as the fallback.
  */
 
 import {
@@ -17,8 +18,8 @@ import { getUser } from './people.mjs';
 
 const CHALLENGE_MS = 5 * 60_000;
 
-export function relyingParty() {
-  const origin = new URL(process.env.SHUKATSU_URL || 'http://localhost:3000').origin;
+export function relyingParty(requestOrigin = null) {
+  const origin = new URL(process.env.SHUKATSU_URL || requestOrigin || 'http://localhost:3000').origin;
   return { origin, rpID: new URL(origin).hostname, rpName: 'shukatsu' };
 }
 
@@ -39,8 +40,8 @@ function takeChallenge(root, kind, challenge, userId = null) {
 
 export const passkeysFor = (root, userId) => db(root).prepare('SELECT id, name, device_type, backed_up, created_at, last_used_at FROM passkeys WHERE user_id = ? ORDER BY created_at').all(userId);
 
-export async function registrationOptions(root, user) {
-  const { rpID, rpName } = relyingParty();
+export async function registrationOptions(root, user, { origin: from = null } = {}) {
+  const { rpID, rpName } = relyingParty(from);
   const existing = db(root).prepare('SELECT id, transports FROM passkeys WHERE user_id = ?').all(user.id);
   const options = await generateRegistrationOptions({
     rpName, rpID, userName: user.login, userDisplayName: user.name,
@@ -53,8 +54,8 @@ export async function registrationOptions(root, user) {
   return options;
 }
 
-export async function finishRegistration(root, user, response, name = '') {
-  const { origin, rpID } = relyingParty();
+export async function finishRegistration(root, user, response, name = '', { origin: from = null } = {}) {
+  const { origin, rpID } = relyingParty(from);
   let challenge = null;
   const v = await verifyRegistrationResponse({
     response, expectedOrigin: origin, expectedRPID: rpID,
@@ -70,15 +71,15 @@ export async function finishRegistration(root, user, response, name = '') {
 }
 
 /** Discoverable sign-in: no login typed, the device offers its passkeys for this site. */
-export async function authenticationOptions(root) {
-  const { rpID } = relyingParty();
+export async function authenticationOptions(root, { origin: from = null } = {}) {
+  const { rpID } = relyingParty(from);
   const options = await generateAuthenticationOptions({ rpID, userVerification: 'preferred', allowCredentials: [] });
   saveChallenge(root, { kind: 'auth', challenge: options.challenge });
   return options;
 }
 
-export async function finishAuthentication(root, response) {
-  const { origin, rpID } = relyingParty();
+export async function finishAuthentication(root, response, { origin: from = null } = {}) {
+  const { origin, rpID } = relyingParty(from);
   const key = db(root).prepare('SELECT * FROM passkeys WHERE id = ?').get(String(response?.id || ''));
   if (!key) throw Object.assign(new Error('passkey.unknown'), { code: 'passkey.unknown' });
   const v = await verifyAuthenticationResponse({

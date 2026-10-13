@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { engine } from "@/lib/server/engine";
-import { getLang } from "@/lib/server/session";
+import { LANG_COOKIE, getLang } from "@/lib/server/session";
 import { translator, type Lang } from "@/lib/i18n";
 import { Bare } from "@/components/bare";
 import { InviteForm } from "@/components/auth-forms";
@@ -12,8 +13,9 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   const { token } = await params;
   const { root, people } = await engine();
   const inv = people.peekInvite(root, token);
-  // An invite in another language opens in that language, until the person picks.
-  const lang: Lang = inv?.user?.lang || inv?.lang || (await getLang());
+  // An invite in another language opens in that language, until the person picks one with the toggle.
+  const picked = (await cookies()).get(LANG_COOKIE)?.value;
+  const lang: Lang = picked === "ja" || picked === "en" ? picked : inv?.user?.lang || inv?.lang || (await getLang());
   const { t } = translator(lang);
   const reset = Boolean(inv?.user_id);
   return (

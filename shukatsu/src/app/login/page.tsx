@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { engine } from "@/lib/server/engine";
 import { getLang, getUser } from "@/lib/server/session";
 import { translator } from "@/lib/i18n";
 import { Bare } from "@/components/bare";
@@ -12,6 +13,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const lang = await getLang();
   const { t } = translator(lang);
   const next = (await searchParams).next || "/today";
+  const { root, people } = await engine();
+  const fresh = !people.hasOwner(root);
   return (
     <Bare lang={lang} back="/login">
       <main className="grid flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
@@ -23,6 +26,14 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <div className="w-full max-w-md">
             <h1 className="display text-[44px] sm:text-[56px]">{t("login.title")}</h1>
             <p className="mb-8 mt-4 text-ink-2">{t("login.lead")}</p>
+            {fresh && (
+              <div role="status" className="mb-8 grid gap-3 border-2 border-shu p-4">
+                <p className="heading text-[18px]">{t("login.setupTitle")}</p>
+                <p className="text-[15px] text-ink-2">{t("login.setupLead")}</p>
+                <code className="block overflow-x-auto bg-paper-2 px-3 py-2 font-mono text-[13px]">node shukatsu/people.mjs init --name &quot;Your Name&quot;</code>
+                <p className="text-[13px] text-ink-3">{t("login.setupDaemon")}</p>
+              </div>
+            )}
             <SignInForm next={next} l={{
               login: t("login.login"), password: t("login.password"), submit: t("login.submit"), passkey: t("login.passkey"), or: t("login.or"),
               working: t("common.loading"), failed: t("login.passkey.failed"), cancelled: t("login.passkey.cancelled"),

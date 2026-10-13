@@ -52,10 +52,19 @@ export async function requireCan(action: string): Promise<User> {
 
 export const allowed = (user: User | null, action: string): boolean => Boolean(user?.perms[action]);
 
-async function secureCookies(): Promise<boolean> {
+/** The address this request came in on, as the browser sees it. */
+export async function requestOrigin(): Promise<string> {
   const h = await headers();
-  if (h.get("x-forwarded-proto") === "https") return true;
-  return (process.env.SHUKATSU_URL || "").startsWith("https://");
+  const proto = h.get("x-forwarded-proto")?.split(",")[0].trim() || "http";
+  const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
+  return `${proto}://${host}`;
+}
+
+// Secure cookies follow the request, not SHUKATSU_URL: with an https
+// SHUKATSU_URL, opening http://localhost on the same machine must still sign
+// in, and Safari drops a Secure cookie set over plain http.
+async function secureCookies(): Promise<boolean> {
+  return (await requestOrigin()).startsWith("https://");
 }
 
 export async function clientIp(): Promise<string> {
