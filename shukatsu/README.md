@@ -52,16 +52,39 @@ The public product page, kaitosoeno.com/shukatsu, is built from `../site` (its o
 
 ```sh
 cd shukatsu && npm install
-npm run dev                                   # http://localhost:3000
-node people.mjs init --name "Your Name"       # first run: prints the owner's setup link
+npm run dev                                   # shukatsud with hot reload, http://localhost:3000
 npm test                                      # engine tests (fixture data root, never yours)
 npm run build && npm start                    # production
 ```
 
+On a fresh install the first start prints a one-time link that creates the candidate's
+account (`node people.mjs init --name "Your Name"` makes one too). Once the account exists the
+daemon writes the owner's terminal token to `{DATA_ROOT}/.shukatsu/owner.token`, which is how
+the CLIs reach it.
+
+`shukatsud.mjs` is the whole system on one port: the app, `/api/v1` (every operation as
+JSON), `/mcp` (agents), `/oauth` and `/.well-known` (remote MCP clients), `/cal` (private
+calendar feeds), and `/connectors` (mail and calendar sign-in), plus connector sync once a
+minute. Every one of them, and every server action in the app, goes through the operations
+registry in `core/ops`. The design is `docs/specs/v1-headless.md`.
+
 The app finds the data root the same way every career-ops tool does: `CAREER_OPS_DATA_DIR`,
 else the `.career-ops-data` marker in the repo root. The engine is loaded at runtime from the
-checkout (never bundled), so the app runs exactly the code the CLIs run. Restart the server
-after changing anything under `core/`.
+checkout (never bundled), so the app runs exactly the code the CLIs run. Restart the daemon
+after changing anything under `core/` or `connectors/`.
+
+### Agents
+
+Name an agent on the Agents page (under your name, top right) and make it a key. Then:
+
+```sh
+claude mcp add --transport http shukatsu http://localhost:3000/mcp --header "Authorization: Bearer shk_agent_..."
+SHUKATSU_TOKEN=shk_agent_... npm run mcp      # or as a stdio server that forwards to the daemon
+```
+
+claude.ai and phones add `https://your-host/mcp` as a custom connector and sign in with
+OAuth; you pick which agent they get on the consent screen. Agents can do the work (the
+tracker, evaluations, packets, the calendar, campaigns, the inbox) and can never stamp.
 
 ## CLIs
 
@@ -83,7 +106,12 @@ after changing anything under `core/`.
 | `/record` | The master record as a ledger; reword, add, retire (proposed, or direct for the owner) |
 | `/applications` | The tracker, its status history, the pipeline inbox, and suggesting a posting |
 | `/packets` | Application packets in English or Japanese: JD, traced CV (or 職務経歴書), written answers counted to their limits, check, cover letter, review, sent |
+| `/campaigns` | Career fairs and hiring cycles: their applications, deadlines in the zone they were posted in and yours, fair days and interview slots with tight gaps marked |
+| `/calendar` | Everything coming up, adding events, and the private calendar link to subscribe to |
+| `/inbox` | What connected mail and calendars turned up, each with the action it proposes |
+| `/capture` | The window the "Send to shukatsu" bookmarklet opens |
 | `/digest` | The week, with copy-ready text in Japanese or English |
 | `/people`, `/settings`, `/activity` | Access, account and passkeys, the full log |
+| `/settings/agents`, `/settings/connectors` | Agents and their keys, client setup, the bookmarklet; mail and calendar accounts |
 
 Data handling: `DATAFLOW.md`. Running it at home: `deploy/README.md`.
