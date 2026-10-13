@@ -67,7 +67,7 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
             <p className="label text-ink-2">{t("packets.by", { name: pk.author_name })} · {t("packets.updated", { date: relative(pk.updated_at, user.lang) })} · {t("packets.archetype", { name: archName })} · {pk.lang === "ja" ? t("packets.langJa") : t("packets.langEn")}</p>
           </div>
           <div className="flex items-center gap-4">
-            <span className={`label border-2 px-3 py-2 ${pk.status === "in_review" ? "border-shu text-shu" : "rule"}`}>{t(`packets.status.${pk.status}`)}</span>
+            <span className={`label ${pk.status === "in_review" ? "text-shu" : "text-ink-2"}`}>{t(`packets.status.${pk.status}`)}</span>
             {final ? <Stamp tone="shu">合格</Stamp> : checked ? <Stamp tone="dashed">未</Stamp> : null}
           </div>
         </div>

@@ -2,6 +2,7 @@
 const sys = {
   "password.same": "今と違う新しいパスワードを選んでください。",
   sys: {
+    row: { flag: "注意", packet: "応募書類", english: "英語", japanese: "日本語", retire: "引退", reworded: "言い換え", wording: "表現", check: "チェック" },
     familyFeed: "カレンダーリンク", familyFeedMade: "{name}さん用の非公開カレンダーリンクです。時刻と場所が表示され、メモや会議リンクは表示されません。本人に送ってください。もう一度は表示されません。",
     upcoming: "これからの予定", upcomingNone: "3週間先まで予定はありません。",
     reviewGone: "その項目はもう確認待ちではありません。判断済みか、取り下げられた可能性があります。",

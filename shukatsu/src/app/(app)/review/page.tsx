@@ -6,7 +6,7 @@ import { relative, translator, type T } from "@/lib/i18n";
 import type { QueueItem } from "@/lib/types";
 import { Claim, figureCount } from "@/components/claim";
 import { Diff } from "@/components/diff";
-import { Findings, Flash, Prov, Stamp } from "@/components/marks";
+import { Flash, Stamp } from "@/components/marks";
 import { Comments } from "@/components/comments";
 import { ReviewKeys } from "@/components/client";
 import { Decide, type Outcome } from "./decide";
@@ -36,18 +36,31 @@ function outcomesFor(it: QueueItem, t: T): { outcomes: Outcome[]; rejectLink?: O
   return { outcomes: [o("accept", "accept", "acceptLead", "a", true), o("edit", "edit", "editLead", "e"), o("unsure", "unsure", "unsureLead", "u")], rejectLink: reject };
 }
 
+/** What the queue noticed about an item, as rows of its ledger: shu when it blocks or has gone stale. */
 function Warnings({ it, t }: { it: QueueItem; t: T }) {
-  if (!it.warnings.length) return null;
   return (
-    <ul className="grid gap-2">
-      {it.warnings.map((w, i) => (
-        <li key={i} className={`border-l-4 px-3 py-1.5 text-[14px] ${w.blocking || w.code === "stale" ? "border-shu text-shu" : "border-ink-3 text-ink-2"}`}>
-          {t(`review.warn.${w.code}`, {
-            entity: w.entity, current: w.current, added: w.diff?.added.join(", ") || "–", removed: w.diff?.removed.join(", ") || "–",
-          })}
-        </li>
-      ))}
-    </ul>
+    <>
+      {it.warnings.map((w, i) => {
+        const hard = Boolean(w.blocking || w.code === "stale");
+        return (
+          <Row key={i} label={t("sys.row.flag")} tone={hard ? "shu" : undefined}>
+            <span className={`text-[14.5px] ${hard ? "text-shu" : "text-ink-2"}`}>
+              {t(`review.warn.${w.code}`, { entity: w.entity, current: w.current, added: w.diff?.added.join(", ") || "–", removed: w.diff?.removed.join(", ") || "–" })}
+            </span>
+          </Row>
+        );
+      })}
+    </>
+  );
+}
+
+/** One line of the item's ledger: a mono label on the left, the content on the right. */
+function Row({ label, tone, children }: { label: string; tone?: "shu"; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-1 border-t hair py-3.5 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:gap-6">
+      <span className={`label pt-1 ${tone === "shu" ? "text-shu" : "text-ink-3"}`}>{label}</span>
+      <div className="min-w-0">{children}</div>
+    </div>
   );
 }
 
@@ -58,74 +71,86 @@ function ItemCard({ it, next, user, t }: { it: QueueItem; next: string | null; u
   const isEdit = it.kind === "proposal.fact.edit" && it.before && it.after;
   const n = it.after ? figureCount(it.after) : 0;
   const ev = it.evidence;
+  const checked = it.checks && !["ja", "entity", "packet", "proposal.posting", "proposal.fact.retire", "proposal.entity.new"].includes(it.kind);
+  const failing = (it.checks || []).filter((c) => c.severity === "error");
+  const meta = [
+    it.source === "profile" ? t("review.drafted_from") : t("review.proposedBy", { name: it.author?.name || "" }),
+    t(`review.kind.${it.kind}`),
+    it.created_at ? relative(it.created_at, user.lang) : null,
+  ].filter(Boolean).join(" · ");
+  const big = "text-[20px] leading-[1.5]";
   return (
     <article className="grid content-start gap-6 px-4 py-6 sm:px-10 sm:py-8" aria-labelledby="q">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <header className="grid gap-2">
         <Link href="/review" className="label text-ink-2 md:hidden">← {t("review.title")}</Link>
-        {it.entity && <span className="label text-ink-2">{[it.entity.heading || it.entity.label, it.entity.title, it.entity.dates].filter(Boolean).join(" · ")}</span>}
+        {it.entity && <p className="label text-ink-3">{[it.entity.heading || it.entity.label, it.entity.title, it.entity.dates].filter(Boolean).join(" · ")}</p>}
+        <h2 id="q" className="heading text-[24px] sm:text-[28px]">{question(it, t)}</h2>
+        <p className="label text-ink-2">{meta}</p>
+      </header>
+
+      <div className="border-b hair">
+        {it.kind === "packet" ? (
+          <Row label={t("sys.row.packet")}>
+            <p className="text-[18px]">{[it.company, it.role].filter(Boolean).join(" · ")}</p>
+            <Link href={`/packets/${it.packet}`} className="link mt-2 inline-block text-[15px]">{t("review.packetOpen")} →</Link>
+          </Row>
+        ) : it.kind === "proposal.posting" && it.posting ? (
+          <>
+            <Row label={t("review.posting.link")}><a className="link break-all" href={it.posting.url} target="_blank" rel="noreferrer noopener">{it.posting.url}</a></Row>
+            {it.posting.company && <Row label={t("review.posting.company")}>{it.posting.company}</Row>}
+            {it.posting.role && <Row label={t("review.posting.role")}>{it.posting.role}</Row>}
+            {it.posting.note && <Row label={t("review.posting.note")}>{it.posting.note}</Row>}
+          </>
+        ) : isEdit ? (
+          <>
+            <Row label={t("review.before")}><p className="text-[16px] text-ink-2"><Claim text={it.before!} /></p></Row>
+            <Row label={t("review.after")} tone="shu"><p className={big}><Diff before={it.before!} after={it.after!} /></p></Row>
+          </>
+        ) : it.kind === "ja" ? (
+          <>
+            <Row label={t("sys.row.english")}><p className="text-[16px] text-ink-2"><Claim text={it.before || ""} /></p></Row>
+            <Row label={t("sys.row.japanese")} tone="shu"><p lang="ja" className="text-[20px] leading-[1.7]"><Claim text={it.after || ""} changed={it.warnings.find((w) => w.code === "ja-numbers")?.diff?.added} /></p></Row>
+          </>
+        ) : it.kind === "proposal.fact.retire" ? (
+          <>
+            <Row label={t("sys.row.retire")} tone="shu"><p className="text-[18px] text-ink-2 line-through decoration-ink-3"><Claim text={it.before || ""} /></p></Row>
+            {it.reason && <Row label={t("review.reason")}>{it.reason}</Row>}
+          </>
+        ) : it.kind === "variant" && it.before ? (
+          <>
+            <Row label={t("review.before")}><p className="text-[16px] text-ink-2"><Claim text={it.before} /></p></Row>
+            <Row label={t("sys.row.reworded")} tone="shu"><p className={big}><Claim text={it.after || ""} changed={it.warnings.find((w) => w.code === "variant-numbers")?.diff?.added} /></p></Row>
+          </>
+        ) : (
+          <>
+            <Row label={t("sys.row.wording")} tone="shu"><p className={big}><Claim text={it.after || ""} /></p></Row>
+            {it.kind === "proposal.fact.new" && it.ja && <Row label={t("sys.row.japanese")}><p lang="ja" className="text-[16px] text-ink-2">{it.ja}</p></Row>}
+          </>
+        )}
+
+        {it.note && <Row label={t("review.note")}>{it.note}</Row>}
+        {ev?.quote && <Row label={t("review.evidence")}>“{ev.quote}”</Row>}
+        {ev && (ev.quote || ev.source) && (
+          <Row label={t("review.source")}>
+            <span className="text-ink-2">
+              {showPath && ev.source ? `${ev.source}${ev.line ? `, line ${ev.line}` : ""}` : t("review.sourceHidden")}
+              {it.fact?.provenance && <> · {t(`prov.${it.fact.provenance}`)}</>}
+            </span>
+          </Row>
+        )}
+        {checked && (
+          <Row label={t("sys.row.check")} tone={failing.length ? "shu" : undefined}>
+            {failing.length || (it.checks || []).length ? (
+              <ul className="grid gap-1 text-[14.5px]">
+                {(it.checks || []).map((c, i) => <li key={i} className={c.severity === "error" ? "text-shu" : "text-ink-2"}><span className="label mr-3">{c.rule}</span>{c.message}</li>)}
+              </ul>
+            ) : (
+              <span className="text-[14.5px] text-ink-2">{t("review.rules.pass")}{it.after ? <span className="label num ml-3 text-ink-3">{[...it.after].length}/230</span> : null}</span>
+            )}
+          </Row>
+        )}
+        <Warnings it={it} t={t} />
       </div>
-      <div className="flex flex-wrap items-baseline gap-3">
-        <span className={`label px-2 py-1 ${it.source === "profile" ? "border border-ink-3 text-ink-2" : "bg-ink text-on-ink"}`}>
-          {it.source === "profile" ? t("review.drafted_from") : t("review.proposedBy", { name: it.author?.name || "" })}
-        </span>
-        {it.created_at && <span className="label text-ink-3">{relative(it.created_at, user.lang)}</span>}
-        <span className="label text-ink-3">{t(`review.kind.${it.kind}`)}</span>
-      </div>
-      <h2 id="q" className="heading text-[26px] sm:text-[30px]">{question(it, t)}</h2>
-
-      {it.kind === "packet" ? (
-        <div className="grid gap-4">
-          <p className="text-[18px]">{t("review.packetLead", { company: it.company || "", role: it.role || "" })}</p>
-          <Link href={`/packets/${it.packet}`} className="btn btn-ghost justify-self-start">{t("review.packetOpen")} →</Link>
-        </div>
-      ) : it.kind === "proposal.posting" && it.posting ? (
-        <dl className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-2 border-2 rule p-4 text-[15px]">
-          <dt className="label text-ink-3">{t("review.posting.link")}</dt><dd className="min-w-0 break-all"><a className="link" href={it.posting.url} target="_blank" rel="noreferrer noopener">{it.posting.url}</a></dd>
-          {it.posting.company && <><dt className="label text-ink-3">{t("review.posting.company")}</dt><dd>{it.posting.company}</dd></>}
-          {it.posting.role && <><dt className="label text-ink-3">{t("review.posting.role")}</dt><dd>{it.posting.role}</dd></>}
-          {it.posting.note && <><dt className="label text-ink-3">{t("review.posting.note")}</dt><dd>{it.posting.note}</dd></>}
-        </dl>
-      ) : isEdit ? (
-        <div className="grid gap-4">
-          <div className="grid gap-1"><span className="label text-ink-3">{t("review.before")}</span><p className="text-[17px] text-ink-2"><Claim text={it.before!} /></p></div>
-          <div className="grid gap-1"><span className="label text-shu">{t("review.after")}</span><p className="text-[21px] leading-[1.45]"><Diff before={it.before!} after={it.after!} /></p></div>
-        </div>
-      ) : it.kind === "ja" ? (
-        <div className="grid gap-4">
-          <p className="text-[15px] text-ink-2"><Claim text={it.before || ""} /></p>
-          <p lang="ja" className="text-[21px] leading-[1.6]"><Claim text={it.after || ""} changed={it.warnings.find((w) => w.code === "ja-numbers")?.diff?.added} /></p>
-        </div>
-      ) : it.kind === "proposal.fact.retire" ? (
-        <div className="grid gap-3">
-          <p className="text-[19px] text-ink-2 line-through decoration-ink-3"><Claim text={it.before || ""} /></p>
-          <p className="text-[15px]"><span className="label mr-3 text-ink-3">{t("review.reason")}</span>{it.reason}</p>
-        </div>
-      ) : (
-        <div className="grid gap-3">
-          {it.kind === "variant" && it.before && <p className="text-[15px] text-ink-2"><Claim text={it.before} /></p>}
-          <p className="text-[21px] leading-[1.45]"><Claim text={it.after || ""} changed={it.kind === "variant" ? it.warnings.find((w) => w.code === "variant-numbers")?.diff?.added : undefined} /></p>
-          {it.kind === "proposal.fact.new" && it.ja && <p lang="ja" className="text-[16px] text-ink-2">{it.ja}</p>}
-        </div>
-      )}
-
-      {it.note && <p className="border-l-4 border-ink px-3 py-1 text-[14.5px]"><span className="label mr-3 text-ink-3">{t("review.note")}</span>{it.note}</p>}
-
-      {ev && (ev.quote || ev.source) && (
-        <dl className="grid grid-cols-[96px_1fr] gap-x-4 gap-y-2 border-2 rule p-4 text-[14.5px]">
-          {ev.quote && <><dt className="label pt-0.5 text-ink-3">{t("review.evidence")}</dt><dd>“{ev.quote}”</dd></>}
-          <dt className="label pt-0.5 text-ink-3">{t("review.source")}</dt>
-          <dd className="flex flex-wrap items-center gap-2">
-            <Prov letter={it.fact?.provenance ?? null} t={t} />
-            <span>{showPath && ev.source ? `${ev.source}${ev.line ? `, line ${ev.line}` : ""}` : t("review.sourceHidden")}</span>
-            {it.fact?.provenance && <span className="text-ink-2">· {t(`prov.${it.fact.provenance}`)}</span>}
-          </dd>
-        </dl>
-      )}
-
-      <Warnings it={it} t={t} />
-      {it.checks && it.kind !== "ja" && it.kind !== "entity" && it.kind !== "packet" && it.kind !== "proposal.posting" && it.kind !== "proposal.fact.retire" && it.kind !== "proposal.entity.new" && (
-        <div className="flex flex-wrap items-start gap-4"><Findings findings={it.checks} t={t} />{it.after && <span className="label num text-ink-3">{t("common.chars", { n: [...it.after].length, max: 230 })}</span>}</div>
-      )}
 
       <div className="grid gap-3 border-t-2 rule pt-5">
         {owner ? (

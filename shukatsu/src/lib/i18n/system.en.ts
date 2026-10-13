@@ -7,6 +7,7 @@
 const sys = {
   "password.same": "Pick a new password, not the one you have now.",
   sys: {
+    row: { flag: "Flag", packet: "Packet", english: "English", japanese: "Japanese", retire: "Retire", reworded: "Reworded", wording: "Wording", check: "Check" },
     familyFeed: "Calendar link", familyFeedMade: "A private calendar link for {name}. It shows times and places, not notes or meeting links. Send it to them; it isn't shown again.",
     upcoming: "Coming up", upcomingNone: "Nothing on the calendar for three weeks.",
     reviewGone: "That item isn't waiting any more. It may have been decided or withdrawn.",

@@ -50,7 +50,7 @@ export function Flash({ children, tone = "ink" }: { children: React.ReactNode; t
 }
 
 export function Findings({ findings, t }: { findings: { severity: string; rule: string; message: string }[]; t: T }) {
-  if (!findings.length) return <span className="label border border-ink-3 px-2 py-1 text-ink-2">{t("review.rules.pass")}</span>;
+  if (!findings.length) return <span className="text-[14.5px] text-ink-2">{t("review.rules.pass")}</span>;
   return (
     <ul className="grid gap-1.5">
       {findings.map((f, i) => (
