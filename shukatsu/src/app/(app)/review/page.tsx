@@ -44,7 +44,7 @@ function Warnings({ it, t }: { it: QueueItem; t: T }) {
         const hard = Boolean(w.blocking || w.code === "stale");
         return (
           <Row key={i} label={t("sys.row.flag")} tone={hard ? "shu" : undefined}>
-            <span className={`text-[14.5px] ${hard ? "text-shu" : "text-ink-2"}`}>
+            <span className={hard ? "text-shu" : ""}>
               {t(`review.warn.${w.code}`, { entity: w.entity, current: w.current, added: w.diff?.added.join(", ") || "–", removed: w.diff?.removed.join(", ") || "–" })}
             </span>
           </Row>
@@ -54,12 +54,16 @@ function Warnings({ it, t }: { it: QueueItem; t: T }) {
   );
 }
 
-/** One line of the item's ledger: a mono label on the left, the content on the right. */
-function Row({ label, tone, children }: { label: string; tone?: "shu"; children: React.ReactNode }) {
+/**
+ * One line of the item's ledger: a mono label, then the content, all at one
+ * text size. The `primary` row is the line being decided: its label is shu
+ * and the row has a faint wash, so it's found at a glance.
+ */
+function Row({ label, tone, primary = false, children }: { label: string; tone?: "shu"; primary?: boolean; children: React.ReactNode }) {
   return (
-    <div className="grid gap-1 border-t hair py-3.5 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:gap-6">
-      <span className={`label pt-1 ${tone === "shu" ? "text-shu" : "text-ink-3"}`}>{label}</span>
-      <div className="min-w-0">{children}</div>
+    <div className={`grid gap-1 border-t hair px-3 py-2.5 sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:gap-5 ${primary ? "bg-paper-2" : ""}`}>
+      <span className={`label self-start pt-[3px] ${primary || tone === "shu" ? "text-shu" : "text-ink-3"}`}>{label}</span>
+      <div className={`min-w-0 text-[15.5px] leading-[1.55] ${primary ? "text-ink" : "text-ink-2"}`}>{children}</div>
     </div>
   );
 }
@@ -78,62 +82,62 @@ function ItemCard({ it, next, user, t }: { it: QueueItem; next: string | null; u
     t(`review.kind.${it.kind}`),
     it.created_at ? relative(it.created_at, user.lang) : null,
   ].filter(Boolean).join(" · ");
-  const big = "text-[20px] leading-[1.5]";
+  const big = "text-[17.5px] leading-[1.55] text-ink";
   return (
-    <article className="grid content-start gap-6 px-4 py-6 sm:px-10 sm:py-8" aria-labelledby="q">
-      <header className="grid gap-2">
+    <article className="grid content-start gap-5 px-4 py-5 sm:px-10 sm:py-7" aria-labelledby="q">
+      <header className="grid gap-1.5">
         <Link href="/review" className="label text-ink-2 md:hidden">← {t("review.title")}</Link>
         {it.entity && <p className="label text-ink-3">{[it.entity.heading || it.entity.label, it.entity.title, it.entity.dates].filter(Boolean).join(" · ")}</p>}
-        <h2 id="q" className="heading text-[24px] sm:text-[28px]">{question(it, t)}</h2>
+        <h2 id="q" className="heading text-[22px] sm:text-[26px]">{question(it, t)}</h2>
         <p className="label text-ink-2">{meta}</p>
       </header>
 
-      <div className="border-b hair">
+      <div>
         {it.kind === "packet" ? (
-          <Row label={t("sys.row.packet")}>
-            <p className="text-[18px]">{[it.company, it.role].filter(Boolean).join(" · ")}</p>
-            <Link href={`/packets/${it.packet}`} className="link mt-2 inline-block text-[15px]">{t("review.packetOpen")} →</Link>
+          <Row label={t("sys.row.packet")} primary>
+            <p>{[it.company, it.role].filter(Boolean).join(" · ")}</p>
+            <Link href={`/packets/${it.packet}`} className="link mt-1 inline-block">{t("review.packetOpen")} →</Link>
           </Row>
         ) : it.kind === "proposal.posting" && it.posting ? (
           <>
-            <Row label={t("review.posting.link")}><a className="link break-all" href={it.posting.url} target="_blank" rel="noreferrer noopener">{it.posting.url}</a></Row>
+            <Row label={t("review.posting.link")} primary><a className="link break-all" href={it.posting.url} target="_blank" rel="noreferrer noopener">{it.posting.url}</a></Row>
             {it.posting.company && <Row label={t("review.posting.company")}>{it.posting.company}</Row>}
             {it.posting.role && <Row label={t("review.posting.role")}>{it.posting.role}</Row>}
             {it.posting.note && <Row label={t("review.posting.note")}>{it.posting.note}</Row>}
           </>
         ) : isEdit ? (
           <>
-            <Row label={t("review.before")}><p className="text-[16px] text-ink-2"><Claim text={it.before!} /></p></Row>
-            <Row label={t("review.after")} tone="shu"><p className={big}><Diff before={it.before!} after={it.after!} /></p></Row>
+            <Row label={t("review.before")}><Claim text={it.before!} /></Row>
+            <Row label={t("review.after")} primary><p className={big}><Diff before={it.before!} after={it.after!} /></p></Row>
           </>
         ) : it.kind === "ja" ? (
           <>
-            <Row label={t("sys.row.english")}><p className="text-[16px] text-ink-2"><Claim text={it.before || ""} /></p></Row>
-            <Row label={t("sys.row.japanese")} tone="shu"><p lang="ja" className="text-[20px] leading-[1.7]"><Claim text={it.after || ""} changed={it.warnings.find((w) => w.code === "ja-numbers")?.diff?.added} /></p></Row>
+            <Row label={t("sys.row.english")}><Claim text={it.before || ""} /></Row>
+            <Row label={t("sys.row.japanese")} primary><p lang="ja" className="text-[17.5px] leading-[1.7] text-ink"><Claim text={it.after || ""} changed={it.warnings.find((w) => w.code === "ja-numbers")?.diff?.added} /></p></Row>
           </>
         ) : it.kind === "proposal.fact.retire" ? (
           <>
-            <Row label={t("sys.row.retire")} tone="shu"><p className="text-[18px] text-ink-2 line-through decoration-ink-3"><Claim text={it.before || ""} /></p></Row>
+            <Row label={t("sys.row.retire")} primary><p className="line-through decoration-ink-3"><Claim text={it.before || ""} /></p></Row>
             {it.reason && <Row label={t("review.reason")}>{it.reason}</Row>}
           </>
         ) : it.kind === "variant" && it.before ? (
           <>
-            <Row label={t("review.before")}><p className="text-[16px] text-ink-2"><Claim text={it.before} /></p></Row>
-            <Row label={t("sys.row.reworded")} tone="shu"><p className={big}><Claim text={it.after || ""} changed={it.warnings.find((w) => w.code === "variant-numbers")?.diff?.added} /></p></Row>
+            <Row label={t("review.before")}><Claim text={it.before} /></Row>
+            <Row label={t("sys.row.reworded")} primary><p className={big}><Claim text={it.after || ""} changed={it.warnings.find((w) => w.code === "variant-numbers")?.diff?.added} /></p></Row>
           </>
         ) : (
           <>
-            <Row label={t("sys.row.wording")} tone="shu"><p className={big}><Claim text={it.after || ""} /></p></Row>
-            {it.kind === "proposal.fact.new" && it.ja && <Row label={t("sys.row.japanese")}><p lang="ja" className="text-[16px] text-ink-2">{it.ja}</p></Row>}
+            <Row label={t("sys.row.wording")} primary><p className={big}><Claim text={it.after || ""} /></p></Row>
+            {it.kind === "proposal.fact.new" && it.ja && <Row label={t("sys.row.japanese")}><span lang="ja">{it.ja}</span></Row>}
           </>
         )}
 
         {it.note && <Row label={t("review.note")}>{it.note}</Row>}
-        {ev?.quote && <Row label={t("review.evidence")}>“{ev.quote}”</Row>}
         {ev && (ev.quote || ev.source) && (
           <Row label={t("review.source")}>
-            <span className="text-ink-2">
-              {showPath && ev.source ? `${ev.source}${ev.line ? `, line ${ev.line}` : ""}` : t("review.sourceHidden")}
+            {ev.quote && <>“{ev.quote}” <span className="text-ink-3">· </span></>}
+            <span className="text-ink-3">
+              {showPath && ev.source ? `${ev.source}${ev.line ? `:${ev.line}` : ""}` : t("review.sourceHidden")}
               {it.fact?.provenance && <> · {t(`prov.${it.fact.provenance}`)}</>}
             </span>
           </Row>
@@ -141,18 +145,18 @@ function ItemCard({ it, next, user, t }: { it: QueueItem; next: string | null; u
         {checked && (
           <Row label={t("sys.row.check")} tone={failing.length ? "shu" : undefined}>
             {failing.length || (it.checks || []).length ? (
-              <ul className="grid gap-1 text-[14.5px]">
+              <ul className="grid gap-1">
                 {(it.checks || []).map((c, i) => <li key={i} className={c.severity === "error" ? "text-shu" : "text-ink-2"}><span className="label mr-3">{c.rule}</span>{c.message}</li>)}
               </ul>
             ) : (
-              <span className="text-[14.5px] text-ink-2">{t("review.rules.pass")}{it.after ? <span className="label num ml-3 text-ink-3">{[...it.after].length}/230</span> : null}</span>
+              <span>{t("review.rules.pass")}{it.after ? <span className="text-ink-3"> · {[...it.after].length}/230</span> : null}</span>
             )}
           </Row>
         )}
         <Warnings it={it} t={t} />
       </div>
 
-      <div className="grid gap-3 border-t-2 rule pt-5">
+      <div className="-mt-5 grid gap-3 border-t-2 rule pt-4">
         {owner ? (
           <>
             {it.hasNumbers && it.kind !== "ja" && it.kind !== "variant" && <p className="font-bold">{n === 1 ? t("review.figuresOne") : t("review.figures", { n })}</p>}
