@@ -71,7 +71,7 @@ registry in `core/ops`. The design is `docs/specs/v1-headless.md`.
 The app finds the data root the same way every career-ops tool does: `CAREER_OPS_DATA_DIR`,
 else the `.career-ops-data` marker in the repo root. The engine is loaded at runtime from the
 checkout (never bundled), so the app runs exactly the code the CLIs run. Restart the daemon
-after changing anything under `core/`, `connectors/`, or `platforms/`.
+after changing anything under `core/`, `connectors/`, `platforms/`, or `apply/`.
 
 ### Agents
 
@@ -95,6 +95,22 @@ on those sites. Load it unpacked from `chrome://extensions`, make a capture key 
 page, put it and the daemon's address in the extension's options, and turn it on under
 Settings, Connections. The toolbar button saves any page as a posting. Which hosts and pages
 it reads comes from `platforms/index.mjs`.
+
+On a Greenhouse, Lever, or Ashby application form, Alt+Shift+F fills it (`apply/`): the resume
+goes in first, every answer is written over what the site's own resume reader put there, and a
+panel lists what to check and what is yours to answer. It never presses Submit. Work
+authorization, sponsorship, salary, and demographic questions are filled only from what you
+write in `data/form-answers.yml`:
+
+```yaml
+answers:
+  auth.work: "Yes"
+  auth.sponsorship: "Yes"
+  eeo.gender: Decline to self-identify
+questions:            # a recurring question, in its exact wording
+  - q: "How did you hear about this job?"
+    a: Career fair
+```
 
 ## CLIs
 

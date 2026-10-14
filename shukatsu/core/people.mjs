@@ -60,6 +60,7 @@ const MATRIX = {
   'posting.capture': ['owner', 'agent'],
   // Only the extension, through the owner's capture key: an agent has no browser to have read a page in.
   'page.observe': ['owner'],
+  'application.fill': ['owner'],
   // Stamps: owner only, and never an agent whatever this table says (see can()).
   'review.decide': ['owner'],
   'packet.send': ['owner'],
@@ -394,7 +395,11 @@ export function systemAgent(root) {
  * capture bookmarklet, a calendar feed, and the CLI) and has a kind:
  *
  *   agent    an agent's key for the API and MCP; scopes '*' or op names
- *   capture  "Send to shukatsu" only (posting.capture)
+ *   capture  the browser extension: saving pages (posting.capture,
+ *            page.observe) and filling forms (application.plan, .filled).
+ *            Planning returns the answer bank, so this key reads the
+ *            candidate's contact details and stated answers; keep it in the
+ *            extension only
  *   feed     one private calendar feed (/cal/{token}.ics), read-only
  *   cli      the owner's terminal, kept in .shukatsu/owner.token (0600)
  *   oauth    an access token issued to a remote MCP client (1 hour)
@@ -404,7 +409,7 @@ export function systemAgent(root) {
  * kind (shk_agent_...) so a leaked one is recognizable in a log or a scan.
  */
 export const TOKEN_KINDS = ['agent', 'capture', 'feed', 'cli', 'oauth', 'refresh'];
-const TOKEN_SCOPES = { capture: ['posting.capture', 'page.observe'], feed: ['calendar.feed'] };
+const TOKEN_SCOPES = { capture: ['posting.capture', 'page.observe', 'application.plan', 'application.filled'], feed: ['calendar.feed'] };
 
 export function issueToken(root, { actor = null, userId, kind, name, scopes = null, days = null, clientId = null, parentId = null }) {
   if (!TOKEN_KINDS.includes(kind)) throw new Error(`Unknown token kind "${kind}".`);

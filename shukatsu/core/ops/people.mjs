@@ -157,7 +157,7 @@ export default [
   {
     name: 'token.create',
     kind: 'command',
-    summary: 'Make a token: an agent\'s key, the capture bookmarklet\'s, or a private calendar feed for a person. The value is shown once.',
+    summary: 'Make a token: an agent\'s key, the browser extension\'s (capture), or a private calendar feed for a person. The value is shown once.',
     permission: 'token.manage',
     stamp: true,
     input: S.obj({

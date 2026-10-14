@@ -57,9 +57,18 @@ These can be turned on, each by the candidate:
 6. **Captured postings.** "Send to shukatsu" copies the text of the posting the candidate is
    looking at into the data root, where it becomes the archived job description. It sends
    nothing anywhere else.
+7. **Filled application forms.** When the candidate presses Fill on a Greenhouse, Lever, or
+   Ashby form, the extension gets that form's answers from shukatsu and types them into the
+   employer's page: name, email, phone, links, school, the resume PDF, and any answers the
+   candidate has stated in `data/form-answers.yml` (work authorization, demographics, and
+   the like, which come only from there). The employer's page holds them from that moment.
+   Some sites save a draft or read fields before Submit is pressed, so filling a form counts
+   as giving it to that employer. shukatsu itself sends them nowhere, and no model sees the
+   form. The capture key that asks for these answers can read the candidate's contact
+   details and stated answers, so it belongs in the extension only.
 
-Applications themselves are never sent by shukatsu. The candidate submits them, outside
-the app, and then marks them sent.
+Applications themselves are never sent by shukatsu. The candidate presses the site's Submit,
+and then marks them sent.
 
 ## Connectors
 
@@ -136,7 +145,8 @@ log under that person's or agent's name.
   removed (`/in/:id`) and a count, and the page's text never leaves the browser.
 - **What leaves.** Nothing leaves the machine. The extension sends pages only to the
   candidate's own shukatsu, at the address set in its options, and the connector makes no
-  request of its own. It uses a capture key, which can only save pages and postings.
+  request of its own. It uses a capture key, which saves pages and postings and, for Fill,
+  reads the answers that go into a form (item 7 above).
 - **Who can see it.** Message threads and some postings hold other people's names. Like
   messages, these pages are read only by the candidate and by agents the candidate allowed,
   and they are marked as outside text. A posting waits in the inbox until someone

@@ -16,7 +16,7 @@ const { stateDir } = await import('../core/lock.mjs');
 const sync = await import('../core/sync.mjs');
 const connectors = await import('../connectors/index.mjs');
 const { shapeOf } = await import('../connectors/browser/index.mjs');
-const { fromBoard, isPostingLink, pageOf, passiveHosts, platformOfSender, platformOfUrl } = await import('../platforms/index.mjs');
+const { fillHosts, fromBoard, isPostingLink, pageOf, passiveHosts, platformOfSender, platformOfUrl } = await import('../platforms/index.mjs');
 const { makeRoot, people, read } = await import('./helpers.mjs');
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -72,12 +72,14 @@ test('a path folds its ids, so other pages are kept by shape', () => {
   assert.equal(shapeOf('/'), '/');
 });
 
-test('the extension asks for exactly the hosts the registry reads passively', () => {
+test('the extension asks for exactly the hosts the registry reads passively, and may fill', () => {
   const manifest = JSON.parse(readFileSync(join(HERE, '..', 'extension', 'manifest.json'), 'utf-8'));
   const want = passiveHosts().flatMap((h) => [`https://${h}/*`, `https://*.${h}/*`]).sort();
   assert.deepEqual([...manifest.content_scripts[0].matches].sort(), want);
   assert.equal(manifest.host_permissions, undefined, 'it reads pages through its content script and asks for no host access beyond that');
-  assert.deepEqual([...manifest.permissions].sort(), ['activeTab', 'scripting', 'storage']);
+  assert.deepEqual([...manifest.optional_host_permissions].sort(), fillHosts().flatMap((h) => [`https://${h}/*`, `https://*.${h}/*`]).sort(), 'filling asks, once, for the ATS hosts the registry fills');
+  assert.ok(!fillHosts().some((h) => h.includes('linkedin')), 'LinkedIn is never filled');
+  assert.deepEqual([...manifest.permissions].sort(), ['activeTab', 'contextMenus', 'scripting', 'storage']);
   assert.equal(manifest.content_scripts[0].world ?? 'ISOLATED', 'ISOLATED', 'the reader never runs in the page\'s own world');
 });
 

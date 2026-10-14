@@ -102,7 +102,7 @@ export async function disableAgentAction(form: FormData) {
   revalidatePath("/settings/agents");
 }
 
-/** A key for an agent, a calendar feed, or the capture bookmarklet. The raw token comes back once, in `data`. */
+/** A key for an agent, a calendar feed, or the browser extension (capture). The raw token comes back once, in `data`. */
 export async function tokenAction(_: ActionResult | null, form: FormData): Promise<ActionResult> {
   const r = await op("token.create", { user_id: Number(form.get("user_id")), kind: str(form, "kind"), name: str(form, "name") || str(form, "kind") });
   if (r.ok) { revalidatePath("/settings/agents"); revalidatePath("/calendar"); revalidatePath("/people"); }

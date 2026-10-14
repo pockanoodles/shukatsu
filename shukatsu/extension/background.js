@@ -7,9 +7,13 @@
  *             board or altogether -> page.observe
  *   the toolbar button   any page at all, pressed by the candidate ->
  *             posting.capture with the page's text (the bookmarklet's job)
+ *   Fill      the shortcut (Alt+Shift+F) or the toolbar button's menu, on an
+ *             application form -> application.plan, then filler.js fills
+ *             it, panel.js lists what went where, and application.filled
+ *             records how it went. Nothing presses Submit.
  *
  * The badge says what happened: + a posting went to the inbox, ✓ saved,
- * ! something failed (the options page says what).
+ * … filling, ! something failed (the options page says what).
  */
 
 const settings = () => chrome.storage.local.get({ url: 'http://127.0.0.1:3000', token: '', reading: true, off: [] });
@@ -79,3 +83,85 @@ chrome.action.onClicked.addListener(async (tab) => {
     await badge(tab.id, '!', e.message);
   }
 });
+
+// ------------------------------------------------------------------ fill
+
+/** Run a function in the tab: every frame the extension may reach, or the ones named. */
+async function inTab(tabId, func, args = [], frameIds = null) {
+  const target = frameIds ? { tabId, frameIds } : { tabId, allFrames: true };
+  return chrome.scripting.executeScript({ target, func, args });
+}
+
+const reports = new Map(); // tabId -> { url, frames left to report }
+
+async function fill(tab) {
+  const started = Date.now();
+  await badge(tab.id, '…');
+  try {
+    // Every frame we may reach: a Greenhouse form often sits in an iframe on the company's own site.
+    await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ['filler.js'] }).catch(() =>
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['filler.js'] }));
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['panel.js'] });
+    const read = (await inTab(tab.id, () => globalThis.__shukatsuFill?.read({ fresh: true }) ?? null))
+      .filter((r) => r.result?.fields?.some((f) => f.visible));
+    if (!read.length) throw new Error('There is no form on this page to fill.');
+
+    const rows = [];
+    let posting = null;
+    for (const { frameId, result } of read) {
+      const plan = await call('application.plan', { url: result.url, fields: result.fields });
+      posting = posting || plan.posting;
+      const [{ result: done }] = await inTab(tab.id, (p) => globalThis.__shukatsuFill.act(p), [plan], [frameId]);
+      rows.push(...done.rows.map((r) => ({ ...r, frameId })));
+      // An answer can reveal a follow-up question; plan and fill those once more.
+      const known = new Set(result.fields.map((f) => f.ref));
+      const [{ result: after }] = await inTab(tab.id, () => globalThis.__shukatsuFill.read(), [], [frameId]);
+      const fresh = after.fields.filter((f) => !known.has(f.ref));
+      if (fresh.some((f) => f.visible)) {
+        const more = await call('application.plan', { url: after.url, fields: fresh });
+        const [{ result: two }] = await inTab(tab.id, (p) => globalThis.__shukatsuFill.act({ ...p, resume: null }), [more], [frameId]);
+        rows.push(...two.rows.map((r) => ({ ...r, frameId })));
+      }
+      await inTab(tab.id, () => globalThis.__shukatsuFill.watch(), [], [frameId]);
+    }
+    const ms = Date.now() - started;
+    reports.set(tab.id, { url: read[0].result.url, left: read.length, ms });
+    const title = posting ? `${posting.company}, ${posting.role}` : new URL(read[0].result.url).hostname;
+    const note = posting ? null : 'shukatsu doesn\'t know this posting, so only your profile and stated answers were used.';
+    await inTab(tab.id, (s) => globalThis.__shukatsuPanel.render(s), [{ title, posting: note, rows, ms }], [0]);
+    await badge(tab.id, '');
+  } catch (e) {
+    await badge(tab.id, '!', e.message);
+  }
+}
+
+const count = (rows, test) => rows.filter(test).length;
+
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  const tabId = sender.tab?.id;
+  if (tabId == null) return false;
+  if (msg?.type === 'fill.rows') {
+    chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, func: (f, r) => globalThis.__shukatsuPanel?.update(f, r), args: [sender.frameId, msg.rows] }).catch(() => {});
+    const rep = reports.get(tabId);
+    if (msg.final && rep) {
+      const r = msg.rows;
+      call('application.filled', {
+        url: rep.url, ms: rep.ms,
+        filled: count(r, (x) => ['set', 'restored', 'yours-now'].includes(x.state)), check: count(r, (x) => x.mark === 'check'),
+        yours: count(r, (x) => x.mark === 'yours'), restored: count(r, (x) => x.state === 'restored'), failed: count(r, (x) => x.state === 'failed'),
+      }).catch(() => {});
+      if (--rep.left <= 0) reports.delete(tabId);
+    }
+  }
+  if (msg?.type === 'fill.show') {
+    chrome.scripting.executeScript({ target: { tabId, frameIds: [msg.frameId ?? 0] }, func: (ref) => globalThis.__shukatsuFill?.show(ref), args: [msg.ref] }).catch(() => {});
+  }
+  return false;
+});
+
+chrome.commands.onCommand.addListener((command, tab) => { if (command === 'fill' && tab) fill(tab); });
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({ id: 'fill', title: 'Fill this application', contexts: ['action'] }, () => void chrome.runtime.lastError);
+});
+chrome.contextMenus.onClicked.addListener((info, tab) => { if (info.menuItemId === 'fill' && tab) fill(tab); });

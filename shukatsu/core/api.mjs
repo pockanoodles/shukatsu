@@ -17,7 +17,7 @@
 import { OpError, OPS, available, describe, run, tokenPrincipal } from './ops/index.mjs';
 import { readJson } from './http.mjs';
 
-const CORS_OPS = new Set(['posting.capture', 'page.observe']);
+const CORS_OPS = new Set(['posting.capture', 'page.observe', 'application.plan', 'application.filled']);
 const cors = (origin) => (origin ? {
   'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600', Vary: 'Origin',

@@ -25,6 +25,18 @@
  *              shows up without its text ever being kept.
  *   automation 'never' where no software may act in the candidate's session
  *              (LinkedIn restricts accounts for it)
+ *   fill       for an ATS whose application form the extension may fill when
+ *              the candidate presses Fill (apply/, docs/specs/v1-headless.md):
+ *                fields  the form's own field names, by input name or id,
+ *                        mapped to an answer key (apply/fields.mjs). Exact,
+ *                        so these never need a label read or a model.
+ *                parser  how the site reads an uploaded resume into the form:
+ *                        'on-upload' rewrites fields after a file is chosen,
+ *                        'button' only when its own autofill button is pressed,
+ *                        'none' never. The filler uploads first and waits it out.
+ *                clicks  false where a scripted click on a box or a radio
+ *                        trips the site's captcha; those are left to the
+ *                        candidate, marked with the answer to tick.
  *
  * Page patterns for a board are a first reading of its URLs and are corrected
  * from the paths the extension logs.
@@ -83,9 +95,27 @@ export const PLATFORMS = [
   { id: 'onecareer', name: 'ONE CAREER', kind: 'board', hosts: ['onecareer.jp'], mail: ['onecareer.jp'] },
   { id: 'offerbox', name: 'OfferBox', kind: 'board', hosts: ['offerbox.jp'], mail: ['offerbox.jp'] },
 
-  { id: 'greenhouse', name: 'Greenhouse', kind: 'ats', hosts: ['greenhouse.io'], mail: ['greenhouse.io'], postings: ['greenhouse.io'] },
-  { id: 'lever', name: 'Lever', kind: 'ats', hosts: ['lever.co'], mail: ['lever.co'], postings: ['lever.co'] },
-  { id: 'ashby', name: 'Ashby', kind: 'ats', hosts: ['ashbyhq.com'], mail: ['ashbyhq.com'], postings: ['ashbyhq.com'] },
+  {
+    id: 'greenhouse', name: 'Greenhouse', kind: 'ats', hosts: ['greenhouse.io'], mail: ['greenhouse.io'], postings: ['greenhouse.io'],
+    fill: {
+      parser: 'button', clicks: true,
+      fields: { first_name: 'name.given', last_name: 'name.family', preferred_name: 'name.preferred', email: 'email', phone: 'phone', resume: 'file.resume', cover_letter: 'file.cover' },
+    },
+  },
+  {
+    id: 'lever', name: 'Lever', kind: 'ats', hosts: ['lever.co'], mail: ['lever.co'], postings: ['lever.co'],
+    fill: {
+      parser: 'on-upload', clicks: false,
+      fields: { name: 'name.full', email: 'email', phone: 'phone', org: 'work.company', location: 'location', resume: 'file.resume', 'urls[LinkedIn]': 'link.linkedin', 'urls[GitHub]': 'link.github', 'urls[Portfolio]': 'link.portfolio', 'urls[Other]': 'link.portfolio' },
+    },
+  },
+  {
+    id: 'ashby', name: 'Ashby', kind: 'ats', hosts: ['ashbyhq.com'], mail: ['ashbyhq.com'], postings: ['ashbyhq.com'],
+    fill: {
+      parser: 'button', clicks: true,
+      fields: { _systemfield_name: 'name.full', _systemfield_email: 'email', _systemfield_phone: 'phone', _systemfield_location: 'location', _systemfield_resume: 'file.resume' },
+    },
+  },
   { id: 'workday', name: 'Workday', kind: 'ats', hosts: ['myworkdayjobs.com', 'myworkday.com'], mail: ['myworkday.com'], postings: ['myworkdayjobs.com'] },
   { id: 'icims', name: 'iCIMS', kind: 'ats', hosts: ['icims.com'], mail: ['icims.com'], postings: ['icims.com'] },
   { id: 'smartrecruiters', name: 'SmartRecruiters', kind: 'ats', hosts: ['smartrecruiters.com'], mail: ['smartrecruiters.com'], postings: ['smartrecruiters.com'] },
@@ -153,6 +183,9 @@ export const isPostingLink = (url) => {
   const h = hostOf(url);
   return Boolean(h) && PLATFORMS.some((p) => (p.postings || []).some((b) => under(h, b)));
 };
+
+/** The hosts whose forms the extension may fill. extension/manifest.json asks for exactly these, optionally. */
+export const fillHosts = () => PLATFORMS.filter((p) => p.fill && p.automation !== 'never').flatMap((p) => p.hosts);
 
 /** The hosts the extension reads passively. extension/manifest.json must list exactly these. */
 export const passiveHosts = () => PLATFORMS.filter((p) => p.passive).flatMap((p) => p.hosts);

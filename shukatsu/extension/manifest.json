@@ -2,11 +2,20 @@
   "manifest_version": 3,
   "name": "shukatsu",
   "version": "0.1.0",
-  "description": "Reads the job board pages you open (NUworks, Handshake, LinkedIn, CareerForum.Net) into your own shukatsu. It never makes a request to a board.",
+  "description": "Reads the job board pages you open (NUworks, Handshake, LinkedIn, CareerForum.Net) into your own shukatsu, and fills application forms on Greenhouse, Lever, and Ashby when you press Fill. It never makes a request to a board and never submits.",
   "permissions": [
     "activeTab",
+    "contextMenus",
     "scripting",
     "storage"
+  ],
+  "optional_host_permissions": [
+    "https://greenhouse.io/*",
+    "https://*.greenhouse.io/*",
+    "https://lever.co/*",
+    "https://*.lever.co/*",
+    "https://ashbyhq.com/*",
+    "https://*.ashbyhq.com/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -33,5 +42,13 @@
   "action": {
     "default_title": "Send this page to shukatsu"
   },
-  "options_page": "options.html"
+  "options_page": "options.html",
+  "commands": {
+    "fill": {
+      "suggested_key": {
+        "default": "Alt+Shift+F"
+      },
+      "description": "Fill this application form"
+    }
+  }
 }

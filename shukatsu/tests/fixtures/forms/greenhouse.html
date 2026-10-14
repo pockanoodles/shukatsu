@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Apply: Data Analyst Co-op at Acme</title>
+<style>
+  body { font: 15px sans-serif; max-width: 640px; margin: 24px auto; }
+  .field { margin: 14px 0; display: grid; gap: 4px; }
+  .trap { position: absolute; left: -9999px; top: 0; }
+  .file-input { display: none; }
+</style>
+</head>
+<body>
+<!--
+  A Greenhouse-shaped form that misbehaves the ways real ones do:
+  - first_name is controlled the way React controls an input: a value set
+    through the element's own `value` property is thrown away on the next
+    render, and only the native setter plus an input event reaches state;
+  - choosing a resume runs a "resume parser" that rewrites first_name and
+    fills Current Company 600 ms later, and rewrites last_name 2.5 s later;
+  - a hidden "website" field is a bot trap;
+  - Submit records that it was pressed.
+-->
+<form id="application_form" onsubmit="event.preventDefault(); window.__submitted = true;">
+  <div class="field"><label for="first_name">First Name<span>*</span></label><input id="first_name" name="first_name" type="text" required></div>
+  <div class="field"><label for="last_name">Last Name<span>*</span></label><input id="last_name" name="last_name" type="text" required></div>
+  <div class="field"><label for="email">Email<span>*</span></label><input id="email" name="email" type="email" required></div>
+  <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="tel"></div>
+  <div class="field"><label for="resume">Resume/CV<span>*</span></label><button type="button" onclick="document.getElementById('resume').click()">Attach</button><input id="resume" name="resume" type="file" class="file-input" accept=".pdf"></div>
+  <div class="field"><label for="company">Current Company</label><input id="company" name="company" type="text"></div>
+  <div class="field"><label for="question_1">How did you hear about this job?</label><input id="question_1" name="question_1" type="text"></div>
+  <div class="field"><label for="question_2">Are you legally authorized to work in the United States?<span>*</span></label>
+    <select id="question_2" name="question_2" required><option value="">Select...</option><option value="1">Yes</option><option value="0">No</option></select></div>
+  <div class="field"><label for="question_3">Will you now or in the future require sponsorship for employment visa status?<span>*</span></label>
+    <select id="question_3" name="question_3" required><option value="">Select...</option><option value="1">Yes</option><option value="0">No</option></select></div>
+  <fieldset class="field"><legend>Gender</legend>
+    <label><input type="radio" name="gender" value="m"> Male</label>
+    <label><input type="radio" name="gender" value="f"> Female</label>
+    <label><input type="radio" name="gender" value="x"> Decline to self-identify</label>
+  </fieldset>
+  <div class="trap"><label for="website">Website</label><input id="website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+  <button type="submit" id="submit_app">Submit Application</button>
+</form>
+<script>
+  const native = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  window.__state = {};
+  // React's controlled input, reduced to the part that bites: a tracker that
+  // swallows values set through the element, and a render that puts state back.
+  function controlled(el) {
+    let tracked = '';
+    window.__state[el.id] = '';
+    Object.defineProperty(el, 'value', { configurable: true, get() { return native.get.call(this); }, set(v) { tracked = String(v); native.set.call(this, v); } });
+    el.addEventListener('input', () => {
+      const now = native.get.call(el);
+      if (now !== tracked) { tracked = now; window.__state[el.id] = now; }
+      setTimeout(() => { if (native.get.call(el) !== window.__state[el.id]) { tracked = window.__state[el.id]; native.set.call(el, window.__state[el.id]); } }, 0);
+    });
+    return (v) => { window.__state[el.id] = v; tracked = v; native.set.call(el, v); };
+  }
+  const setFirst = controlled(document.getElementById('first_name'));
+  document.getElementById('resume').addEventListener('change', () => {
+    setTimeout(() => { setFirst('PARSED FROM RESUME'); native.set.call(document.getElementById('company'), 'Parsed Co'); }, 600);
+    setTimeout(() => { native.set.call(document.getElementById('last_name'), 'Parsed'); }, 2500);
+  });
+</script>
+</body>
+</html>

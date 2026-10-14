@@ -375,17 +375,100 @@ canonical fix.
   the candidate opens and the occasional data export are the only ways in, because losing
   the account costs more than any data from it.
 
-### Later: applying for the candidate
+### Filling application forms
 
-Decided 2026-10-14. An agent driving the browser (a model-run macro over the candidate's
-own screen) fills applications on boards that allow it: it opens the form, uploads the
-packet's CV, answers from approved packet answers, and stops at the final button. Pressing
-that button is always the candidate's: submitting is a stamp, `application.submit`, pressed
-on the filled form or from a phone, and no agent, token, or schedule can make it. The hard
-part (navigating and filling) is automated and the decision isn't. That keeps the upstream
-rule that nothing is submitted without the candidate reviewing it, and it never runs on
-LinkedIn. Employer ATS forms (Greenhouse, Lever, Ashby) come first: they are standardized,
-and applying on the employer's own site is their intended use.
+Decided 2026-10-14. The candidate presses Fill (Alt+Shift+F, or the toolbar button's
+menu) on an application form. shukatsu fills it, lists what went where, and outlines the
+site's Submit button. Pressing that button is always the candidate's, and so is the
+stamp that records it: `packet.markSent` (permission `packet.send`, a stamp). No agent,
+token, or schedule can do either. It never runs on LinkedIn (`automation: 'never'`).
+Employer ATS forms come first: Greenhouse, Lever, Ashby.
+
+**The model reads, code acts.** A filler that takes a screenshot, asks a model where to
+click, and clicks spends a model round trip per field, which is minutes for a 30-field
+form, and positional clicks pick the wrong option where the order varies (Workday's
+Yes/No). Here no model is in the loop. The page is read once, the whole form is planned
+in one call, and the plan is written in one pass:
+
+```
+extension/filler.js  read()     every field as a person sees it: kind, accessible name,
+                                required, options, visible. In every frame the extension
+                                may reach (a Greenhouse form is often framed on the
+                                company's site).
+application.plan     apply/     each field to a value, by the strongest signal it has:
+                                the ATS's own field name (platforms/ fill.fields), the
+                                autocomplete token, the label, the input's name. Values
+                                from the answer bank (apply/bank.mjs) and the posting's
+                                packet. Milliseconds, no model.
+extension/filler.js  act(plan)  1. the resume first; wait until the page stops changing
+                                2. every value written over whatever the site put there
+                                3. read back; a value a framework threw away is typed
+                                4. watch(): for 12 s, a value the site changes is put back
+extension/panel.js              the list: yours, then check, then sure
+application.filled              counts and timing, in the activity log
+```
+
+A second round runs when an answer reveals a follow-up question.
+
+The three ways filling goes wrong, and what answers each:
+
+- **Slow.** No model in the loop, as above. The target is a known form filled in under 5
+  seconds from the press, most of it the wait for the site's resume parser.
+- **The wrong value in a box.** The ATS's own field names are exact and come first. A
+  label is matched only to an answer key whose kind fits (a resume never goes into a text
+  box). A choice is matched to an option by its text, and two equally good options are
+  left to the candidate, not guessed. Every value is read back after it is written, and
+  each row says how sure it is (`sure`, `check`, `yours`).
+- **The site's own autofill.** The real culprit is usually the ATS reading the uploaded
+  resume back into the form. It overwrites names and fills fields with what it parsed.
+  So the resume goes in first and the filler waits for the page to go quiet (longer
+  where the registry says `parser: 'on-upload'`). Then every planned value is written
+  over what the site put there, and the guard puts back a late overwrite. A field the
+  site filled that the plan left alone is marked for a look. Chrome's own autofill is
+  told apart from the candidate's typing by `:autofill`, and only a change the candidate
+  made by hand is left alone.
+
+Values are written the way a framework notices: the element prototype's own value setter
+(past any wrapper React puts on the element), then input, change, and focusout events. A
+type-ahead (react-select and the like) gets the text typed, and then the option that
+appears is picked.
+
+**What is never filled.** A field no person can see (off-screen, zero-sized, styled
+away) is reported hidden and left alone, because filling a bot trap marks the
+application as a bot's. File inputs are the exception, since most forms style them away
+behind a button. A box or radio on a site whose captcha trips on scripted clicks
+(Lever, `clicks: false`) is left to the candidate, with the answer to tick shown.
+
+**Sensitive answers are stated, never derived.** Work authorization, sponsorship, salary,
+demographics, and consent are filled only from `data/form-answers.yml`, the candidate's
+own words. They are never worked out from the profile. A student on CPT is authorized
+for a co-op without being listed as authorized in the country, so deriving either answer
+would put a false statement in front of an employer. The same file holds answers to
+recurring questions in their exact wording.
+
+**The resume.** It is the newest `data/pdf-index.tsv` CV whose file name carries the
+posting's company. The panel always names it, so a wrong one is seen before Submit.
+
+**Access.** The capture key gained `application.plan` and `application.filled`. A plan
+returns the answer bank, so that key now reads contact details and stated answers, and
+it lives only in the extension. The top frame is reached through `activeTab` when the
+candidate presses Fill. A form framed from an ATS needs that ATS's host, which the options
+page asks for once as an optional permission.
+
+Next:
+
+1. **Plans ready before the press.** Greenhouse's public board API lists a posting's
+   questions (`?questions=true`), so a posting's plan can be built when it is saved, and
+   its free-text answers drafted into the packet for review then. It would need an egress
+   entry and a DATAFLOW line.
+2. **Answers learned from corrections.** When the candidate changes a filled value or
+   answers a `yours` row, the new answer goes to the inbox as a proposal for
+   `data/form-answers.yml`, and is written only when the candidate accepts it.
+3. **A model for what nothing matched.** One batched call per form, through
+   `core/llm.mjs`, that may only map a field to an answer key or pick an option index.
+   It never writes a value, so coverage grows without a new way to be wrong.
+4. **Workday**, whose steps, per-tenant accounts, and fields that only register keystrokes
+   (modes/apply.md, Known ATS Quirks) make it a separate adapter.
 
 ## Campaigns
 
@@ -448,7 +531,8 @@ following.
 | 1 | `shukatsud` with the app mounted inside it, the remaining operations, server actions moved onto `ops.run`, CLI routing, the guard test | One writer and one door |
 | 2 | MCP over HTTP and stdio, agent principals, tokens, resources and prompts | Agents become first-class clients |
 | 3 | OAuth for remote MCP, the tunnel routes, Cloudflare Access split | claude.ai and phone access |
-| 4 | `platforms/`, the passive extension and `browser` connector, then the board readers, `msgraph`, `gcal`, `eventkit`, `line` | More of the same pattern |
+| 4 | `platforms/`, the passive extension and `browser` connector, form filling (`apply/`, `application.plan`), then the board readers, `msgraph`, `gcal`, `eventkit`, `line` | More of the same pattern |
 
 Phases 0 to 3 shipped together in October 2026. In phase 4, the platform registry and the
-passive extension shipped first; the board readers wait on pages kept from real use.
+passive extension shipped first, then form filling for Greenhouse, Lever, and Ashby; the
+board readers wait on pages kept from real use.
