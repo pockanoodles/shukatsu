@@ -58,6 +58,8 @@ const MATRIX = {
   'inbox.read': ['owner', 'agent'],
   'inbox.write': ['owner', 'agent'],
   'posting.capture': ['owner', 'agent'],
+  // Only the extension, through the owner's capture key: an agent has no browser to have read a page in.
+  'page.observe': ['owner'],
   // Stamps: owner only, and never an agent whatever this table says (see can()).
   'review.decide': ['owner'],
   'packet.send': ['owner'],
@@ -402,7 +404,7 @@ export function systemAgent(root) {
  * kind (shk_agent_...) so a leaked one is recognizable in a log or a scan.
  */
 export const TOKEN_KINDS = ['agent', 'capture', 'feed', 'cli', 'oauth', 'refresh'];
-const TOKEN_SCOPES = { capture: ['posting.capture'], feed: ['calendar.feed'] };
+const TOKEN_SCOPES = { capture: ['posting.capture', 'page.observe'], feed: ['calendar.feed'] };
 
 export function issueToken(root, { actor = null, userId, kind, name, scopes = null, days = null, clientId = null, parentId = null }) {
   if (!TOKEN_KINDS.includes(kind)) throw new Error(`Unknown token kind "${kind}".`);

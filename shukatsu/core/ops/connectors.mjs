@@ -7,9 +7,15 @@
  * data reaches this machine. Listing is open to whoever may read the inbox,
  * and never returns a secret. Syncing is open to them as well, because it only
  * fetches again what the account already allows.
+ *
+ * page.observe is the browser extension's way in. It is owner-only, so it
+ * arrives through the owner's capture key and never from an agent, which has
+ * no browser to have read a page in.
  */
 
 import { CONNECTORS, changeAccount, connectorIds, createAccount, removeAccount, syncNow } from '../../connectors/index.mjs';
+import { observe } from '../../connectors/browser/index.mjs';
+import { PAGE_KINDS } from '../../platforms/index.mjs';
 import { getAccount, listAccounts, openSignalCount, purge, syncDb } from '../sync.mjs';
 import { S } from './schema.mjs';
 
@@ -137,5 +143,24 @@ export default [
     output: S.obj({ records: S.int(), signals: S.int() }, ['records', 'signals']),
     activity: (input, out) => ({ verb: 'connector.purged', subject: input.connector ? `connector:${input.connector}` : 'connector:all', detail: out }),
     run: ({ root, input }) => purge(root, { connector: input.connector }),
+  },
+  {
+    name: 'page.observe',
+    kind: 'command',
+    summary: 'A page of a login-walled board (NUworks, Handshake, LinkedIn, CareerForum.Net) the candidate opened, as the browser extension read it. The board and page kind are decided from the URL; a posting becomes an inbox signal to save it, and any other page of the board is kept by its path alone.',
+    permission: 'page.observe',
+    untrusted: true,
+    input: S.obj({
+      url: S.url(),
+      title: S.str(null, { maxLength: 500, default: '' }),
+      text: S.text('The page\'s visible text. Sent only after a URL-only call answered wants_text.', 400000, { default: '' }),
+      links: S.arr(S.str(null, { maxLength: 2000 }), 'The page\'s links; only http(s) ones are kept.', { maxItems: 1000, default: [] }),
+      observed_at: S.str('When the page was read, ISO 8601.', { maxLength: 40 }),
+    }, ['url']),
+    output: S.obj({
+      platform: S.str(), page: S.enum([...PAGE_KINDS, 'other']), kept: S.enum(['page', 'path', 'none']),
+      record: S.nullable(S.int()), signal: S.nullable(S.int()), wants_text: S.bool('Send the page again with its text: the board lists this kind of page.'),
+    }, ['platform', 'page', 'kept', 'record']),
+    run: ({ root, input }) => observe(root, input),
   },
 ];

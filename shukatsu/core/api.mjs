@@ -8,17 +8,18 @@
  *
  * A result is `{ ok: true, result }`; a refusal is `{ ok: false, error:
  * { code, message, details } }` with the status the error carries. Auth is a
- * bearer token. Capture alone also answers cross-origin (the bookmarklet runs
- * on the job board's page), with no cookies, so CORS grants nothing a token
+ * bearer token. Capture and the extension's page.observe alone also answer
+ * cross-origin (the bookmarklet runs on the job board's page, the extension
+ * from its own origin), with no cookies, so CORS grants nothing a token
  * doesn't already.
  */
 
 import { OpError, OPS, available, describe, run, tokenPrincipal } from './ops/index.mjs';
 import { readJson } from './http.mjs';
 
-const CORS_OPS = new Set(['posting.capture']);
+const CORS_OPS = new Set(['posting.capture', 'page.observe']);
 const cors = (origin) => (origin ? {
-  'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600', Vary: 'Origin',
 } : {});
 
@@ -37,9 +38,11 @@ export async function handleApi(req, res, ctx) {
   const path = new URL(req.url, 'http://x').pathname;
   if (!path.startsWith('/api/v1/')) return false;
   const opName = (path.match(/^\/api\/v1\/ops\/([a-zA-Z0-9_.]+)$/) || [])[1];
-  const crossOrigin = opName && CORS_OPS.has(opName) ? cors(req.headers.origin) : {};
+  // The extension's options page checks its key with /me, so that answers cross-origin too.
+  const corsOk = (opName && CORS_OPS.has(opName)) || path === '/api/v1/me';
+  const crossOrigin = corsOk ? cors(req.headers.origin) : {};
 
-  if (req.method === 'OPTIONS' && opName && CORS_OPS.has(opName)) {
+  if (req.method === 'OPTIONS' && corsOk) {
     ctx.send(204, '', crossOrigin);
     return true;
   }
@@ -58,7 +61,7 @@ export async function handleApi(req, res, ctx) {
   try {
     if (req.method === 'GET' && path === '/api/v1/me') {
       const { user } = principal;
-      ctx.json(200, { ok: true, result: { id: user.id, name: user.name, kind: user.kind, role: user.role, via: principal.via, token: { kind: principal.token?.kind, name: principal.token?.name, scopes: principal.token?.scopes } } });
+      ctx.json(200, { ok: true, result: { id: user.id, name: user.name, kind: user.kind, role: user.role, via: principal.via, token: { kind: principal.token?.kind, name: principal.token?.name, scopes: principal.token?.scopes } } }, crossOrigin);
       return true;
     }
     if (req.method === 'GET' && path === '/api/v1/ops') {
@@ -67,7 +70,7 @@ export async function handleApi(req, res, ctx) {
     }
     if (opName && req.method === 'POST') {
       if (!OPS.has(opName)) throw new OpError('unknown_op', `There is no operation called ${opName}.`, { status: 404 });
-      const input = await readJson(ctx, opName === 'posting.capture' ? 1_500_000 : 1_000_000);
+      const input = await readJson(ctx, CORS_OPS.has(opName) ? 1_500_000 : 1_000_000);
       const result = await run(ctx.root, principal, opName, input);
       ctx.json(200, { ok: true, result }, crossOrigin);
       return true;

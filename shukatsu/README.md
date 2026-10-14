@@ -71,7 +71,7 @@ registry in `core/ops`. The design is `docs/specs/v1-headless.md`.
 The app finds the data root the same way every career-ops tool does: `CAREER_OPS_DATA_DIR`,
 else the `.career-ops-data` marker in the repo root. The engine is loaded at runtime from the
 checkout (never bundled), so the app runs exactly the code the CLIs run. Restart the daemon
-after changing anything under `core/` or `connectors/`.
+after changing anything under `core/`, `connectors/`, or `platforms/`.
 
 ### Agents
 
@@ -85,6 +85,16 @@ SHUKATSU_TOKEN=shk_agent_... npm run mcp      # or as a stdio server that forwar
 claude.ai and phones add `https://your-host/mcp` as a custom connector and sign in with
 OAuth; you pick which agent they get on the consent screen. Agents can do the work (the
 tracker, evaluations, packets, the calendar, campaigns, the inbox) and can never stamp.
+
+### Browser extension
+
+`extension/` reads the NUworks, Handshake, LinkedIn, and CareerForum.Net pages you open, as
+they load, and sends them to your shukatsu: postings wait in the inbox to be saved, and your
+applications and threads are kept for the board readers. It never clicks or fetches anything
+on those sites. Load it unpacked from `chrome://extensions`, make a capture key on the Agents
+page, put it and the daemon's address in the extension's options, and turn it on under
+Settings, Connections. The toolbar button saves any page as a posting. Which hosts and pages
+it reads comes from `platforms/index.mjs`.
 
 ## CLIs
 

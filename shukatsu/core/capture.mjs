@@ -17,22 +17,10 @@ import { join } from 'path';
 import { normalizeUrl } from '../../url-key.mjs';
 import { appendPipeline, readPipeline } from './tracker.mjs';
 import { slug, today } from './facts.mjs';
+import { platformOfUrl } from '../platforms/index.mjs';
 
-/** Known login-walled boards, so a capture can say where it came from. */
-export const BOARDS = [
-  [/(^|\.)northeastern-csm\.symplicity\.com$|nuworks/i, 'NUworks'],
-  [/(^|\.)joinhandshake\.com$|(^|\.)app\.joinhandshake\.com$/i, 'Handshake'],
-  [/(^|\.)careerforum\.net$/i, 'CareerForum.Net'],
-  [/(^|\.)linkedin\.com$/i, 'LinkedIn'],
-  [/(^|\.)myworkdayjobs\.com$/i, 'Workday'],
-  [/(^|\.)avature\.net$/i, 'Avature'],
-];
-
-export const boardOf = (url) => {
-  let host = '';
-  try { host = new URL(url).hostname; } catch { return null; }
-  return BOARDS.find(([re]) => re.test(host))?.[1] || null;
-};
+/** The board or ATS a captured page came from, by name, so a capture can say where it came from. */
+export const boardOf = (url) => platformOfUrl(url)?.name || null;
 
 /**
  * Guess company and role from a page title like "Software Engineer Intern -

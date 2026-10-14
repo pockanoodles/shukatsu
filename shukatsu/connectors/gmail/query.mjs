@@ -2,14 +2,13 @@
  * What the Gmail connector asks for. It searches, so only mail that matches
  * is ever fetched and stored, and the rest of the mailbox stays in Google.
  *
- * The search is built from four sources of sender domains and one list of
- * subject words:
+ * The search is built from three sources of senders and one list of subject
+ * words:
  *
- *   - the applicant tracking systems upstream's reply matcher already treats as
- *     vendors (greenhouse, lever, icims, workday, ashby, smartrecruiters, taleo,
- *     successfactors, applytojob) plus the other common ones
- *   - the school platforms: NUworks (symplicity.com), Handshake, and the
- *     career fair site (careerforum.net), plus the Japanese job boards
+ *   - every platform's mail entries in platforms/: the applicant tracking
+ *     systems, the assessment vendors, and the job boards (NUworks, Handshake,
+ *     LinkedIn's application and message senders, careerforum.net, the
+ *     Japanese boards)
  *   - the company domains of the tracker's rows, from their posting URLs and from
  *     reply-matcher's own getAppDomains (a domain in the notes, a contact)
  *   - the domains of active campaigns' pages
@@ -21,16 +20,7 @@
 import { getAppDomains } from '../../../reply-matcher.mjs';
 import { listCampaigns } from '../../core/campaigns.mjs';
 import { readTracker } from '../../core/tracker.mjs';
-
-export const ATS_DOMAINS = [
-  'greenhouse.io', 'lever.co', 'ashbyhq.com', 'myworkday.com', 'icims.com', 'smartrecruiters.com', 'taleo.net',
-  'successfactors.com', 'applytojob.com', 'jobvite.com', 'workable.com', 'bamboohr.com', 'hirevue.com',
-  'codesignal.com', 'hackerrank.com',
-];
-
-export const SCHOOL_DOMAINS = [
-  'symplicity.com', 'joinhandshake.com', 'careerforum.net', 'mynavi.jp', 'rikunabi.com', 'onecareer.jp', 'offerbox.jp',
-];
+import { isPlatformDomain, mailSenders } from '../../platforms/index.mjs';
 
 export const SUBJECT_TERMS = ['interview', 'assessment', 'application', 'offer', '面接', '選考', '内定', 'エントリー'];
 
@@ -44,7 +34,7 @@ export function registrable(host) {
   return parts.slice(-take).join('.');
 }
 
-const isVendor = (domain) => [...ATS_DOMAINS, ...SCHOOL_DOMAINS, 'linkedin.com', 'google.com', 'gmail.com'].some((v) => domain === v || domain.endsWith(`.${v}`));
+const isVendor = (domain) => isPlatformDomain(domain) || ['google.com', 'gmail.com'].some((v) => domain === v || domain.endsWith(`.${v}`));
 
 /** Company and campaign domains from the tracker and the active campaigns. */
 export function companyDomains(root) {
@@ -87,7 +77,7 @@ export function buildQueries({ domains, subjectTerms = SUBJECT_TERMS, days = 7, 
   });
 }
 
-/** Every sender domain worth searching for this account. */
+/** Every sender (a domain, or a full address for a platform that sends mostly noise) worth searching for this account. */
 export function searchDomains(root, extra = []) {
-  return [...new Set([...ATS_DOMAINS, ...SCHOOL_DOMAINS, ...companyDomains(root), ...extra])];
+  return [...new Set([...mailSenders(), ...companyDomains(root), ...extra])];
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { addFeedAction, addGmailAction, pauseAccountAction, purgeAction, removeAccountAction, syncAccountAction } from "@/app/actions/connectors";
+import { addBrowserAction, addFeedAction, addGmailAction, pauseAccountAction, purgeAction, removeAccountAction, syncAccountAction } from "@/app/actions/connectors";
 import { ConfirmSubmit, Submit } from "@/components/client";
 
 type L = Record<string, string>;
@@ -38,13 +38,20 @@ export function GmailForm({ l }: { l: L }) {
   );
 }
 
-/** Sync, pause, and remove for one connected account. */
-export function AccountButtons({ id, paused, connect, l }: { id: number; paused: boolean; connect: string | null; l: L }) {
+export function BrowserForm({ l }: { l: L }) {
+  const [state, action] = useActionState(addBrowserAction, null);
+  return (
+    <form action={action} className="flex items-center gap-4"><Submit className="btn btn-sm" pending={l.working}>{l.add}</Submit><Msg s={state} /></form>
+  );
+}
+
+/** Sync, pause, and remove for one connected account. A push connector (the extension) has nothing to sync. */
+export function AccountButtons({ id, paused, connect, push = false, l }: { id: number; paused: boolean; connect: string | null; push?: boolean; l: L }) {
   const [state, action] = useActionState(syncAccountAction, null);
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
       {connect && <a href={connect} className="btn btn-sm">{l.connect}</a>}
-      <form action={action}><input type="hidden" name="id" value={id} /><Submit className="btn btn-ghost btn-sm" pending={l.syncing}>{l.sync}</Submit></form>
+      {!push && <form action={action}><input type="hidden" name="id" value={id} /><Submit className="btn btn-ghost btn-sm" pending={l.syncing}>{l.sync}</Submit></form>}
       <form action={pauseAccountAction}><input type="hidden" name="id" value={id} /><input type="hidden" name="paused" value={paused ? "0" : "1"} /><button className="label text-ink-2 underline underline-offset-4">{paused ? l.resume : l.pause}</button></form>
       <form action={removeAccountAction}><input type="hidden" name="id" value={id} /><ConfirmSubmit message={l.removeConfirm} className="label text-ink-2 underline underline-offset-4">{l.remove}</ConfirmSubmit></form>
       <Msg s={state} />

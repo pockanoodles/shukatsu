@@ -13,7 +13,9 @@
  *
  * Every request a connector makes goes through ctx.mjs's guarded fetch, pinned
  * to the manifest's hosts and written to egress.log. After each sync the
- * signals step (signals.mjs) reads what arrived.
+ * signals step (signals.mjs) reads what arrived. A push connector (the
+ * browser extension, manifest `push: true`) fetches nothing: what it keeps
+ * arrives through its own operation, and the scheduler never runs it.
  */
 
 import { readFileSync } from 'fs';
@@ -24,6 +26,7 @@ import {
 } from '../core/sync.mjs';
 import { makeConnectorCtx } from './ctx.mjs';
 import { processRecords } from './signals.mjs';
+import * as browser from './browser/index.mjs';
 import * as gmail from './gmail/index.mjs';
 import * as icsIn from './ics-in/index.mjs';
 
@@ -32,6 +35,7 @@ const manifestOf = (id) => JSON.parse(readFileSync(new URL(`./${id}/manifest.jso
 const MODULES = {
   'ics-in': { ...icsIn, manifest: manifestOf('ics-in') },
   gmail: { ...gmail, manifest: manifestOf('gmail') },
+  browser: { ...browser, manifest: manifestOf('browser') },
 };
 
 export const CONNECTORS = Object.values(MODULES).map((m) => m.manifest);
@@ -104,6 +108,7 @@ export async function syncNow(root, accountId, { fetch = null } = {}) {
   if (!mod) throw fail(`There is no connector called ${account.connector}.`, 'not_found', 404);
   const key = `${root}:${accountId}`;
   if (inflight.has(key)) return { ok: false, error: 'This account is already syncing.' };
+  if (mod.manifest.push) return { ok: true, records: 0, added: 0, signals: processRecords(root).length };
   inflight.add(key);
   let secret = null;
   try {
@@ -140,7 +145,7 @@ export async function syncDue(root, { fetch = null, nowMs = Date.now() } = {}) {
     for (const a of listAccounts(root)) {
       if (a.status === 'paused' || a.status === 'needs_auth') continue;
       const mod = MODULES[a.connector];
-      if (!mod) continue;
+      if (!mod || mod.manifest.push) continue;
       // A failing account backs off: one more interval per failure, up to seven.
       const every = (mod.manifest.intervalMinutes || 60) * 60_000 * (1 + Math.min(a.fail_count, 6));
       const last = a.last_attempt_at ? Date.parse(a.last_attempt_at) : 0;

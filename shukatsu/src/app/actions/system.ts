@@ -124,11 +124,11 @@ export async function captureAction(input: { url: string; title: string; text: s
 
 // ---------------------------------------------------------------- inbox
 
-const SIGNAL_OPS = new Set(["tracker.setStatus", "event.create", "posting.add"]);
+const SIGNAL_OPS = new Set(["tracker.setStatus", "event.create", "posting.add", "posting.capture"]);
 
 /**
  * Do what a signal proposes, then close it. The action is read back from the
- * signal on the server (never taken from the form), limited to the three
+ * signal on the server (never taken from the form), limited to the four
  * operations a signal may propose, and run as the signed-in person.
  */
 export async function signalAction(form: FormData) {
@@ -139,7 +139,7 @@ export async function signalAction(form: FormData) {
   let error = got.ok ? "" : got.error || "";
   if (action && SIGNAL_OPS.has(action.op)) {
     const r = await op(action.op, action.input);
-    if (r.ok) await op("signal.update", { id, status: action.op === "posting.add" ? "filed" : "acted", note: `${action.op} from the inbox` });
+    if (r.ok) await op("signal.update", { id, status: action.op.startsWith("posting.") ? "filed" : "acted", note: `${action.op} from the inbox` });
     else error = r.error || "";
   }
   revalidatePath("/", "layout");

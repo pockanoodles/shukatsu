@@ -101,7 +101,8 @@ log under that person's or agent's name.
 
 - **What arrives.** Only mail that matches a search. The search asks for mail from the
   hiring systems employers use (Greenhouse, Lever, Workday, and similar), from the school's
-  job platforms (NUworks, Handshake, the career fair site), from the websites of
+  job platforms (NUworks, Handshake, the career fair site), from the four LinkedIn
+  addresses that write about applications and messages (never LinkedIn's other mail), from the websites of
   companies in the tracker and campaigns, and mail whose subject has words such as
   interview, assessment, application, offer, 面接, or 選考. For each match shukatsu keeps
   who sent it, who it went to, the subject, the time, the text (cut off at 20,000
@@ -122,6 +123,28 @@ log under that person's or agent's name.
   candidate also removes shukatsu under their Google account's third-party access.
   A Google Cloud app left in Testing mode loses its sign-in every 7 days, so the Connections
   page asks the candidate to publish it as an unverified app for their own account.
+
+### Browser extension (`browser`)
+
+- **What arrives.** Pages of NUworks, Handshake, LinkedIn, and CareerForum.Net that the
+  candidate opens in their own browser, read as they load. The extension never clicks,
+  scrolls, types, or loads anything on those sites, so the sites see only the candidate's
+  normal browsing. It first sends shukatsu a page's address alone. Only for the kinds of
+  page shukatsu lists (a posting, the candidate's own applications list, a message thread)
+  does it then send the page's title, visible text (cut off at 20,000 characters), and
+  links. For every other page on those sites, shukatsu keeps the path with its numbers
+  removed (`/in/:id`) and a count, and the page's text never leaves the browser.
+- **What leaves.** Nothing leaves the machine. The extension sends pages only to the
+  candidate's own shukatsu, at the address set in its options, and the connector makes no
+  request of its own. It uses a capture key, which can only save pages and postings.
+- **Who can see it.** Message threads and some postings hold other people's names. Like
+  messages, these pages are read only by the candidate and by agents the candidate allowed,
+  and they are marked as outside text. A posting waits in the inbox until someone
+  presses Save, which archives its text as the job description.
+- **How to remove it.** Pause or turn off reading per site in the extension's options, or
+  pause it on the Connections page. "Delete copies from Browser extension" deletes the
+  pages, and Remove turns it off and deletes everything it kept. Revoking the capture key
+  under Agents stops the extension at once.
 
 ## Removing someone
 

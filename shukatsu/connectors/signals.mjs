@@ -2,7 +2,8 @@
  * From records to signals: the step that runs after every sync.
  *
  * Each new message (and each calendar event that talks about an interview)
- * goes through the upstream matchers. reply-matcher's classifyReply and
+ * goes through the upstream matchers. A page the browser extension read goes
+ * through pageSignal instead. reply-matcher's classifyReply and
  * invite-match's classifyEmail decide what the message is, and matchCandidates
  * (with analyzeInvite's company reading as a second opinion) finds the tracker
  * row it is about. The result is a signal row in sync.db with the action it
@@ -27,13 +28,13 @@ import { classifyReply, matchCandidates } from '../../reply-matcher.mjs';
 import { analyzeInvite } from '../../invite-match.mjs';
 import { db } from '../core/store.mjs';
 import { listCampaigns } from '../core/campaigns.mjs';
-import { readTracker } from '../core/tracker.mjs';
+import { readPipeline, readTracker } from '../core/tracker.mjs';
+import { normalizeUrl } from '../../url-key.mjs';
 import { addSignal, markProcessed, unprocessedRecords } from '../core/sync.mjs';
 import { registrable } from './gmail/query.mjs';
+import { fromBoard, isPostingLink } from '../platforms/index.mjs';
 
 const ASSESSMENT = /assessment|online test|coding (test|challenge)|take[- ]home|hackerrank|codesignal|hirevue|webテスト|適性検査|spi|玉手箱|オンラインテスト/i;
-const SCHOOL = /(^|\.)(symplicity\.com|joinhandshake\.com|careerforum\.net)$/;
-const POSTING_HOST = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|smartrecruiters\.com|icims\.com|workable\.com)$/;
 const EVENT_INTERVIEW = /interview|面接|選考/i;
 
 const ACTIVE = new Set(['Evaluated', 'Applied', 'Responded']);
@@ -75,6 +76,26 @@ function worthProposing(kind, status) {
   if (kind === 'assessment') return status === 'Evaluated' || status === 'Applied';
   if (kind === 'confirmation') return status === 'Evaluated';
   return false;
+}
+
+/**
+ * The signal for a page the browser extension read. Only a posting makes one,
+ * and only when neither the tracker nor the pipeline already has its URL: the
+ * candidate opened it, so offering to save it is one press. The action names
+ * the record, never its text, so nothing on the page reaches an operation's
+ * input. Other pages (an applications list, a thread) are kept for the board
+ * readers and make no signal yet.
+ */
+export function pageSignal(record, { rows, filed = new Set() }) {
+  const f = record.fields || {};
+  if (f.page !== 'posting' || !f.url) return null;
+  const key = normalizeUrl(f.url) || f.url;
+  const row = rows.find((r) => r.url && (normalizeUrl(r.url) || r.url) === key);
+  if (row || filed.has(key)) return null;
+  return {
+    kind: 'posting', tracker_num: null, campaign_id: null, confidence: 'high', status: 'open',
+    proposed: { actions: [{ op: 'posting.capture', input: { record: record.id } }], matched: null, hints: { platform: f.platform } },
+  };
 }
 
 /**
@@ -135,9 +156,8 @@ export function signalFor(record, { rows, campaigns = [], campaignOf = new Map()
     }
   }
   if (!row && kind === 'other' && !isEvent) {
-    const host = (() => { try { return new URL(f.links?.find((l) => { try { return POSTING_HOST.test(new URL(l).hostname); } catch { return false; } })).hostname; } catch { return null; } })();
-    const fromSchool = SCHOOL.test(String(from.match(/@([\w.-]+)/)?.[1] || ''));
-    if (host && fromSchool) actions.push({ op: 'posting.add', input: { url: f.links.find((l) => { try { return new URL(l).hostname === host; } catch { return false; } }) } });
+    const link = (f.links || []).find(isPostingLink);
+    if (link && fromBoard(from)) actions.push({ op: 'posting.add', input: { url: link } });
   }
 
   const matched = row ? { num: row.num, company: row.company, role: row.role, status: row.status } : null;
@@ -159,10 +179,12 @@ export function processRecords(root) {
     campaigns = listCampaigns(root);
     for (const r of db(root).prepare('SELECT campaign_id, tracker_num FROM campaign_rows ORDER BY added_at').all()) campaignOf.set(r.tracker_num, r.campaign_id);
   } catch { campaignOf = new Map(); }
+  let filed = new Set();
+  try { filed = new Set(readPipeline(root).map((x) => normalizeUrl(x.url) || x.url)); } catch { /* no pipeline yet */ }
   const made = [];
   for (const record of records) {
     try {
-      const s = signalFor(record, { rows, campaigns, campaignOf });
+      const s = record.kind === 'page' ? pageSignal(record, { rows, filed }) : signalFor(record, { rows, campaigns, campaignOf });
       if (s) made.push(addSignal(root, { record_id: record.id, ...s }));
     } catch (err) {
       console.error(`shukatsu: could not read record ${record.id} for signals: ${err.message}`);

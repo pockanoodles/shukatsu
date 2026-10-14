@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "shukatsu",
+  "version": "0.1.0",
+  "description": "Reads the job board pages you open (NUworks, Handshake, LinkedIn, CareerForum.Net) into your own shukatsu. It never makes a request to a board.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://northeastern-csm.symplicity.com/*",
+        "https://*.northeastern-csm.symplicity.com/*",
+        "https://joinhandshake.com/*",
+        "https://*.joinhandshake.com/*",
+        "https://linkedin.com/*",
+        "https://*.linkedin.com/*",
+        "https://careerforum.net/*",
+        "https://*.careerforum.net/*"
+      ],
+      "js": [
+        "reader.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Send this page to shukatsu"
+  },
+  "options_page": "options.html"
+}

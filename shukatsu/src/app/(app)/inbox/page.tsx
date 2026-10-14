@@ -17,6 +17,7 @@ function describe(a: Action, t: T) {
   if (a.op === "tracker.setStatus") return t("inbox.doStatus", { n: String(a.input.num), state: t(`state.${String(a.input.state).toLowerCase()}`) });
   if (a.op === "event.create") return t("inbox.doEvent", { title: String(a.input.title || "") });
   if (a.op === "posting.add") return t("inbox.doPosting");
+  if (a.op === "posting.capture") return t("inbox.doCapture");
   return a.op;
 }
 

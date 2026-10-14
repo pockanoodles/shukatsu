@@ -37,6 +37,12 @@ export async function addGmailAction(_: ActionResult | null, form: FormData): Pr
   return out(r);
 }
 
+export async function addBrowserAction(_: ActionResult | null): Promise<ActionResult> {
+  const r = await op("connector.add", { connector: "browser" }, "connectors.browser.added");
+  if (r.ok) revalidatePath(PAGE);
+  return out(r);
+}
+
 export async function syncAccountAction(_: ActionResult | null, form: FormData): Promise<ActionResult> {
   const r = await op("connector.sync", { id: Number(form.get("id")) });
   revalidatePath(PAGE);

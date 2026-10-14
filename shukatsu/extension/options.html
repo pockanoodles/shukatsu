@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>shukatsu</title>
+  <style>
+    :root { --ink: #1f1d1a; --ink-2: #5b564e; --paper: #f6f1e7; --shu: #b8432f; --rule: #d9d0bf; }
+    @media (prefers-color-scheme: dark) { :root { --ink: #ece6da; --ink-2: #a39c90; --paper: #1b1a18; --rule: #3a3731; } }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif; }
+    main { max-width: 560px; padding: 32px 24px; display: grid; gap: 20px; }
+    h1 { margin: 0; font-size: 28px; font-weight: 600; }
+    label { display: grid; gap: 4px; }
+    .hint { color: var(--ink-2); font-size: 13px; }
+    input[type=text], input[type=password] { font: inherit; padding: 8px 10px; border: 1px solid var(--rule); background: transparent; color: inherit; }
+    fieldset { border: 0; border-top: 1px solid var(--rule); padding: 12px 0 0; margin: 0; display: grid; gap: 8px; }
+    legend { font-weight: 600; padding: 0 0 4px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    button { font: inherit; padding: 8px 14px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; }
+    #status { min-height: 1.5em; }
+    .bad { color: var(--shu); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>shukatsu</h1>
+  <label>Address
+    <input type="text" id="url" placeholder="http://127.0.0.1:3000">
+    <span class="hint">Where your shukatsu runs: this machine, or your own tunnel address.</span>
+  </label>
+  <label>Capture key
+    <input type="password" id="token" placeholder="shk_…" autocomplete="off">
+    <span class="hint">Make one in shukatsu under Settings, Agents, as a capture key. It can only save pages, nothing else.</span>
+  </label>
+  <fieldset>
+    <legend>Read pages as I open them</legend>
+    <label class="row"><input type="checkbox" id="reading"> On</label>
+    <div id="boards"></div>
+    <span class="hint">Only pages you open yourself. Postings go to the inbox; for any other page on these boards only its path is kept.</span>
+  </fieldset>
+  <div class="row"><button id="save">Save and check</button><span id="status"></span></div>
+  <p class="hint" id="last"></p>
+</main>
+<script src="options.js"></script>
+</body>
+</html>

@@ -21,7 +21,7 @@ const connectors = await import('../connectors/index.mjs');
 const { makeConnectorCtx } = await import('../connectors/ctx.mjs');
 const { occurrences, parseIcs, parseLine, unfold } = await import('../connectors/ics-in/parse.mjs');
 const { busyTimes } = await import('../connectors/ics-in/index.mjs');
-const { buildQueries, registrable, searchDomains, ATS_DOMAINS } = await import('../connectors/gmail/query.mjs');
+const { buildQueries, registrable, searchDomains } = await import('../connectors/gmail/query.mjs');
 const gmail = await import('../connectors/gmail/index.mjs');
 const { kindOf, signalFor } = await import('../connectors/signals.mjs');
 const { makeRoot, people } = await import('./helpers.mjs');
@@ -241,7 +241,7 @@ test('the Gmail query is built from ATS senders, school platforms, tracker and c
   for (const d of ['symplicity.com', 'joinhandshake.com', 'careerforum.net', 'greenhouse.io', 'lever.co', 'myworkday.com', 'acmerobotics.com', 'example.org', 'extra-employer.com']) {
     assert.ok(domains.includes(d), `${d} is searched`);
   }
-  assert.ok(!domains.includes('greenhouse.io') || ATS_DOMAINS.includes('greenhouse.io'));
+  assert.ok(domains.includes('jobs-noreply@linkedin.com') && !domains.includes('linkedin.com'), 'LinkedIn is searched by its application and message senders only');
   assert.ok(!domains.some((d) => d.startsWith('jobs.')), 'a company is searched by its domain, not a careers subdomain');
 
   const [q] = buildQueries({ domains: ['acme.com', 'globex.org'], days: 7 });

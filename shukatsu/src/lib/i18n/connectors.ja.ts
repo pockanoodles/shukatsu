@@ -44,6 +44,17 @@ const dict: ConnectorsDict = {
       none: "Gmail はまだ設定されていません。",
       client: "クライアント {id}",
     },
+    browser: {
+      title: "ブラウザ拡張機能",
+      stepsTitle: "最初に一度だけ設定する",
+      steps: "Chrome で chrome://extensions を開き、デベロッパーモードをオンにして「パッケージ化されていない拡張機能を読み込む」から shukatsu の中の extension フォルダを選びます。設定のエージェントでキャプチャ用のキーを作り、下のアドレスと一緒に拡張機能のオプションに貼り付けてください。最後にここでオンにします。",
+      address: "拡張機能に入れるアドレス",
+      keptTitle: "読むもの、残すもの",
+      kept: "NUworks、Handshake、LinkedIn、CareerForum.Net で自分で開いたページだけを読みます。クリックやスクロール、ページの読み込みは一切しません。開いた求人は受信箱で待ち、ワンタップで保存できます。応募一覧とメッセージのスレッドは、shukatsu が読み方を覚えるために残します。それ以外のページはパスだけを残し、本文は残しません。",
+      add: "オンにする",
+      added: "拡張機能からページを送れるようになりました。",
+      detail: "自分で開いたページ",
+    },
     account: {
       never: "まだ同期していません",
       lastSync: "最後の同期: {when}",

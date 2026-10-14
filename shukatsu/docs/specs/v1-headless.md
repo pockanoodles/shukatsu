@@ -218,11 +218,22 @@ stretching the plugin hooks.
 
 ```
 connectors/<id>/
-  manifest.json   id, capabilities, auth kind, allowedHosts, scopes
+  manifest.json   id, capabilities, auth kind, allowedHosts, scopes, push
   index.mjs       sync(account, cursor, ctx) -> { records, cursor }
 ```
 
-Capabilities are `mail.read`, `calendar.read`, `calendar.write`, and `feed.read`. Every
+A connector is a transport: it knows how to fetch from a mailbox, a calendar feed, or the
+browser, and not what arrived. What arrived means lives in one registry,
+`shukatsu/platforms/index.mjs`, with one entry per outside service: its kind (a job board,
+an applicant tracking system, an assessment vendor), its web hosts, the senders the mail
+search asks for, the hosts whose links are postings, and for a board the extension reads,
+the page kinds it lists. The Gmail search, the signal step, the capture board names, and the
+extension's host list all read it, so adding a platform is one entry and no new connector,
+and a test fails if the extension's hosts drift from it.
+
+Capabilities are `mail.read`, `calendar.read`, `calendar.write`, `feed.read`, and
+`page.read`. A push connector (`push: true`, the browser extension) fetches nothing: what it
+keeps arrives through its own operation, and the scheduler never runs it. Every
 request goes through the guarded fetch in `plugins/_net.mjs`, so each connector is pinned to
 its declared hosts and the egress stays auditable in one place. Each call adds a line to
 `.shukatsu/egress.log` the way `core/llm.mjs` does today.
@@ -234,7 +245,14 @@ its declared hosts and the egress stays auditable in one place. Each call adds a
 | Message | account, external id, thread, from, to, subject, received at, text (capped), links | Gmail, Microsoft Graph |
 | Event | account, external id, calendar, title, start, end, location, meeting link, kind | Google, Graph, ICS feeds |
 | Posting | title, url, company, location, captured text | capture, mail links, upstream scans |
+| Page | platform, page kind, url, title, visible text (capped), links; or, for a page the board doesn't list, its path with ids folded and a count | the browser extension |
 | Signal | source record, kind, tracker row, campaign, confidence, proposed action | the signal step below |
+
+Two more kinds come from the board readers once they exist (see the readers below): a
+**person** (someone who wrote to the candidate, a recruiter on a thread) and an
+**application observation** ("Handshake shows an application to Globex, status Reviewed,
+on 10/2"). An observation is evidence about a tracker row, never the row itself: it becomes
+a signal proposing a status change or a new row, the same way a message does.
 
 ### Storage and secrets
 
@@ -272,6 +290,7 @@ the message's words, so an instruction hidden in an email can't become an action
 |---|---|---|
 | `ics-out` | calendar.write | A private `/cal/{token}.ics` feed of interviews, deadlines, follow-ups, and campaign days. Apple Calendar, Google Calendar, and Outlook subscribe to it without OAuth, and a viewer-level feed can go to family. |
 | `ics-in` | feed.read | Any calendar feed URL, starting with the Canvas calendar feed, so exams and due dates show up as conflicts when an interview is scheduled. |
+| `browser` | page.read | The extension's side, push-only. See the next section. |
 | `gmail` | mail.read | `gmail.readonly`. A personal Google Cloud app left in Testing mode loses its refresh token every 7 days, so it is published as an unverified production app for the owner's own account. This supersedes the upstream `gmail` plugin for messages, which keeps filing leads from a label. |
 | `msgraph` | mail.read, calendar.read | One connector for Outlook, Hotmail, and school Microsoft 365 accounts through the `common` endpoint. School tenants often require administrator consent for third-party apps, and when that blocks sign-in the fallback is a forwarding rule into the Gmail account. |
 | `gcal` | calendar.read | Google Calendar busy times and events for conflict checks. |
@@ -280,23 +299,93 @@ the message's words, so an instruction hidden in an email can't become an action
 
 Slack, Teams, and Notion stay out of v1 because none of them carries the search itself.
 
-## Capture for login-walled boards
+## Login-walled boards
 
-The school job platforms (NUworks, Handshake) and the career fair site (careerforum.net) have
-no public API and sit behind the candidate's own sign-in, and scraping behind that sign-in is
-both fragile and against their terms. Their notification email already reaches the mail
-connectors, and for the postings themselves a "Send to shukatsu" capture covers every board at
-once.
+NUworks, Handshake, LinkedIn, and careerforum.net have no API a student can use (LinkedIn's
+are partner-only, Handshake's are for employers, NUworks runs on Symplicity with nothing for
+students) and sit behind the candidate's own sign-in. Their web apps fetch the candidate's
+own data from private endpoints, so software holding that session could reach it, but every
+one of their terms forbids automated access, and LinkedIn restricts accounts for it. So
+shukatsu reads them three ways, none of which makes a request to the board.
 
-A bookmarklet, and later a small browser extension, opens shukatsu's capture window and hands
-it the page the candidate is reading (its URL, title, and visible text) by `postMessage`. The
-window is signed in by the candidate's own session, shows what arrived, and calls
-`posting.capture` only when the candidate presses Save, so the bookmarklet carries no token.
-When a board blocks the handoff, the same window takes pasted text. The
-captured text becomes the archived job description that `check-jd-archive.mjs` requires,
-which makes it the record of a posting that a login wall would otherwise hide, and it is
-marked untrusted like any other external text. On a phone, an iOS Shortcut on the share sheet
-calls the same operation.
+1. **Mail, with every notification on.** Each board can email messages, application
+   updates, and confirmations, and the employer's applicant tracking system sends the real
+   status of an application whichever board it came through. With the boards' email
+   notifications all switched on, the `gmail` connector carries most of what happens.
+2. **The passive extension.** Reads the pages the candidate opens anyway, as they load.
+3. **Capture.** The extension's toolbar button (and the bookmarklet, and an iOS Shortcut)
+   saves whatever page the candidate is reading, on any site.
+
+### The extension
+
+`shukatsu/extension/` is a Manifest V3 extension, loaded unpacked. Its reader runs only on
+the boards' hosts, in the extension's isolated world, so it shares nothing with the page's
+own scripts and only reads the DOM the page already rendered. It never clicks, scrolls,
+types, or fetches from the board, so to the board the candidate is simply browsing. It
+asks for no host access beyond its content script and calls nothing but the candidate's own
+shukatsu, at the address and with the capture key set in its options.
+
+```
+reader.js      on every address change: page.observe { url }
+               shukatsu decides the platform and page kind from the URL (platforms/)
+                 listed kind  -> { wants_text: true }; the reader waits for the page to stop
+                                 changing and sends title, visible text, links
+                 other page   -> kept by path alone (/in/:id, a count); no text is sent
+background.js  the only egress: page.observe and, for the toolbar button, posting.capture
+options        address, capture key, reading on or off per board
+```
+
+`page.observe` is owner-only, so it arrives through the owner's capture key (scoped to
+`posting.capture` and `page.observe`) and never from an agent, which has no browser to have
+read a page in. The owner turns the `browser` connector on in Connections first, and can
+pause or purge it there like any other.
+
+- **A posting** the tracker and pipeline don't already hold becomes a `posting` signal whose
+  one action is `posting.capture { record }`. The action names the record, never its text,
+  so nothing on the page reaches an operation's input. Saving archives the text as the job
+  description, which makes it the record of a posting a login wall would otherwise hide.
+- **The applications list and message threads** are kept as pages, one per URL, replaced
+  when seen again. They make no signal yet: they are the samples the readers are written
+  from.
+- **Every other page** on those hosts is kept by its shape and a count, which shows which
+  page patterns miss without keeping any of the page.
+
+Page patterns in `platforms/` are a first reading of each board's URLs and are corrected
+from the shapes the extension logs.
+
+### Readers (next)
+
+A reader turns one board's kept page into records: an applications list into application
+observations, a thread into a message and a person. Each is written against real kept
+pages (as recorded fixtures, so tests stay offline) and lives beside its platform entry.
+The observations go through the signal step, which matches them to tracker rows the way it
+matches mail, so drift between a board and the tracker (applied on Handshake with no row, a
+row still Applied that NUworks shows as Not selected) becomes an inbox item with the
+canonical fix.
+
+### Held, and refused
+
+- **Session sync is held.** The daemon could drive a browser with the candidate's session on
+  a schedule, at human speed, and walk the applications and message pages unattended. It
+  breaks the boards' terms and their next redesign breaks it, and NUworks is a Northeastern
+  system under the university's acceptable-use policy. It waits until mail and the passive
+  extension have shown what they actually miss, and if it comes it is per board and off by
+  default.
+- **LinkedIn is never automated** (`automation: 'never'` in its entry): reading the pages
+  the candidate opens and the occasional data export are the only ways in, because losing
+  the account costs more than any data from it.
+
+### Later: applying for the candidate
+
+Decided 2026-10-14. An agent driving the browser (a model-run macro over the candidate's
+own screen) fills applications on boards that allow it: it opens the form, uploads the
+packet's CV, answers from approved packet answers, and stops at the final button. Pressing
+that button is always the candidate's: submitting is a stamp, `application.submit`, pressed
+on the filled form or from a phone, and no agent, token, or schedule can make it. The hard
+part (navigating and filling) is automated and the decision isn't. That keeps the upstream
+rule that nothing is submitted without the candidate reviewing it, and it never runs on
+LinkedIn. Employer ATS forms (Greenhouse, Lever, Ashby) come first: they are standardized,
+and applying on the employer's own site is their intended use.
 
 ## Campaigns
 
@@ -331,8 +420,8 @@ schedule rows, which keeps upstream tools working on the tracker unchanged.
 `DATAFLOW.md` gains a section for each connector, written for a non-engineer, that covers the
 following.
 
-- **What arrives.** Messages that match the search, calendar events, and feeds the candidate
-  adds. Messages contain other people's names and addresses, so they are kept in `sync.db`,
+- **What arrives.** Messages that match the search, calendar events, feeds the candidate
+  adds, and the board pages the extension reads. Messages contain other people's names and addresses, so they are kept in `sync.db`,
   shown to the owner and agents only, and purged by connector or entirely from settings.
 - **What leaves.** Requests to Google, Microsoft, and LINE, each limited to its declared
   hosts and logged in `egress.log`. MCP results go to whichever agent the owner authorized,
@@ -359,6 +448,7 @@ following.
 | 1 | `shukatsud` with the app mounted inside it, the remaining operations, server actions moved onto `ops.run`, CLI routing, the guard test | One writer and one door |
 | 2 | MCP over HTTP and stdio, agent principals, tokens, resources and prompts | Agents become first-class clients |
 | 3 | OAuth for remote MCP, the tunnel routes, Cloudflare Access split | claude.ai and phone access |
-| 4 | `msgraph`, `gcal`, `eventkit`, `line`, the capture extension | More of the same pattern |
+| 4 | `platforms/`, the passive extension and `browser` connector, then the board readers, `msgraph`, `gcal`, `eventkit`, `line` | More of the same pattern |
 
-Phases 0 to 3 shipped together in October 2026. Phase 4 is next.
+Phases 0 to 3 shipped together in October 2026. In phase 4, the platform registry and the
+passive extension shipped first; the board readers wait on pages kept from real use.

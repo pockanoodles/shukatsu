@@ -16,8 +16,8 @@ const sys = {
     lead: "接続したメールとカレンダーから見つかったもの：面接の案内、不採用、適性検査、内定。合う応募があれば紐づけます。ボタンを押すまで何も変わりません。",
     none: "確認待ちはありません。メールを接続すると、数分ごとに新着を確認します。",
     connectors: "接続アカウント", dismiss: "閉じる",
-    doStatus: "#{n}を「{state}」にする", doEvent: "「{title}」を予定に追加", doPosting: "求人を受信箱に入れる",
-    kind: { interview: "面接の案内", rejection: "不採用", assessment: "適性検査", confirmation: "受付確認", offer: "内定", noise: "就活と無関係", other: "その他" },
+    doStatus: "#{n}を「{state}」にする", doEvent: "「{title}」を予定に追加", doPosting: "求人を受信箱に入れる", doCapture: "求人を保存する",
+    kind: { interview: "面接の案内", rejection: "不採用", assessment: "適性検査", confirmation: "受付確認", offer: "内定", posting: "開いた求人", noise: "就活と無関係", other: "その他" },
   },
   campaigns: {
     title: "フォーラムと選考期",

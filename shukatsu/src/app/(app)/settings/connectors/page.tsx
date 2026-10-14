@@ -5,7 +5,7 @@ import { read } from "@/lib/server/op";
 import { relative, translator } from "@/lib/i18n";
 import { CopyButton } from "@/components/client";
 import { Flash, Head } from "@/components/marks";
-import { AccountButtons, FeedForm, GmailForm, PurgeForm } from "./forms";
+import { AccountButtons, BrowserForm, FeedForm, GmailForm, PurgeForm } from "./forms";
 
 export const metadata: Metadata = { title: "Connections" };
 
@@ -24,6 +24,8 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
   const redirect = `${origin}/connectors/gmail/callback`;
   const feeds = list.accounts.filter((a) => a.connector === "ics-in");
   const mail = list.accounts.filter((a) => a.connector === "gmail");
+  const browser = list.accounts.filter((a) => a.connector === "browser");
+  const names: Record<string, string> = { gmail: t("connectors.gmail.title"), "ics-in": t("connectors.feeds.title"), browser: t("connectors.browser.title") };
   const copied = list.accounts.some((a) => a.records > 0);
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
   const acct = Object.fromEntries(["sync", "syncing", "pause", "resume", "remove", "removeConfirm"].map((k) => [k, t(`connectors.account.${k}`)]));
@@ -40,7 +42,7 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
         {a.open_signals > 0 && <>{" · "}<Link href="/inbox" className="underline underline-offset-4">{t("connectors.account.open", { n: a.open_signals })}</Link></>}
       </p>
       {a.has_error && list.untrusted.errors[String(a.id)] && <p className="text-[14px] text-shu break-words">{t("connectors.account.error", { error: list.untrusted.errors[String(a.id)] })}</p>}
-      <AccountButtons id={a.id} paused={a.status === "paused"} connect={a.connector === "gmail" && (a.status === "needs_auth" || a.status === "error") ? `/connectors/gmail/start?account=${a.id}` : null} l={{ ...acct, connect: a.status === "needs_auth" && !a.last_sync_at ? t("connectors.gmail.connect") : t("connectors.gmail.reconnect") }} />
+      <AccountButtons id={a.id} paused={a.status === "paused"} push={a.connector === "browser"} connect={a.connector === "gmail" && (a.status === "needs_auth" || a.status === "error") ? `/connectors/gmail/start?account=${a.id}` : null} l={{ ...acct, connect: a.status === "needs_auth" && !a.last_sync_at ? t("connectors.gmail.connect") : t("connectors.gmail.reconnect") }} />
     </li>
   );
 
@@ -80,12 +82,30 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
           )}
           <GmailForm l={{ clientId: t("connectors.gmail.clientId"), clientSecret: t("connectors.gmail.clientSecret"), label: t("connectors.gmail.label"), labelPlaceholder: t("connectors.gmail.labelPlaceholder"), add: t("connectors.gmail.add"), working: t("common.loading") }} />
         </section>
+        <section className="grid content-start gap-5 border-b-2 rule px-4 py-8 sm:px-10 lg:col-span-2">
+          <h2 className="heading text-[22px]">{t("connectors.browser.title")}</h2>
+          <div className="grid max-w-3xl gap-1">
+            <h3 className="label text-ink-2">{t("connectors.browser.stepsTitle")}</h3>
+            <p className="text-[15px] text-ink-2">{t("connectors.browser.steps")}</p>
+          </div>
+          <div className="grid gap-1.5">
+            <span className="label text-ink-2">{t("connectors.browser.address")}</span>
+            <div className="flex flex-wrap items-center gap-3"><code className="code break-all">{origin}</code><CopyButton text={origin} label={t("common.copy")} done={t("common.copied")} /></div>
+          </div>
+          <div className="grid max-w-3xl gap-1 border-l-2 rule pl-4">
+            <h3 className="label text-shu">{t("connectors.browser.keptTitle")}</h3>
+            <p className="text-[15px] text-ink-2">{t("connectors.browser.kept")}</p>
+          </div>
+          {browser.length === 0 ? <BrowserForm l={{ add: t("connectors.browser.add"), working: t("common.loading") }} /> : (
+            <ul className="border-t hair">{browser.map((a) => <Row key={a.id} a={a} detail={t("connectors.browser.detail")} />)}</ul>
+          )}
+        </section>
         <section className="grid content-start gap-4 border-b-2 rule px-4 py-8 sm:px-10 lg:col-span-2">
           <h2 className="heading text-[22px]">{t("connectors.data.title")}</h2>
           {copied ? (
             <div className="flex flex-wrap gap-x-8 gap-y-3">
               {[...new Set(list.accounts.filter((a) => a.records > 0).map((a) => a.connector))].map((c) => (
-                <PurgeForm key={c} connector={c} label={t("connectors.data.purgeOne", { name: c === "gmail" ? t("connectors.gmail.title") : t("connectors.feeds.title") })} confirm={t("connectors.data.purgeConfirm")} />
+                <PurgeForm key={c} connector={c} label={t("connectors.data.purgeOne", { name: names[c] || c })} confirm={t("connectors.data.purgeConfirm")} />
               ))}
               <PurgeForm label={t("connectors.data.purgeAll")} confirm={t("connectors.data.purgeConfirm")} ghost={false} />
             </div>

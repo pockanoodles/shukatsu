@@ -11,6 +11,7 @@ import { logActivity } from '../store.mjs';
 import { capture, readCapture } from '../capture.mjs';
 import { FINAL_DECISIONS, LEGITIMACY, WORK_AUTH, readReport, submitEvaluation } from '../evaluations.mjs';
 import { normalizeUrl } from '../../../url-key.mjs';
+import { getRecord } from '../sync.mjs';
 import { S } from './schema.mjs';
 
 const ITEM = S.obj({
@@ -93,13 +94,22 @@ export default [
       location: S.str(null, { maxLength: 120, default: '' }),
       note: S.str(null, { maxLength: 300, default: '' }),
       via: S.enum(['bookmarklet', 'extension', 'shortcut', 'agent', 'app'], null, { default: 'agent' }),
-    }, ['url', 'text']),
+      record: S.int('A posting page the browser extension already read (an inbox signal\'s record), in place of url and text.', { minimum: 1 }),
+    }),
     output: S.obj({
       capture: S.str(), file: S.str(), url: S.str(), company: S.nullable(S.str()), role: S.nullable(S.str()), board: S.nullable(S.str()),
       added: S.bool(), replaced: S.bool(), chars: S.int(),
     }, ['capture', 'added']),
     activity: (input, out) => ({ verb: 'posting.captured', subject: `capture:${out.capture.replace(/^local:jds\//, '')}`, detail: { url: input.url, board: out.board, company: out.company } }),
-    run: ({ root, input }) => capture(root, input),
+    run: ({ root, input }) => {
+      if (input.record) {
+        const r = getRecord(root, input.record);
+        if (r?.kind !== 'page' || r.fields.page !== 'posting') throw Object.assign(new Error('That record isn\'t a posting page the extension read.'), { code: 'not_found', status: 404 });
+        return capture(root, { ...input, url: r.fields.url, title: input.title || r.fields.title, text: r.text, via: 'extension' });
+      }
+      if (!input.url || !input.text) throw Object.assign(new Error('Pass url and text, or record.'), { code: 'invalid_input', status: 400 });
+      return capture(root, input);
+    },
   },
   {
     name: 'evaluation.submit',

@@ -10,8 +10,9 @@
  *   accounts   one row per connected thing (a Gmail account, a calendar feed),
  *              with its settings and its credential as an encrypted blob
  *   cursors    where each account's last sync stopped
- *   records    the copies: a message, an event, a posting, each unique per
- *              account by its outside id, with text capped at 20,000 characters
+ *   records    the copies: a message, an event, a posting, a page the browser
+ *              extension read, each unique per account by its outside id, with
+ *              text capped at 20,000 characters
  *   signals    what a record means for the search (an interview invitation, a
  *              rejection), linked to a tracker row or campaign, with the action
  *              it proposes
@@ -27,9 +28,9 @@ import { join } from 'path';
 import { stateDir } from './lock.mjs';
 import { decryptJson, encryptJson } from './secrets.mjs';
 
-export const SIGNAL_KINDS = ['interview', 'rejection', 'assessment', 'confirmation', 'offer', 'noise', 'other'];
+export const SIGNAL_KINDS = ['interview', 'rejection', 'assessment', 'confirmation', 'offer', 'posting', 'noise', 'other'];
 export const SIGNAL_STATUSES = ['open', 'dismissed', 'filed', 'acted'];
-export const RECORD_KINDS = ['message', 'event', 'posting'];
+export const RECORD_KINDS = ['message', 'event', 'posting', 'page'];
 export const TEXT_CAP = 20_000;
 
 const MIGRATIONS = [
@@ -79,6 +80,40 @@ const MIGRATIONS = [
      resolved_at TEXT
    );
    CREATE INDEX signals_status ON signals(status, created_at);`,
+  // The kinds of record and signal are checked in code (upsertRecords, addSignal), so a new kind needs no table rebuild.
+  `CREATE TABLE records_v2 (
+     id INTEGER PRIMARY KEY,
+     account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+     kind TEXT NOT NULL,
+     external_id TEXT NOT NULL,
+     fields TEXT NOT NULL DEFAULT '{}',
+     text TEXT,
+     fetched_at TEXT NOT NULL,
+     processed_at TEXT,
+     UNIQUE (account_id, external_id)
+   );
+   INSERT INTO records_v2 SELECT id, account_id, kind, external_id, fields, text, fetched_at, processed_at FROM records;
+   CREATE TABLE signals_v2 (
+     id INTEGER PRIMARY KEY,
+     record_id INTEGER NOT NULL UNIQUE REFERENCES records(id) ON DELETE CASCADE,
+     kind TEXT NOT NULL,
+     tracker_num INTEGER,
+     campaign_id INTEGER,
+     confidence TEXT NOT NULL DEFAULT 'low' CHECK (confidence IN ('high', 'medium', 'low')),
+     proposed TEXT,
+     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'dismissed', 'filed', 'acted')),
+     proposal_id INTEGER,
+     resolution TEXT,
+     created_at TEXT NOT NULL,
+     resolved_at TEXT
+   );
+   INSERT INTO signals_v2 SELECT * FROM signals;
+   DROP TABLE signals;
+   DROP TABLE records;
+   ALTER TABLE records_v2 RENAME TO records;
+   ALTER TABLE signals_v2 RENAME TO signals;
+   CREATE INDEX records_kind ON records(account_id, kind);
+   CREATE INDEX signals_status ON signals(status, created_at);`,
 ];
 
 const open = new Map();
@@ -94,6 +129,8 @@ export function syncDb(root) {
   const row = d.prepare('SELECT version FROM schema_version').get();
   let version = row ? row.version : 0;
   if (!row) d.prepare('INSERT INTO schema_version (version) VALUES (0)').run();
+  // A migration that rebuilds a table drops the old one, which with foreign keys on would cascade into its children.
+  if (version < MIGRATIONS.length) d.exec('PRAGMA foreign_keys = OFF');
   while (version < MIGRATIONS.length) {
     d.exec('BEGIN');
     try {
@@ -106,6 +143,7 @@ export function syncDb(root) {
       throw err;
     }
   }
+  d.exec('PRAGMA foreign_keys = ON');
   open.set(root, d);
   return d;
 }
@@ -232,6 +270,8 @@ export function pruneRecords(root, accountId, kind, keepExternalIds) {
   return gone.length;
 }
 
+export const getRecordByExternalId = (root, accountId, externalId) => recordRow(syncDb(root).prepare('SELECT * FROM records WHERE account_id = ? AND external_id = ?').get(accountId, String(externalId))) || null;
+
 export const getRecord = (root, id) => recordRow(syncDb(root).prepare('SELECT * FROM records WHERE id = ?').get(id)) || null;
 
 export function listRecords(root, { accountId = null, connector = null, kind = null, limit = 5000 } = {}) {
@@ -262,6 +302,8 @@ export function addSignal(root, { record_id, kind, tracker_num = null, campaign_
     .run(record_id, kind, tracker_num, campaign_id, confidence, proposed ? JSON.stringify(proposed) : null, status, now(), status === 'open' ? null : now());
   return getSignal(root, Number(r.lastInsertRowid));
 }
+
+export const signalOfRecord = (root, recordId) => signalRow(syncDb(root).prepare('SELECT * FROM signals WHERE record_id = ?').get(recordId)) || null;
 
 export const getSignal = (root, id) => signalRow(syncDb(root).prepare('SELECT * FROM signals WHERE id = ?').get(id)) || null;
 
