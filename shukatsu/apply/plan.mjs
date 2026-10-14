@@ -26,10 +26,12 @@ import { readTracker } from '../core/tracker.mjs';
 import { normalizeUrl } from '../../url-key.mjs';
 import { loadBank } from './bank.mjs';
 import { identify, isSensitive, norm } from './fields.mjs';
+import '../extension/match.js'; // one option matcher for the server and the page; it defines globalThis.__shukatsuMatch
+
+const { choose, countriesIn } = globalThis.__shukatsuMatch;
 
 export const FIELD_KINDS = ['text', 'email', 'tel', 'url', 'number', 'search', 'textarea', 'select', 'combobox', 'radio', 'checkbox', 'date', 'month', 'file'];
 const RESUME_MAX = 5 * 1024 * 1024;
-const PLACEHOLDER = /^(select|choose|please select|pick|--|—|-)?\s*(an? )?(option|one|\.\.\.|…)?$/;
 
 /**
  * One posting, spelled the way its application form is: the ATS and the path
@@ -75,31 +77,16 @@ export function resumeFor(root, company) {
   return { path, rel: rows[0][1], name: rows[0][1].split('/').pop(), date: rows[0][4] || null };
 }
 
-const real = (o) => o && !PLACEHOLDER.test(norm(o.text)) && norm(o.text) !== '';
+const title = (s) => s.replace(/\b\w/g, (c) => c.toUpperCase());
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
-/**
- * The option a value names: its index and whether the match was fuzzy, or
- * null. Exact text or value first; then a yes/no answer to the one option
- * that starts with it; then an option that starts with the value or the
- * other way round; then the closest by shared words, if it is unambiguous.
- */
-export function choose(options, want) {
-  const w = norm(want);
-  if (!w || !Array.isArray(options)) return null;
-  const opts = options.map((o, i) => ({ i, t: norm(o.text), v: norm(o.value), ok: real(o) })).filter((o) => o.ok);
-  const exact = opts.filter((o) => o.t === w || (o.v && o.v === w));
-  if (exact.length) return { index: exact[0].i, fuzzy: false };
-  const yn = /^(yes|no)\b/.exec(w)?.[1];
-  if (yn) {
-    const hits = opts.filter((o) => new RegExp(`^${yn}\\b`).test(o.t));
-    if (hits.length === 1) return { index: hits[0].i, fuzzy: hits[0].t !== w };
-  }
-  const starts = opts.filter((o) => (w.length >= 3 && o.t.startsWith(w)) || (o.t.length >= 3 && w.startsWith(o.t)));
-  if (starts.length > 1) return null; // "Boston" before "Boston, MA" and "Boston, England": the candidate's call
-  if (starts.length === 1) return { index: starts[0].i, fuzzy: true };
-  const scored = opts.map((o) => ({ ...o, s: similarity(o.t, w) })).filter((o) => o.s >= 0.6).sort((a, b) => b.s - a.s);
-  if (scored.length && (scored.length === 1 || scored[0].s - scored[1].s >= 0.15)) return { index: scored[0].i, fuzzy: true };
-  return null;
+/** "May 2028" as a month input takes it, "2028-05"; null without both a month and a year. */
+function monthValue(text) {
+  const t = String(text).toLowerCase();
+  if (/^\d{4}-\d{2}$/.test(t)) return t;
+  const year = t.match(/\b(19|20)\d{2}\b/)?.[0];
+  const m = MONTHS.findIndex((x) => new RegExp(`\\b${x}`).test(t));
+  return year && m >= 0 ? `${year}-${String(m + 1).padStart(2, '0')}` : null;
 }
 
 /** The packet's written answer closest to a question, when one is close enough to be the same question. */
@@ -138,11 +125,18 @@ export function planForm(root, { url, fields }) {
         if (!f.options?.length) return { ...out, act: 'choose', value, mark: 'check', note: note || 'Picked from the list once it opens.' };
         const hit = choose(f.options, value);
         if (!hit) return { ...out, value, mark: 'yours', note: `No option reads like "${value}".` };
+        if (hit.index < 0) return { ...out, value, mark: 'yours', note: `More than one option fits "${value}": ${hit.tied.slice(0, 3).map((i) => f.options[i].text).join(' / ')}.` };
         const tick = f.kind === 'radio' || f.kind === 'checkbox';
         if (tick && vendor && vendor.clicks === false) return { ...out, value: f.options[hit.index].text, option: hit.index, mark: 'yours', note: `Tick "${f.options[hit.index].text}" yourself: this site's captcha trips on a scripted click.` };
         return { ...out, act: 'choose', value: f.options[hit.index].text, option: hit.index, mark: check || hit.fuzzy ? 'check' : 'sure' };
       }
       if (f.kind === 'checkbox') return { ...out, value, mark: 'yours', note: note || 'A box to tick yourself.' };
+      if (f.kind === 'month') {
+        const ym = monthValue(value);
+        if (!ym) return { ...out, value, mark: 'yours', note: `"${value}" isn't a month and year.` };
+        value = ym;
+      }
+      if (f.kind === 'date') return { ...out, value, mark: 'yours', note: `Wants a full date; on file: ${value}.` };
       const over = f.maxlength && value.length > f.maxlength;
       return { ...out, act: 'type', value, mark: over || check ? 'check' : 'sure', note: over ? `${value.length} characters, and the box takes ${f.maxlength}.` : note };
     };
@@ -163,10 +157,25 @@ export function planForm(root, { url, fields }) {
       return put(packet.cover_letter, 'packet', { key: id.key, by: id.by, check: !reviewed, note: reviewed ? null : 'From a packet not marked ready yet.' });
     }
     if (id) {
-      const v = bank.values.get(id.key);
+      let v = bank.values.get(id.key);
       if (isSensitive(id.key) && v?.source !== 'stated') {
         return { ...base, key: id.key, by: id.by, mark: 'yours', note: 'Answered only from what you have stated (data/form-answers.yml).' };
       }
+      // Work authorization is a different answer in every country, so it is used only for the country the question
+      // names; a question that names none takes a plain answer, or the one country listed, shown for a look.
+      let only = null;
+      if (v?.byCountry) {
+        const asked = [...countriesIn(f.label)];
+        const listed = [...v.byCountry.keys()].filter(Boolean);
+        if (!asked.length && !v.byCountry.has('') && listed.length === 1) only = listed[0];
+        const said = asked.length === 1 ? v.byCountry.get(asked[0]) : asked.length ? null : v.byCountry.get('') ?? (only && v.byCountry.get(only));
+        if (!said) {
+          const why = asked.length > 1 ? `names ${asked.length} countries` : asked.length ? `asks about ${title(asked[0])}, which form-answers.yml doesn't list under ${id.key}` : 'doesn\'t say which country';
+          return { ...base, key: id.key, by: id.by, mark: 'yours', note: `This question ${why}.` };
+        }
+        v = { ...v, value: said };
+      }
+      if (only) return put(v.value, v.source, { key: id.key, by: id.by, check: true, note: `Your answer for ${title(only)}; the question doesn't name a country.` });
       if (v) return put(v.value, v.source, { key: id.key, by: id.by, check: v.check || id.confidence < 0.8 });
       return { ...empty(), key: id.key, by: id.by };
     }

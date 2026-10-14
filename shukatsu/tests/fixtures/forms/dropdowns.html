@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Apply: Data Analyst Co-op at Acme</title>
+<style>
+  body { font: 15px sans-serif; max-width: 640px; margin: 24px auto; }
+  .field { margin: 14px 0; display: grid; gap: 4px; position: relative; }
+  [role="listbox"] { list-style: none; margin: 0; padding: 0; border: 1px solid #999; }
+  [role="option"] { padding: 4px 8px; cursor: pointer; }
+</style>
+</head>
+<body>
+<!--
+  The dropdowns that go wrong on real forms:
+  - Location searches as you type, answers after a pause (showing "Loading…"
+    first), and finds nothing for "Boston, MA": only a city name finds
+    anything, and the first result is Boston, England;
+  - Degree shows every option when opened, and typing the profile's degree
+    ("B.S. Business Administration") into its search would hide them all;
+  - Graduation year has no options until a degree is chosen;
+  - work authorization answers in statements, not Yes or No;
+  - sponsorship's two options differ by one "not";
+  - a question about Canada, which the candidate never answered;
+  - "How did you hear" opens a list that isn't tied to it, while another
+    list is showing that has the answer in it.
+-->
+<form id="application_form" onsubmit="event.preventDefault(); window.__submitted = true;">
+  <div class="field"><label id="loc-l">Location (City)<span>*</span></label>
+    <div><span id="loc-value"></span><input id="loc" role="combobox" aria-autocomplete="list" aria-controls="loc-list" aria-labelledby="loc-l" autocomplete="off"></div>
+    <ul role="listbox" id="loc-list" hidden></ul></div>
+  <div class="field"><label id="degree-l">Degree<span>*</span></label>
+    <div><span id="degree-value"></span><input id="degree" role="combobox" aria-autocomplete="list" aria-controls="degree-list" aria-labelledby="degree-l" autocomplete="off"></div>
+    <ul role="listbox" id="degree-list" hidden></ul></div>
+  <div class="field"><label for="grad_year">Graduation year</label><select id="grad_year" name="grad_year"><option value="">Select...</option></select></div>
+  <div class="field"><label for="auth">Are you legally authorized to work in the United States?<span>*</span></label>
+    <select id="auth" name="auth"><option value="">Select...</option><option>I am authorized to work in the U.S. for any employer</option><option>I am not authorized to work in the U.S.</option></select></div>
+  <div class="field"><label for="sponsor">Will you now or in the future require visa sponsorship?<span>*</span></label>
+    <select id="sponsor" name="sponsor"><option value="">Select...</option><option>I will not require sponsorship</option><option>I will require sponsorship</option></select></div>
+  <div class="field"><label for="canada">Are you legally authorized to work in Canada?</label>
+    <select id="canada" name="canada"><option value="">Select...</option><option>Yes</option><option>No</option></select></div>
+  <div class="field"><label id="heard-l">How did you hear about this job?</label>
+    <div><span id="heard-value"></span><input id="heard" role="combobox" aria-autocomplete="list" aria-labelledby="heard-l" autocomplete="off"></div>
+    <ul role="listbox" id="heard-list" hidden></ul></div>
+  <button type="submit" id="submit_app">Submit Application</button>
+</form>
+<aside><p>Another widget's open list:</p><ul role="listbox" id="decoy"><li role="option" onclick="window.__decoy = true">Career fair</li><li role="option" onclick="window.__decoy = true">Boston, MA</li></ul></aside>
+<script>
+  const $ = (id) => document.getElementById(id);
+  window.__state = {};
+  function combo(id, { search, onPick }) {
+    const input = $(id); const list = $(`${id}-list`); const value = $(`${id}-value`);
+    const show = (items) => {
+      list.replaceChildren(...items.map((t) => {
+        const li = document.createElement('li');
+        li.setAttribute('role', 'option');
+        li.textContent = t;
+        li.addEventListener('click', () => { value.textContent = t; window.__state[id] = t; input.value = ''; list.hidden = true; if (onPick) onPick(t); });
+        return li;
+      }));
+      list.hidden = false;
+    };
+    input.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown') search('', show); if (e.key === 'Escape') list.hidden = true; });
+    input.addEventListener('input', () => search(input.value, show));
+  }
+  const PLACES = ['Boston, England, United Kingdom', 'Boston, Massachusetts, United States', 'Bostonia, California, United States'];
+  combo('loc', { search: (q, show) => {
+    if (!q) return show(['Type to search']);
+    show(['Loading…']);
+    setTimeout(() => { const r = PLACES.filter((p) => p.toLowerCase().startsWith(q.toLowerCase())); show(r.length ? r : ['No options']); }, 300);
+  } });
+  const DEGREES = ['High School', "Associate's Degree", "Bachelor's Degree", "Master's Degree", 'Doctorate'];
+  combo('degree', {
+    search: (q, show) => { const r = DEGREES.filter((d) => d.toLowerCase().includes(q.toLowerCase())); show(r.length ? r : ['No options']); },
+    onPick: () => { const sel = $('grad_year'); for (const y of ['2026', '2027', '2028', '2029']) sel.add(new Option(y, y)); },
+  });
+  // Not tied to its input by aria-controls, so the filler can't tell it from the decoy.
+  combo('heard', { search: (q, show) => show(['LinkedIn', 'Career fair', 'Referral'].filter((x) => x.toLowerCase().includes(q.toLowerCase()))) });
+</script>
+</body>
+</html>

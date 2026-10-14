@@ -99,8 +99,9 @@ async function fill(tab) {
   await badge(tab.id, '…');
   try {
     // Every frame we may reach: a Greenhouse form often sits in an iframe on the company's own site.
-    await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ['filler.js'] }).catch(() =>
-      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['filler.js'] }));
+    const files = ['match.js', 'filler.js'];
+    await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files }).catch(() =>
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files }));
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['panel.js'] });
     const read = (await inTab(tab.id, () => globalThis.__shukatsuFill?.read({ fresh: true }) ?? null))
       .filter((r) => r.result?.fields?.some((f) => f.visible));
@@ -113,13 +114,14 @@ async function fill(tab) {
       posting = posting || plan.posting;
       const [{ result: done }] = await inTab(tab.id, (p) => globalThis.__shukatsuFill.act(p), [plan], [frameId]);
       rows.push(...done.rows.map((r) => ({ ...r, frameId })));
-      // An answer can reveal a follow-up question; plan and fill those once more.
-      const known = new Set(result.fields.map((f) => f.ref));
-      const [{ result: after }] = await inTab(tab.id, () => globalThis.__shukatsuFill.read(), [], [frameId]);
-      const fresh = after.fields.filter((f) => !known.has(f.ref));
-      if (fresh.some((f) => f.visible)) {
-        const more = await call('application.plan', { url: after.url, fields: fresh });
+      // An answer can reveal a follow-up question, or fill a list that was empty (a state list once the
+      // country is chosen); plan and fill those once more.
+      const [{ result: next }] = await inTab(tab.id, () => globalThis.__shukatsuFill.again(), [], [frameId]);
+      if (next.fields.some((f) => f.visible)) {
+        const more = await call('application.plan', { url: next.url, fields: next.fields });
         const [{ result: two }] = await inTab(tab.id, (p) => globalThis.__shukatsuFill.act({ ...p, resume: null }), [more], [frameId]);
+        const replanned = new Set(two.rows.map((r) => r.ref));
+        for (let i = rows.length - 1; i >= 0; i--) if (rows[i].frameId === frameId && replanned.has(rows[i].ref)) rows.splice(i, 1);
         rows.push(...two.rows.map((r) => ({ ...r, frameId })));
       }
       await inTab(tab.id, () => globalThis.__shukatsuFill.watch(), [], [frameId]);

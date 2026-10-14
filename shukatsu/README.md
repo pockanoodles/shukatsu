@@ -100,12 +100,16 @@ On a Greenhouse, Lever, or Ashby application form, Alt+Shift+F fills it (`apply/
 goes in first, every answer is written over what the site's own resume reader put there, and a
 panel lists what to check and what is yours to answer. It never presses Submit. Work
 authorization, sponsorship, salary, and demographic questions are filled only from what you
-write in `data/form-answers.yml`:
+write in `data/form-answers.yml`. Work authorization and sponsorship go by country, so a
+question about a country you didn't list stays yours:
 
 ```yaml
 answers:
-  auth.work: "Yes"
-  auth.sponsorship: "Yes"
+  auth.work:
+    United States: "Yes"
+    Japan: "Yes"
+  auth.sponsorship:
+    United States: "Yes"
   eeo.gender: Decline to self-identify
 questions:            # a recurring question, in its exact wording
   - q: "How did you hear about this job?"

@@ -7,7 +7,9 @@ import { fileURLToPath } from 'url';
 const { run, sessionPrincipal, tokenPrincipal } = await import('../core/ops/index.mjs');
 const { createAgent, issueToken } = await import('../core/people.mjs');
 const { identify, norm } = await import('../apply/fields.mjs');
-const { applyKey, choose, planForm } = await import('../apply/plan.mjs');
+const { applyKey, planForm } = await import('../apply/plan.mjs');
+await import('../extension/match.js');
+const { choose, countriesIn } = globalThis.__shukatsuMatch;
 const { loadBank } = await import('../apply/bank.mjs');
 const { platform } = await import('../platforms/index.mjs');
 const { makeRoot, people } = await import('./helpers.mjs');
@@ -31,7 +33,7 @@ function setup() {
     `| 1 | 2026-10-14 | Acme | Data Analyst Co-op | 4.2/5 | Evaluated | ✅ | — | | ${FORM_URL} |`, '',
   ].join('\n'));
   writeFileSync(join(root, 'data', 'form-answers.yml'), [
-    'answers:', '  auth.work: "Yes"', '  eeo.gender: Decline to self-identify',
+    'answers:', '  auth.work:', '    US: "Yes"', '  eeo.gender: Decline to self-identify',
     'questions:', '  - q: "How did you hear about this job?"', '    a: Career fair', '',
   ].join('\n'));
   const { token } = issueToken(root, { actor: cast.owner, userId: cast.owner.id, kind: 'capture', name: 'extension' });
@@ -66,8 +68,37 @@ test('an answer is matched to the option that says it', () => {
   const long = [{ text: 'Yes, I am authorized to work in the US' }, { text: 'No, I am not authorized' }];
   assert.deepEqual(choose(long, 'Yes'), { index: 0, fuzzy: true }, 'a yes picks the one option that starts with yes');
   assert.equal(choose([{ text: 'Select...' }, { text: 'LinkedIn' }], 'Select'), null, 'a placeholder is never an answer');
-  assert.equal(choose([{ text: 'Boston, MA' }, { text: 'Boston, England' }], 'Boston'), null, 'two equally good options are left to the candidate');
+  assert.deepEqual(choose([{ text: 'Boston, MA' }, { text: 'Boston, England' }], 'Boston'), { index: -1, tied: [0, 1] }, 'two equally good options are left to the candidate');
   assert.equal(choose(yn, 'Maybe'), null);
+});
+
+test('a pick never says the opposite, never guesses a word inside another, and knows aliases', () => {
+  const pick = (opts, want) => choose(opts, want)?.index ?? null;
+  // yes and no
+  assert.equal(pick(['I am authorized to work in the US', 'I am not authorized to work in the US', 'Prefer not to say'], 'Yes'), 0, 'a yes to statements');
+  assert.equal(pick(['I am authorized to work in the US', 'I am not authorized to work in the US'], 'No'), 1);
+  assert.equal(pick(['I will require sponsorship', 'I will not require sponsorship'], 'No, I won\'t need sponsorship'), 1, 'one "not" apart');
+  assert.equal(pick(['I will require sponsorship', 'I will not require sponsorship'], 'I will not require sponsorship now or in the future'), 1);
+  assert.deepEqual(choose(['Yes, US citizen', 'Yes, green card holder', 'No'], 'Yes'), { index: -1, tied: [0, 1] }, 'which yes is the candidate\'s call');
+  // whole words, not letters
+  assert.equal(pick(['North Carolina', 'North Dakota'], 'No'), null, '"No" is not the start of "North"');
+  assert.equal(pick(['Database administration', 'Data analysis'], 'Data'), 1);
+  assert.equal(pick(['Female', 'Male (he/him)', 'Decline to self-identify'], 'Male'), 1);
+  assert.equal(pick(['Boston, England, United Kingdom', 'Boston, Massachusetts, United States'], 'Boston, MA'), 1);
+  // aliases
+  assert.equal(pick(['Afghanistan', 'United States Minor Outlying Islands', 'United States of America'], 'USA'), 2);
+  assert.equal(pick(['Maine', 'Maryland', 'Massachusetts'], 'MA'), 2);
+  assert.equal(pick(['Indiana', 'Iowa'], 'in'), null, 'a lowercase word is not a state code');
+  // levels and dates
+  assert.equal(pick(['High School', 'Associate\'s Degree', 'Bachelor\'s Degree', 'Master\'s Degree', 'PhD'], 'B.S. Business Administration'), 2);
+  assert.equal(pick(['2026', '2027', '2028', '2029'], 'May 2028'), 2);
+  assert.equal(pick(['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], 'May 2028'), 4);
+  // never a fuzzy "Other" or "Prefer not to say"
+  assert.equal(pick(['LinkedIn', 'Other (please specify)'], 'Northeastern career fair'), null);
+  assert.equal(pick(['LinkedIn', 'Career Fair / On-campus', 'Referral', 'Other'], 'Career fair'), 1);
+  assert.equal(pick(['Yes', 'No', 'Loading…'], 'Loading'), null, 'a list still loading is not an answer');
+  assert.deepEqual([...countriesIn('Are you legally authorized to work in the U.S.?')], ['united states']);
+  assert.deepEqual([...countriesIn('Tell us about yourself')], []);
 });
 
 test('a form and its posting compare equal however the link is spelled', () => {
@@ -83,6 +114,10 @@ test('the bank takes stated answers first and never derives a sensitive one', ()
   assert.equal(bank.values.get('name.given').value, 'Test');
   assert.equal(bank.values.get('name.family').value, 'Candidate');
   assert.equal(bank.values.get('auth.work').source, 'stated');
+  assert.equal(bank.values.get('auth.work').byCountry.get('united states'), 'Yes', 'answered per country');
+  assert.equal(bank.values.get('school').value, 'University', 'the school, not its heading with the city');
+  assert.equal(bank.values.get('degree').value, 'B.S. Business Administration');
+  assert.equal(bank.values.get('grad.date').value, 'May 2028', 'not "Expected May 2028"');
   assert.equal(bank.values.get('auth.sponsorship'), undefined);
   assert.equal(bank.questions[0].a, 'Career fair');
 });
@@ -118,6 +153,19 @@ test('a plan fills what is known, leaves the rest to the candidate, and never to
   assert.equal(by.h.mark, 'yours', 'a required question nothing answers');
 });
 
+test('work authorization is answered only for the country the question names', () => {
+  const s = setup();
+  const yn = [{ text: 'Select...', value: '' }, { text: 'Yes' }, { text: 'No' }];
+  const plan = (label) => planForm(s.root, { url: FORM_URL, fields: [field({ kind: 'select', label, options: yn })] }).entries[0];
+  assert.deepEqual([plan('Are you authorized to work in the US?').option, plan('Are you authorized to work in the US?').mark], [1, 'sure']);
+  const canada = plan('Are you legally authorized to work in Canada?');
+  assert.deepEqual([canada.act, canada.mark], ['leave', 'yours']);
+  assert.match(canada.note, /Canada/);
+  const unnamed = plan('Are you legally authorized to work?');
+  assert.deepEqual([unnamed.option, unnamed.mark], [1, 'check'], 'no country named: the one listed, for a look');
+  assert.match(unnamed.note, /United States/);
+});
+
 test('on Lever a box or radio is left to the candidate, since a scripted click trips its captcha', () => {
   const s = setup();
   const plan = planForm(s.root, {
@@ -141,6 +189,11 @@ test('only the candidate\'s own key plans a form, and recording a fill is not se
 let chromium = null;
 try { ({ chromium } = await import('playwright')); } catch { chromium = null; }
 
+/** What background.js injects, in its order. */
+async function inject(page) {
+  for (const f of ['match.js', 'filler.js']) await page.addScriptTag({ path: join(HERE, '..', 'extension', f) });
+}
+
 test('the filler beats the site\'s resume parser, a React input, and a late overwrite, and never presses Submit', { skip: !chromium && 'playwright is not installed' }, async (t) => {
   let browser;
   try { browser = await chromium.launch(); } catch (e) { t.skip(`chromium did not start: ${e.message}`); return; }
@@ -149,7 +202,7 @@ test('the filler beats the site\'s resume parser, a React input, and a late over
     const page = await browser.newPage();
     await page.route('https://job-boards.greenhouse.io/**', (r) => r.fulfill({ contentType: 'text/html', body: readFileSync(join(HERE, 'fixtures', 'forms', 'greenhouse.html'), 'utf-8') }));
     await page.goto(FORM_URL);
-    await page.addScriptTag({ path: join(HERE, '..', 'extension', 'filler.js') });
+    await inject(page);
 
     const read = await page.evaluate(() => globalThis.__shukatsuFill.read({ fresh: true }));
     const website = read.fields.find((f) => f.name === 'website');
@@ -184,6 +237,51 @@ test('the filler beats the site\'s resume parser, a React input, and a late over
     assert.equal(await page.evaluate(() => window.__submitted === true), false, 'Submit is never pressed');
     assert.match(await page.$eval('#submit_app', (el) => el.style.outline), /solid/, 'and outlined, so the candidate sees it is theirs');
     assert.ok(done.ms < 6000, `filled in ${done.ms} ms`);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('dropdowns get the right option: searched, statement-style, one "not" apart, filled in late, or tied to no list', { skip: !chromium && 'playwright is not installed' }, async (t) => {
+  let browser;
+  try { browser = await chromium.launch(); } catch (e) { t.skip(`chromium did not start: ${e.message}`); return; }
+  try {
+    const s = setup();
+    writeFileSync(join(s.root, 'data', 'form-answers.yml'), [
+      'answers:', '  auth.work:', '    United States: "Yes"', '  auth.sponsorship:', '    US: "Yes"',
+      'questions:', '  - q: "How did you hear about this job?"', '    a: Career fair', '',
+    ].join('\n'));
+    const page = await browser.newPage();
+    await page.route('https://job-boards.greenhouse.io/**', (r) => r.fulfill({ contentType: 'text/html', body: readFileSync(join(HERE, 'fixtures', 'forms', 'dropdowns.html'), 'utf-8') }));
+    await page.goto(FORM_URL);
+    await inject(page);
+
+    // What background.js does: read, plan, fill; then plan and fill what the first round changed.
+    const read = await page.evaluate(() => globalThis.__shukatsuFill.read({ fresh: true }));
+    const plan = await run(s.root, s.extP, 'application.plan', { url: read.url, fields: read.fields });
+    const one = await page.evaluate((p) => globalThis.__shukatsuFill.act(p), plan);
+    const next = await page.evaluate(() => globalThis.__shukatsuFill.again());
+    assert.deepEqual(next.fields.map((f) => f.id), ['grad_year'], 'only the list that filled in late');
+    const more = await run(s.root, s.extP, 'application.plan', { url: next.url, fields: next.fields });
+    const two = await page.evaluate((p) => globalThis.__shukatsuFill.act({ ...p, resume: null }), more);
+    const rows = [...one.rows, ...two.rows];
+    const row = (id) => rows.findLast((r) => r.ref === [...read.fields, ...next.fields].find((f) => f.id === id).ref);
+
+    const shown = (id) => page.$eval(`#${id}-value`, (el) => el.textContent);
+    const sel = (id) => page.$eval(`#${id}`, (el) => el.options[el.selectedIndex].text);
+    assert.equal(await shown('loc'), 'Boston, Massachusetts, United States', 'searched by city, and not Boston, England');
+    assert.equal(await page.$eval('#loc', (el) => el.value), '', 'no search text left behind');
+    assert.equal(await shown('degree'), 'Bachelor\'s Degree', 'picked from the open list, by level');
+    assert.equal(await sel('grad_year'), '2028', 'a list that filled in once the degree was chosen');
+    assert.equal(await sel('auth'), 'I am authorized to work in the U.S. for any employer');
+    assert.equal(await sel('sponsor'), 'I will require sponsorship', 'the option without the "not"');
+    assert.equal(row('sponsor').mark, 'check');
+    assert.equal(await sel('canada'), 'Select...', 'never answered for Canada');
+    assert.equal(row('canada').mark, 'yours');
+    assert.equal(await shown('heard'), 'Career fair', 'from its own list');
+    assert.equal(await page.evaluate(() => window.__decoy === true), false, 'never from another widget\'s list');
+    assert.ok(two.rows.every((r) => r.state !== 'failed'), JSON.stringify(rows.filter((r) => r.state === 'failed')));
+    assert.ok(one.ms + two.ms < 6000, `filled in ${one.ms + two.ms} ms`);
   } finally {
     await browser.close();
   }

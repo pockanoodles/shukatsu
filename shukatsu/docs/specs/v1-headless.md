@@ -408,7 +408,8 @@ extension/panel.js              the list: yours, then check, then sure
 application.filled              counts and timing, in the activity log
 ```
 
-A second round runs when an answer reveals a follow-up question.
+A second round runs when an answer reveals a follow-up question, or fills a list that was
+empty (`again()` in the filler).
 
 The three ways filling goes wrong, and what answers each:
 
@@ -416,9 +417,35 @@ The three ways filling goes wrong, and what answers each:
   seconds from the press, most of it the wait for the site's resume parser.
 - **The wrong value in a box.** The ATS's own field names are exact and come first. A
   label is matched only to an answer key whose kind fits (a resume never goes into a text
-  box). A choice is matched to an option by its text, and two equally good options are
-  left to the candidate, not guessed. Every value is read back after it is written, and
-  each row says how sure it is (`sure`, `check`, `yours`).
+  box). Every value is read back after it is written, and each row says how sure it is
+  (`sure`, `check`, `yours`). Profile values are cut to what a box asks for: the school
+  without the city its heading carries, the degree without "Candidate for", the
+  graduation date as "May 2028", one location where the profile lists two.
+
+**Dropdowns** are where a wrong pick happens most, so a pick is made by one matcher,
+`extension/match.js`, which the server plans with and the page picks with (a searchable
+list, or one too long to send), so the two never disagree. It returns a pick, a tie, or
+nothing, and a tie or nothing is left to the candidate with the options named:
+
+- the same words after aliases: "USA" is "United States of America", "MA" is
+  "Massachusetts" (a code only in capitals, so "in" is not Indiana);
+- a side taken is never matched to the opposite: "No" never picks "I will require
+  sponsorship" over "I will not", and a yes to statement options ("I am authorized…",
+  "I am not authorized…") picks the one statement that says yes;
+- whole words at the start, not letters: "No" is not the start of "North Carolina",
+  "Data" picks "Data analysis" over "Database administration", and "Boston, MA" picks
+  "Boston, Massachusetts, United States" over "Boston, England";
+- a degree by its level, a date by its year or month when the list is years or months;
+- the one option sharing most words by a clear margin. "Other" and "Prefer not to say"
+  are never a fuzzy pick.
+
+A searchable dropdown is opened first and matched as it stands, since most show every
+option and a search only hides the right one. Only then is it searched (the whole answer,
+then its first part, "Boston"), and each list is read once it stops changing, so a list
+still loading or still showing the last search is never picked from. A list counts only
+if the dropdown names it, or it is the one list that opened when the dropdown was
+touched, never another widget's open list. A list that fills in after another answer (a
+state list once the country is chosen) is planned again in the second round.
 - **The site's own autofill.** The real culprit is usually the ATS reading the uploaded
   resume back into the form. It overwrites names and fills fields with what it parsed.
   So the resume goes in first and the filler waits for the page to go quiet (longer
@@ -429,9 +456,7 @@ The three ways filling goes wrong, and what answers each:
   made by hand is left alone.
 
 Values are written the way a framework notices: the element prototype's own value setter
-(past any wrapper React puts on the element), then input, change, and focusout events. A
-type-ahead (react-select and the like) gets the text typed, and then the option that
-appears is picked.
+(past any wrapper React puts on the element), then input, change, and focusout events.
 
 **What is never filled.** A field no person can see (off-screen, zero-sized, styled
 away) is reported hidden and left alone, because filling a bot trap marks the
@@ -444,7 +469,10 @@ demographics, and consent are filled only from `data/form-answers.yml`, the cand
 own words. They are never worked out from the profile. A student on CPT is authorized
 for a co-op without being listed as authorized in the country, so deriving either answer
 would put a false statement in front of an employer. The same file holds answers to
-recurring questions in their exact wording.
+recurring questions in their exact wording. Work authorization and sponsorship are stated per country, and are
+used only for the country the question names; a question naming no country takes a plain
+answer, or the one country listed, marked for a look. A Yes for the United States never
+answers a question about Canada.
 
 **The resume.** It is the newest `data/pdf-index.tsv` CV whose file name carries the
 posting's company. The panel always names it, so a wrong one is seen before Submit.

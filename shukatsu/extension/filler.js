@@ -18,7 +18,12 @@
  *                  4. for GUARD_MS after, a value the site (or the browser's
  *                     autofill) changes is put back. One the candidate changes
  *                     by hand is theirs and is left alone.
+ *   again()      the fields a second round should fill: ones the first round
+ *                revealed, and empty ones whose list filled in since.
  *   show(ref)    scrolls to a field, for a row in the panel (panel.js).
+ *
+ * Options are matched by match.js (globalThis.__shukatsuMatch), the same
+ * matcher the server plans with; it is injected before this file.
  *
  * It never presses Submit, Next, or any button. The site's Submit button is
  * outlined so the candidate can see it is theirs.
@@ -37,6 +42,7 @@
   const touched = new Map(); // ref -> when the candidate last changed it by hand
   const labels = new Map(); // ref -> the question, as read
   let session = []; // every row filled since the candidate pressed Fill, across rounds
+  let lastRead = new Map(); // ref -> its options as last read, for again()
 
   const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
   const fold = (s) => clean(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[*✱]+/g, ' ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -189,7 +195,20 @@
       });
     }
     for (const f of fields) labels.set(f.ref, f.label);
+    lastRead = new Map(fields.map((f) => [f.ref, JSON.stringify((f.options || []).map((o) => o.text))]));
     return { url: location.href, fields };
+  }
+
+  /**
+   * What to fill in a second round: fields an answer revealed, and fields not
+   * filled yet whose list has changed since the last read (a state list that
+   * fills once a country is chosen). A field already filled is left alone.
+   */
+  function again() {
+    const before = lastRead;
+    const filled = new Set(session.filter((r) => r.state === 'set').map((r) => r.ref));
+    const now = read();
+    return { url: now.url, fields: now.fields.filter((f) => !before.has(f.ref) || (!filled.has(f.ref) && before.get(f.ref) !== lastRead.get(f.ref))) };
   }
 
   // ------------------------------------------------------------------ write
@@ -223,17 +242,8 @@
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  /** The option a value names in a list the server didn't see (too long, or only there once opened): exact, then starts-with, then the one that contains it. */
-  function pickText(texts, want) {
-    const w = fold(want);
-    const t = texts.map(fold);
-    let i = t.indexOf(w);
-    if (i >= 0) return i;
-    const starts = t.flatMap((x, j) => (x.startsWith(w) || (x.length >= 3 && w.startsWith(x)) ? [j] : []));
-    if (starts.length === 1) return starts[0];
-    const has = t.flatMap((x, j) => (x.includes(w) ? [j] : []));
-    return has.length === 1 ? has[0] : -1;
-  }
+  // The same matcher the server plans with (match.js, injected first), so a pick made here is the one the plan would make.
+  const { choose } = globalThis.__shukatsuMatch;
 
   const press = (el) => {
     for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
@@ -241,30 +251,91 @@
     }
   };
 
-  function optionsFor(input) {
-    const ids = [input.getAttribute('aria-controls'), input.getAttribute('aria-owns')].filter(Boolean).join(' ');
-    const lists = ids ? ids.split(/\s+/).map((id) => document.getElementById(id)).filter(Boolean) : [];
-    const found = lists.flatMap((l) => [...l.querySelectorAll('[role="option"]')]);
-    return (found.length ? found : [...document.querySelectorAll('[role="option"]')]).filter(seen);
+  const openLists = () => [...document.querySelectorAll('[role="listbox"]')].filter(seen);
+
+  /**
+   * The list this dropdown opened: the one it names (aria-controls,
+   * aria-owns, its active option's), else the one list that appeared since
+   * `already` (the lists showing before it was touched). Never another
+   * field's list, so [] rather than a guess.
+   */
+  function listFor(input, already) {
+    const ids = [input.getAttribute('aria-controls'), input.getAttribute('aria-owns')].filter(Boolean).join(' ').split(/\s+/).filter(Boolean);
+    const named = ids.map((id) => document.getElementById(id)).filter(Boolean);
+    if (named.length) return named;
+    const active = input.getAttribute('aria-activedescendant') && document.getElementById(input.getAttribute('aria-activedescendant'))?.closest('[role="listbox"]');
+    if (active) return [active];
+    const opened = openLists().filter((l) => !already.has(l));
+    return opened.length === 1 ? opened : [];
+  }
+  const optionsIn = (lists) => lists.flatMap((l) => [...l.querySelectorAll('[role="option"]')]).filter(seen);
+
+  /**
+   * The dropdown's options once they stop changing: the same list `stable`
+   * polls running, after at least `min` ms (a search answers after a pause,
+   * and the list showing before it is the old one). [] if nothing shows.
+   */
+  async function settledOptions(input, already, { min, stable = 3, max = 3000 }) {
+    const start = performance.now();
+    let last = null;
+    let runs = 0;
+    while (performance.now() - start < max) {
+      await sleep(60);
+      const opts = optionsIn(listFor(input, already));
+      const sig = opts.map(textOf).join('\u0001');
+      const pending = opts.some((o) => /^(loading|searching)\b/i.test(textOf(o)));
+      if (sig === last && !pending) runs++; else { runs = 0; last = sig; }
+      if (runs >= stable && performance.now() - start >= min) return opts;
+    }
+    return optionsIn(listFor(input, already));
   }
 
+  /**
+   * Pick from a searchable dropdown. First opened as it is, since most lists
+   * (yes/no, degree, a fixed set) show every option at once and a search only
+   * hides the right one; then searched, the full answer, then its first part
+   * ("Boston" for "Boston, MA"), for a list that loads as you type. Every list
+   * is matched against the whole answer with the plan's own matcher.
+   * Returns { chosen }, { tied: [texts] }, or null; on anything but a pick
+   * the search is cleared and the list closed, so no stray text is left.
+   */
   async function pickCombo(input, want) {
+    const already = new Set(openLists());
     input.focus();
-    setValue(input, want);
-    let opts = [];
-    for (let waited = 0; waited < 2500 && !opts.length; waited += 100) { await sleep(100); opts = optionsFor(input); }
-    const i = pickText(opts.map(textOf), want);
-    if (i < 0) { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return null; }
-    const chosen = textOf(opts[i]);
-    press(opts[i]);
-    await sleep(50);
-    return chosen;
+    const tryList = async (opts) => {
+      const texts = opts.map(textOf);
+      const hit = choose(texts, want);
+      if (hit && hit.index >= 0) { press(opts[hit.index]); await sleep(60); return { chosen: texts[hit.index] }; }
+      return hit ? { tied: hit.tied.map((i) => texts[i]) } : null;
+    };
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40, bubbles: true, cancelable: true }));
+    let got = await tryList(await settledOptions(input, already, { min: 120, max: 800 }));
+    const first = String(want).split(/\s*[,(/]\s*|\s+[–—-]\s+/)[0];
+    for (const q of [...new Set([want, first])].filter((x) => x && x.length >= 2)) {
+      if (got) break;
+      setValue(input, q);
+      got = await tryList(await settledOptions(input, already, { min: 400 }));
+    }
+    if (!got?.chosen) {
+      setValue(input, '');
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+    }
+    return got;
   }
 
-  const comboShows = (input, text) => {
-    for (let e = input.parentElement, n = 0; e && n < 4; e = e.parentElement, n++) if (fold(textOf(e)).includes(fold(text))) return true;
-    return false;
-  };
+  /** Whether a searchable dropdown shows `text`: in its input, or in its own box (stopping before an ancestor that holds another field). */
+  function comboShows(input, text) {
+    const want = fold(text);
+    if (!want) return false;
+    if (fold(input.value) === want) return true;
+    let box = input.parentElement;
+    for (let n = 0; box && n < 5; n++) {
+      const up = box.parentElement;
+      if (!up || [...up.querySelectorAll('input, select, textarea')].some((x) => x !== input && x.type !== 'hidden')) break;
+      box = up;
+    }
+    return box ? ` ${fold(ownText(box))} `.includes(` ${want} `) : false;
+  }
 
   // A masked field reformats what it's given ("(617) 555-0123"), so compare letters and digits only.
   const same = (a, b) => String(a || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') === String(b || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
@@ -290,8 +361,13 @@
       return true;
     }
     if (h.kind === 'select') {
-      const i = r.option ?? pickText([...h.el.options].map((o) => o.text), r.value);
-      if (i < 0) return false;
+      let i = r.option;
+      if (i == null) {
+        const hit = choose([...h.el.options].map((o) => ({ text: clean(o.text), value: o.value })), r.value);
+        if (hit?.tied) r.note = `More than one option fits "${r.value}": ${hit.tied.slice(0, 3).map((j) => clean(h.el.options[j].text)).join(' / ')}.`;
+        if (!hit || hit.index < 0) return false;
+        i = hit.index;
+      }
       h.el.selectedIndex = i;
       h.el.dispatchEvent(new Event('input', { bubbles: true }));
       h.el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -299,9 +375,10 @@
       return true;
     }
     if (h.kind === 'combobox') {
-      const chosen = await pickCombo(h.el, r.value);
-      if (!chosen) return false;
-      r.value = chosen;
+      const got = await pickCombo(h.el, r.value);
+      if (got?.tied) r.note = `More than one option fits "${r.value}": ${got.tied.slice(0, 3).join(' / ')}.`;
+      if (!got?.chosen) return false;
+      r.value = got.chosen;
       return true;
     }
     setValue(h.el, r.value);
@@ -375,8 +452,9 @@
       }
       // 2. Every value, over whatever the site put there.
       for (const r of rows.filter((x) => x.act === 'type' || x.act === 'choose')) {
+        const planned = r.note;
         try { r.state = (await write(r)) ? 'set' : 'failed'; } catch { r.state = 'failed'; }
-        if (r.state === 'failed') { r.mark = 'yours'; r.note = r.note || 'Couldn\'t set this one.'; }
+        if (r.state === 'failed') { r.mark = 'yours'; r.note = r.note !== planned ? r.note : r.act === 'choose' ? `No option reads like "${r.value}".` : 'Couldn\'t set this one.'; }
       }
       await sleep(150);
       // 3. Read back; anything a framework threw away gets typed instead.
@@ -396,7 +474,8 @@
       busy = false;
     }
     const ms = Math.round(performance.now() - started);
-    session.push(...rows);
+    const again = new Set(rows.map((r) => r.ref));
+    session = session.filter((r) => !again.has(r.ref)).concat(rows); // a field planned again (its list filled in late) keeps only its latest row
     markSubmit();
     return { rows, ms };
   }
@@ -444,5 +523,5 @@
     return true;
   }
 
-  globalThis.__shukatsuFill = { read, act, watch, show };
+  globalThis.__shukatsuFill = { read, again, act, watch, show };
 })();
