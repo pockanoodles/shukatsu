@@ -9,8 +9,8 @@
   },
   "scripts": {
     "dev": "node shukatsud.mjs --dev",
-    "dev:next": "next dev",
-    "build": "next build",
+    "dev:next": "NEXT_TELEMETRY_DISABLED=1 next dev",
+    "build": "NEXT_TELEMETRY_DISABLED=1 next build",
     "start": "NODE_ENV=production node shukatsud.mjs",
     "mcp": "node mcp-stdio.mjs",
     "typecheck": "tsc --noEmit",

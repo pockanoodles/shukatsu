@@ -264,3 +264,10 @@ data/agent-inbox.md
 # Fork: the app and the product page pin their own dependency trees (npm ci needs them).
 !shukatsu/package-lock.json
 !site/package-lock.json
+# Fork: build plans, brainstorm specs and process notes stay on the machine. The one
+# polished design doc per major version lives in shukatsu/docs/specs/ and is tracked.
+docs/superpowers/
+shukatsu/docs/plans/
+docs/plans/
+# Fork: a data root's runtime state (app.db, sync.db, egress.log, owner.token) never belongs in this repo.
+.shukatsu/

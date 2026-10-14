@@ -100,6 +100,8 @@ export async function start(opts = args(process.argv.slice(2))) {
     try { await connectors.boot(root, { register, addBusySource }); } catch (e) { log('connectors failed to start:', e.message); }
   }
 
+  // Next sends anonymous usage data to Vercel unless told not to. This system sends nothing home (DATAFLOW.md).
+  process.env.NEXT_TELEMETRY_DISABLED ??= '1';
   const { default: next } = await import('next');
   const app = next({ dev: opts.dev, dir: HERE, hostname: opts.host, port: opts.port });
   const nextHandle = app.getRequestHandler();
