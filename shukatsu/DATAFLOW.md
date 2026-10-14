@@ -30,9 +30,10 @@ build time and served locally).
 
 These can be turned on, each by the candidate:
 
-1. **The tunnel or tailnet** that lets invited people reach the app. Cloudflare (tunnel)
-   or Tailscale (tailnet) carries the encrypted traffic between the visitor's browser and
-   the machine. Neither stores the data.
+1. **The tunnel or tailnet** that lets invited people reach the app. Tailscale (tailnet)
+   is end-to-end encrypted between devices. Cloudflare (tunnel) decrypts the traffic at its
+   edge before passing it to the machine, so it can see the traffic while it passes
+   through. Neither is meant to store the data.
 2. **AI wordings** (off unless `ANTHROPIC_API_KEY` is set). When someone presses "Suggest
    wordings" on a packet, one bullet's text, its role heading, and up to 6,000 characters
    of the job posting go to Anthropic's API. Nothing else from the record, and no names of
