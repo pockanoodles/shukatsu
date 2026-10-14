@@ -7,7 +7,8 @@ import { fileURLToPath } from 'url';
 const { run, sessionPrincipal, tokenPrincipal } = await import('../core/ops/index.mjs');
 const { createAgent, issueToken } = await import('../core/people.mjs');
 const { identify, norm } = await import('../apply/fields.mjs');
-const { applyKey, planForm } = await import('../apply/plan.mjs');
+const { applyKey, planForm, postingFor, resumeFor, tenantOf } = await import('../apply/plan.mjs');
+const { readAnswers, listSuggestions } = await import('../apply/answers.mjs');
 await import('../extension/match.js');
 const { choose, countriesIn } = globalThis.__shukatsuMatch;
 const { loadBank } = await import('../apply/bank.mjs');
@@ -139,7 +140,7 @@ test('a plan fills what is known, leaves the rest to the candidate, and never to
   const plan = await run(s.root, s.extP, 'application.plan', { url: FORM_URL, fields });
   const by = Object.fromEntries(plan.entries.map((e) => [e.ref, e]));
   assert.equal(plan.platform.id, 'greenhouse');
-  assert.deepEqual(plan.posting, { company: 'Acme', role: 'Data Analyst Co-op', packet: null, status: null });
+  assert.deepEqual(plan.posting, { company: 'Acme', role: 'Data Analyst Co-op', packet: null, status: null, num: 1, by: 'link' });
   assert.equal(by.a.value, 'Test');
   assert.equal(by.a.mark, 'sure');
   assert.equal(by.b.act, 'file', 'a file input is styled away on most forms, and still filled');
@@ -164,6 +165,81 @@ test('work authorization is answered only for the country the question names', (
   const unnamed = plan('Are you legally authorized to work?');
   assert.deepEqual([unnamed.option, unnamed.mark], [1, 'check'], 'no country named: the one listed, for a look');
   assert.match(unnamed.note, /United States/);
+});
+
+const tracker = (rows) => [
+  '# Applications Tracker', '',
+  '| # | Date | Company | Role | Score | Status | PDF | Report | Notes |',
+  '|---|------|---------|------|-------|--------|-----|--------|-------|',
+  ...rows.map((r, i) => `| ${i + 1} | 2026-10-12 | ${r.company} | ${r.role} | — | ${r.status || 'Evaluated'} | ${r.pdf || '❌'} | — | ${r.notes || ''} |`), '',
+].join('\n');
+
+test('a form is matched to its posting by a link in the row\'s notes, or by the company its ATS address names', () => {
+  const s = setup();
+  writeFileSync(join(s.root, 'data', 'applications.md'), tracker([
+    { company: 'Globex', role: 'Support Intern', pdf: PDF, notes: 'apply on Avature: https://globex.avature.net/su/0a1b2c3d; deadline 10-26' },
+    { company: 'Initech', role: 'Banking internship', status: 'Applied' },
+    { company: 'Acme', role: 'Analyst' }, { company: 'Acme', role: 'Engineer' },
+  ]));
+  assert.equal(tenantOf('https://globex.avature.net/careers/Apply?jobId=1'), 'globex');
+  assert.equal(tenantOf('https://acme.wd1.myworkdayjobs.com/en-US/External/job/1'), 'acme');
+  assert.equal(tenantOf('https://boards.greenhouse.io/embed/job_app?for=acme&token=1'), 'acme');
+  assert.equal(tenantOf('https://example.com/careers/acme'), null, 'not an ATS');
+  const link = postingFor(s.root, 'https://globex.avature.net/su/0a1b2c3d');
+  assert.deepEqual([link.posting.num, link.posting.by], [1, 'link'], 'the link in the notes, without its trailing semicolon');
+  const company = postingFor(s.root, 'https://globex.avature.net/careers/ApplicationForm?jobId=9');
+  assert.deepEqual([company.posting.num, company.posting.by], [1, 'company']);
+  assert.equal(postingFor(s.root, 'https://initech.wd3.myworkdayjobs.com/x').posting, null, 'an application already sent is not open');
+  const two = postingFor(s.root, 'https://jobs.lever.co/acme/abc');
+  assert.equal(two.posting, null, 'two open Acme postings: neither is guessed');
+  assert.match(two.note, /2 open postings at Acme/);
+  assert.equal(resumeFor(s.root, company.posting).rel, PDF, 'the resume the tracker row names');
+});
+
+test('two resumes from the same day are the candidate\'s pick, not the first one listed', () => {
+  const s = setup();
+  for (const f of ['output/cv-test-acme-2026-10-14-compact.pdf']) writeFileSync(join(s.root, f), '%PDF-1.4\n');
+  writeFileSync(join(s.root, 'data', 'pdf-index.tsv'), `# report\tpdf\thtml\tformat\tdate\tkind\n\toutput/cv-test-acme-2026-10-14-compact.pdf\t\ta4\t2026-10-14\tcv\n\t${PDF}\t\tletter\t2026-10-14\tcv\n`);
+  assert.deepEqual(resumeFor(s.root, { company: 'Acme' }).tied.length, 2);
+  const plan = planForm(s.root, { url: FORM_URL, fields: [field({ ref: 'r', kind: 'file', label: 'Resume/CV', name: 'resume' })] });
+  assert.deepEqual([plan.entries[0].act, plan.entries[0].mark], ['leave', 'yours']);
+  assert.match(plan.entries[0].note, /2 resumes for Acme/);
+  assert.equal(plan.resume, null);
+});
+
+test('stated answers are the candidate\'s to write, and fills only ever suggest them', async () => {
+  const s = setup();
+  await rejects(run(s.root, s.agentP, 'answers.set', { target: { key: 'auth.work', country: 'Canada' }, value: 'Yes' }), 'stamp_required');
+  await rejects(run(s.root, s.extP, 'answers.set', { target: { key: 'auth.work', country: 'Canada' }, value: 'Yes' }), 'scope');
+  await run(s.root, s.ownerP, 'answers.set', { target: { key: 'auth.work', country: 'Japan' }, value: 'Yes' });
+  await run(s.root, s.ownerP, 'answers.set', { target: { key: 'auth.work', country: 'U.S.' }, value: 'No' });
+  assert.deepEqual(readAnswers(s.root).answers['auth.work'], { 'United States': 'No', Japan: 'Yes' }, 'one entry per country, however it is spelled');
+  await run(s.root, s.ownerP, 'answers.set', { target: { key: 'phone' }, value: '617-555-0100' });
+  await run(s.root, s.ownerP, 'answers.set', { target: { question: 'Are you enrolled in a co-op program?' }, value: 'Yes' });
+  const got = await run(s.root, s.ownerP, 'answers.get', {});
+  const work = got.keys.find((k) => k.key === 'auth.work');
+  assert.deepEqual(work.countries.map((c) => c.country).sort(), ['Japan', 'United States']);
+  assert.equal(got.keys.find((k) => k.key === 'email').profile.value, 'test@example.com', 'what the profile would fill, beside it');
+  assert.equal(got.keys.some((k) => k.key === 'consent'), false, 'a consent is read on each form, never stated here');
+  assert.deepEqual(got.questions.at(-1), { q: 'Are you enrolled in a co-op program?', a: 'Yes' });
+  // The bank reads what was written.
+  assert.equal(loadBank(s.root).values.get('phone').source, 'stated');
+
+  const kept = await run(s.root, s.extP, 'answers.suggest', { url: FORM_URL, items: [
+    { label: 'Are you legally authorized to work in Canada?', key: 'auth.work', value: 'No' },
+    { label: 'Phone', key: 'phone', value: '617-555-0100' },
+    { label: 'I agree to the privacy policy', key: 'consent', value: 'Yes' },
+    { label: 'What is your favorite Acme product?', key: null, value: 'The anvil' },
+  ] });
+  assert.equal(kept.kept, 2, 'what is already stated as is, and a consent, are not kept');
+  const list = listSuggestions(s.root);
+  assert.deepEqual(list.map((x) => x.target), [{ key: 'auth.work', country: 'Canada' }, { question: 'What is your favorite Acme product?' }]);
+  assert.equal(list[0].sensitive, true);
+  assert.equal(readAnswers(s.root).answers['auth.work'].Canada, undefined, 'a suggestion states nothing');
+  await run(s.root, s.ownerP, 'answers.set', { target: list[0].target, value: 'No', suggestion: list[0].id });
+  assert.equal(readAnswers(s.root).answers['auth.work'].Canada, 'No');
+  assert.deepEqual((await run(s.root, s.ownerP, 'answers.dismiss', { id: list[1].id })).dismissed, true);
+  assert.equal(listSuggestions(s.root).length, 0);
 });
 
 test('on Lever a box or radio is left to the candidate, since a scripted click trips its captcha', () => {
@@ -205,6 +281,11 @@ test('the filler beats the site\'s resume parser, a React input, and a late over
     await inject(page);
 
     const read = await page.evaluate(() => globalThis.__shukatsuFill.read({ fresh: true }));
+    const preview = await page.evaluate(async (p) => globalThis.__shukatsuFill.act({ ...p, dry: true }), await run(s.root, s.extP, 'application.plan', { url: read.url, fields: read.fields }));
+    assert.equal(preview.dry, true);
+    assert.ok(preview.rows.some((r) => r.state === 'preview' && r.value === 'Test'), 'a preview says what would go where');
+    assert.equal(await page.$eval('#first_name', (el) => el.value), '', 'and writes nothing');
+    assert.equal(await page.$eval('#resume', (el) => el.files.length), 0);
     const website = read.fields.find((f) => f.name === 'website');
     assert.equal(website.visible, false, 'the trap is seen as hidden');
     assert.equal(read.fields.find((f) => f.name === 'gender').label, 'Gender');
@@ -234,6 +315,15 @@ test('the filler beats the site\'s resume parser, a React input, and a late over
     assert.equal(await page.$eval('input[name=gender][value=x]', (el) => el.checked), true);
     assert.equal(row('company').mark, 'check', 'a field the site filled from the resume is flagged');
     assert.match(row('company').note, /site filled this/);
+    // The candidate types what was left to them and corrects one answer; Remember my answers picks up only those,
+    // not what the site's resume parser wrote into Current Company.
+    await page.fill('#phone', '617-555-0100');
+    await page.fill('#question_1', 'LinkedIn');
+    const typed = await page.evaluate(() => globalThis.__shukatsuFill.answers());
+    assert.deepEqual(typed.items, [
+      { label: 'Phone', key: 'phone', value: '617-555-0100' },
+      { label: 'How did you hear about this job?', key: null, value: 'LinkedIn' },
+    ]);
     assert.equal(await page.evaluate(() => window.__submitted === true), false, 'Submit is never pressed');
     assert.match(await page.$eval('#submit_app', (el) => el.style.outline), /solid/, 'and outlined, so the candidate sees it is theirs');
     assert.ok(done.ms < 6000, `filled in ${done.ms} ms`);

@@ -5,6 +5,10 @@
  * The rows a candidate must act on come first: what is theirs to answer, then
  * what to glance at, then what was filled from an exact source. Pressing a
  * row scrolls to that field. The panel never submits; its last line says so.
+ *
+ * A preview (nothing written yet) has a "Fill it" button. After a fill,
+ * "Remember my answers" sends what the candidate typed by hand to the Form
+ * answers page as suggestions, where nothing is used until they accept it.
  */
 
 (() => {
@@ -21,7 +25,7 @@
     .p { position: fixed; top: 16px; right: 16px; width: 360px; max-height: calc(100vh - 32px); display: flex; flex-direction: column;
       background: #f6f1e7; color: #1f1d1a; border: 2px solid #1f1d1a; box-shadow: 0 6px 24px rgba(0,0,0,.18);
       font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif; z-index: 2147483647; }
-    @media (prefers-color-scheme: dark) { .p { background: #1b1a18; color: #ece6da; border-color: #ece6da; } .row:hover { background: #2a2825; } .note, .sub { color: #a39c90; } }
+    @media (prefers-color-scheme: dark) { .p { background: #1b1a18; color: #ece6da; border-color: #ece6da; } .row:hover { background: #2a2825; } .note, .sub, .said { color: #a39c90; } button.b.on { background: #ece6da; color: #1b1a18; border-color: #ece6da; } }
     header { padding: 12px 14px 10px; border-bottom: 1px solid #d9d0bf; display: grid; gap: 2px; }
     .t { font-size: 15px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
     .sub { color: #5b564e; }
@@ -35,7 +39,15 @@
     .v { grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
     .note { grid-column: 2; color: #5b564e; }
     details { padding: 8px 14px; border-bottom: 1px solid #d9d0bf; }
-    footer { padding: 10px 14px; font-weight: 600; color: #b8432f; }
+    footer { padding: 10px 14px; display: grid; gap: 8px; }
+    .stop { font-weight: 600; color: #b8432f; }
+    .acts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    button.b { all: unset; cursor: pointer; padding: 6px 12px; border: 2px solid currentColor; font-weight: 600; }
+    button.b.on { background: #1f1d1a; color: #f6f1e7; border-color: #1f1d1a; }
+    button.b[disabled] { opacity: .5; cursor: default; }
+    a { color: inherit; }
+    .said { color: #5b564e; }
+    .preview { color: #b8432f; font-weight: 600; }
   `;
 
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
@@ -59,7 +71,7 @@
     const box = el('div', 'p');
     const rows = state.rows.filter((r) => r.mark !== 'skip');
     const count = (m) => rows.filter((r) => r.mark === m && r.mark !== 'empty').length;
-    const filled = rows.filter((r) => ['set', 'restored', 'yours-now'].includes(r.state)).length;
+    const filled = rows.filter((r) => ['set', 'restored', 'yours-now', 'preview'].includes(r.state)).length;
     const head = el('header');
     const t = el('div', 't');
     t.append(el('span', null, state.title));
@@ -67,7 +79,8 @@
     x.title = 'Close';
     x.addEventListener('click', () => { host.remove(); host = null; root = null; });
     t.append(x);
-    head.append(t, el('span', 'sub', `Filled ${filled} in ${(state.ms / 1000).toFixed(1)} s · ${count('check')} to check · ${count('yours')} yours`));
+    head.append(t, el('span', 'sub', `${state.dry ? `Would fill ${filled}` : `Filled ${filled} in ${(state.ms / 1000).toFixed(1)} s`} · ${count('check')} to check · ${count('yours')} yours`));
+    if (state.dry) head.append(el('span', 'preview', 'Preview: nothing on the page has been changed.'));
     if (state.posting) head.append(el('span', 'sub', state.posting));
     const list = el('ul');
     const shown = rows.filter((r) => r.mark !== 'empty').sort((a, b) => (ORDER[a.mark] - ORDER[b.mark]) || ((b.state === 'failed') - (a.state === 'failed')));
@@ -82,7 +95,36 @@
       d.append(ul);
       box.append(d);
     }
-    box.append(el('footer', null, 'Submit is yours. The site\'s button is outlined in red.'));
+    const foot = el('footer');
+    const acts = el('div', 'acts');
+    if (state.dry) {
+      const go = el('button', 'b on', 'Fill it');
+      go.addEventListener('click', () => { go.disabled = true; chrome.runtime.sendMessage({ type: 'fill.run' }); });
+      acts.append(go);
+    } else {
+      const keep = el('button', 'b', 'Remember my answers');
+      keep.title = 'What you typed or picked by hand goes to Form answers as suggestions. Nothing is used until you accept it there.';
+      const said = el('span', 'said');
+      keep.addEventListener('click', async () => {
+        keep.disabled = true;
+        said.textContent = 'Saving…';
+        try {
+          const r = await chrome.runtime.sendMessage({ type: 'fill.remember' });
+          said.textContent = !r?.ok ? (r?.error || 'Couldn\'t reach shukatsu.') : r.kept ? `${r.kept} kept for Form answers.` : 'Nothing new you typed to keep.';
+        } catch { said.textContent = 'Couldn\'t reach shukatsu.'; }
+        keep.disabled = false;
+      });
+      acts.append(keep, said);
+    }
+    if (state.app) {
+      const a = el('a', null, 'Form answers');
+      a.href = state.app;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      acts.append(a);
+    }
+    foot.append(acts, el('span', 'stop', state.dry ? 'Submit is yours.' : 'Submit is yours. The site\'s button is outlined in red.'));
+    box.append(foot);
     root.append(style, box);
   }
 

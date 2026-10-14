@@ -10,7 +10,9 @@
  *   Fill      the shortcut (Alt+Shift+F) or the toolbar button's menu, on an
  *             application form -> application.plan, then filler.js fills
  *             it, panel.js lists what went where, and application.filled
- *             records how it went. Nothing presses Submit.
+ *             records how it went. Nothing presses Submit. Preview
+ *             (Alt+Shift+P) plans the same way and writes nothing. The
+ *             panel's "Remember my answers" -> answers.suggest.
  *
  * The badge says what happened: + a posting went to the inbox, ✓ saved,
  * … filling, ! something failed (the options page says what).
@@ -94,7 +96,8 @@ async function inTab(tabId, func, args = [], frameIds = null) {
 
 const reports = new Map(); // tabId -> { url, frames left to report }
 
-async function fill(tab) {
+/** Fill the form in the tab, or with `dry`, show what would go where and write nothing. */
+async function fill(tab, { dry = false } = {}) {
   const started = Date.now();
   await badge(tab.id, '…');
   try {
@@ -109,11 +112,14 @@ async function fill(tab) {
 
     const rows = [];
     let posting = null;
+    let unmatched = null;
     for (const { frameId, result } of read) {
       const plan = await call('application.plan', { url: result.url, fields: result.fields });
       posting = posting || plan.posting;
-      const [{ result: done }] = await inTab(tab.id, (p) => globalThis.__shukatsuFill.act(p), [plan], [frameId]);
+      unmatched = unmatched || plan.note;
+      const [{ result: done }] = await inTab(tab.id, (p) => globalThis.__shukatsuFill.act(p), [{ ...plan, dry }], [frameId]);
       rows.push(...done.rows.map((r) => ({ ...r, frameId })));
+      if (dry) continue;
       // An answer can reveal a follow-up question, or fill a list that was empty (a state list once the
       // country is chosen); plan and fill those once more.
       const [{ result: next }] = await inTab(tab.id, () => globalThis.__shukatsuFill.again(), [], [frameId]);
@@ -127,19 +133,33 @@ async function fill(tab) {
       await inTab(tab.id, () => globalThis.__shukatsuFill.watch(), [], [frameId]);
     }
     const ms = Date.now() - started;
-    reports.set(tab.id, { url: read[0].result.url, left: read.length, ms });
+    if (!dry) reports.set(tab.id, { url: read[0].result.url, left: read.length, ms });
     const title = posting ? `${posting.company}, ${posting.role}` : new URL(read[0].result.url).hostname;
-    const note = posting ? null : 'shukatsu doesn\'t know this posting, so only your profile and stated answers were used.';
-    await inTab(tab.id, (s) => globalThis.__shukatsuPanel.render(s), [{ title, posting: note, rows, ms }], [0]);
+    const note = posting
+      ? (posting.by === 'company' ? `Matched to your ${posting.company} posting by the site's name, not its link. Check it's the right one.` : null)
+      : unmatched || 'shukatsu doesn\'t know this posting, so only your profile and stated answers were used.';
+    const { url: app } = await settings();
+    await inTab(tab.id, (s) => globalThis.__shukatsuPanel.render(s), [{ title, posting: note, rows, ms, dry, app: `${app.replace(/\/+$/, '')}/answers` }], [0]);
     await badge(tab.id, '');
   } catch (e) {
     await badge(tab.id, '!', e.message);
   }
 }
 
+/** The panel's "Remember my answers": what the candidate entered by hand, from every frame, kept as suggestions. */
+async function remember(tabId) {
+  const frames = await inTab(tabId, () => globalThis.__shukatsuFill?.answers() ?? null);
+  let kept = 0;
+  for (const { result } of frames) {
+    if (!result?.items?.length) continue;
+    kept += (await call('answers.suggest', result)).kept;
+  }
+  return kept;
+}
+
 const count = (rows, test) => rows.filter(test).length;
 
-chrome.runtime.onMessage.addListener((msg, sender) => {
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   const tabId = sender.tab?.id;
   if (tabId == null) return false;
   if (msg?.type === 'fill.rows') {
@@ -155,15 +175,21 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       if (--rep.left <= 0) reports.delete(tabId);
     }
   }
+  if (msg?.type === 'fill.run') { chrome.tabs.get(tabId).then((tab) => fill(tab)).catch(() => {}); return false; }
+  if (msg?.type === 'fill.remember') {
+    remember(tabId).then((kept) => reply({ ok: true, kept }), (e) => reply({ ok: false, error: e.message }));
+    return true;
+  }
   if (msg?.type === 'fill.show') {
     chrome.scripting.executeScript({ target: { tabId, frameIds: [msg.frameId ?? 0] }, func: (ref) => globalThis.__shukatsuFill?.show(ref), args: [msg.ref] }).catch(() => {});
   }
   return false;
 });
 
-chrome.commands.onCommand.addListener((command, tab) => { if (command === 'fill' && tab) fill(tab); });
+chrome.commands.onCommand.addListener((command, tab) => { if (tab && (command === 'fill' || command === 'preview')) fill(tab, { dry: command === 'preview' }); });
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({ id: 'fill', title: 'Fill this application', contexts: ['action'] }, () => void chrome.runtime.lastError);
+  chrome.contextMenus.create({ id: 'preview', title: 'Preview the fill (writes nothing)', contexts: ['action'] }, () => void chrome.runtime.lastError);
 });
-chrome.contextMenus.onClicked.addListener((info, tab) => { if (info.menuItemId === 'fill' && tab) fill(tab); });
+chrome.contextMenus.onClicked.addListener((info, tab) => { if (tab && (info.menuItemId === 'fill' || info.menuItemId === 'preview')) fill(tab, { dry: info.menuItemId === 'preview' }); });

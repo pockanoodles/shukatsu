@@ -65,7 +65,16 @@ These can be turned on, each by the candidate:
    Some sites save a draft or read fields before Submit is pressed, so filling a form counts
    as giving it to that employer. shukatsu itself sends them nowhere, and no model sees the
    form. The capture key that asks for these answers can read the candidate's contact
-   details and stated answers, so it belongs in the extension only.
+   details and stated answers, so it belongs in the extension only. Fill works on any
+   site the candidate presses it on, not only those three; on another site it goes by the
+   form's own labels. Preview (Alt+Shift+P) plans the same way and writes nothing to the
+   page, so nothing reaches the employer.
+
+   "Remember my answers" on the panel sends what the candidate typed by hand on that form
+   to their own shukatsu, never anywhere else. It waits in `.shukatsu/app.db` as a
+   suggestion, and only becomes an answer when the candidate accepts it on the Form
+   answers page, which writes `data/form-answers.yml` and commits it to the data root's own
+   history.
 
 Applications themselves are never sent by shukatsu. The candidate presses the site's Submit,
 and then marks them sent.

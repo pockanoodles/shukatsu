@@ -6,11 +6,13 @@ import connectorsEn from "./connectors.en";
 import connectorsJa from "./connectors.ja";
 import oauthEn from "./oauth.en";
 import oauthJa from "./oauth.ja";
+import answersEn from "./answers.en";
+import answersJa from "./answers.ja";
 
 export type Lang = "en" | "ja";
 // The original dictionary plus one per area of the headless system, each owning its own top-level keys.
-const en = { ...base, ...sysEn, ...connectorsEn, ...oauthEn } as Dict & typeof sysEn;
-const ja = { ...baseJa, ...sysJa, ...connectorsJa, ...oauthJa };
+const en = { ...base, ...sysEn, ...connectorsEn, ...oauthEn, ...answersEn } as Dict & typeof sysEn;
+const ja = { ...baseJa, ...sysJa, ...connectorsJa, ...oauthJa, ...answersJa };
 export const DICTS: Record<Lang, unknown> = { en, ja };
 
 type Vars = Record<string, string | number | null | undefined>;

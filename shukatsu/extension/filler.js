@@ -20,6 +20,9 @@
  *                     by hand is theirs and is left alone.
  *   again()      the fields a second round should fill: ones the first round
  *                revealed, and empty ones whose list filled in since.
+ *   act({ ...plan, dry: true })  a preview: the rows, nothing written.
+ *   answers()    what the candidate entered by hand since Fill, for the
+ *                panel's "Remember my answers".
  *   show(ref)    scrolls to a field, for a row in the panel (panel.js).
  *
  * Options are matched by match.js (globalThis.__shukatsuMatch), the same
@@ -43,6 +46,7 @@
   const labels = new Map(); // ref -> the question, as read
   let session = []; // every row filled since the candidate pressed Fill, across rounds
   let lastRead = new Map(); // ref -> its options as last read, for again()
+  let since = 0; // when the candidate last pressed Fill
 
   const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
   const fold = (s) => clean(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[*✱]+/g, ' ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -150,7 +154,7 @@
 
   /** `fresh` starts a new fill: what was filled before is forgotten. */
   function read({ fresh = false } = {}) {
-    if (fresh) session = [];
+    if (fresh) { session = []; since = Date.now(); }
     const fields = [];
     const groups = new Map();
     for (const el of document.querySelectorAll('input, select, textarea')) {
@@ -434,6 +438,11 @@
   async function act(plan) {
     const started = performance.now();
     const rows = plan.entries.filter((e) => e.mark !== 'skip').map((e) => ({ ...e, label: labels.get(e.ref) || '', state: e.act === 'leave' ? 'left' : 'pending' }));
+    // A preview shows what would go where and touches nothing on the page.
+    if (plan.dry) {
+      for (const r of rows) if (r.state === 'pending') r.state = 'preview';
+      return { rows, ms: Math.round(performance.now() - started), dry: true };
+    }
 
     busy = true;
     try {
@@ -509,6 +518,48 @@
     }, 300);
   }
 
+  /** What a field says now, as a person reads it: the text, the chosen option, the ticked boxes. '' when empty. */
+  function current(ref) {
+    const h = refs.get(ref);
+    if (!h) return '';
+    if (h.group) return h.group.filter((i) => i.checked).map((i) => labelOf(i)).join(', ');
+    const el = h.el;
+    if (h.kind === 'file') return '';
+    if (h.kind === 'select') { const o = el.options[el.selectedIndex]; return o && o.value !== '' && !/^(select|choose|please select)\b/i.test(clean(o.text)) ? clean(o.text) : ''; }
+    if (h.kind === 'checkbox') return el.checked ? 'Yes' : '';
+    if (h.kind === 'combobox' && !clean(el.value)) {
+      // A searchable dropdown shows its choice beside the input: the field's own box, less its question.
+      let box = el.parentElement;
+      for (let n = 0; box && n < 5; n++) {
+        const up = box.parentElement;
+        if (!up || [...up.querySelectorAll('input, select, textarea')].some((x) => x !== el && x.type !== 'hidden')) break;
+        box = up;
+      }
+      const shown = box ? clean(ownText(box).replace(labelOf(el), '')).replace(/^[*✱\s]+/, '') : '';
+      return shown.length <= 120 ? shown : '';
+    }
+    return clean(el.value);
+  }
+
+  /**
+   * What the candidate entered by hand since Fill: a field left to them that
+   * they answered, or one they changed. Only their own edits count (trusted
+   * events, not the browser's autofill), never a value the site wrote, such
+   * as its resume parser's guess. For "Remember my answers"; the server keeps
+   * them as suggestions, never as answers.
+   */
+  function answers() {
+    const items = [];
+    for (const r of session) {
+      if (r.mark === 'skip' || r.act === 'file' || (touched.get(r.ref) || 0) < since) continue;
+      const value = current(r.ref);
+      if (!value || ((r.state === 'set' || r.state === 'restored') && holds(r))) continue;
+      const label = clean(r.label || labels.get(r.ref) || '').replace(/\s*[*✱]+\s*$/, '');
+      items.push({ label, key: r.key || null, value: value.slice(0, 2000) });
+    }
+    return { url: location.href, items };
+  }
+
   /** Scroll a field into view and flash it, from a row in the panel. */
   function show(ref) {
     const h = refs.get(ref);
@@ -523,5 +574,5 @@
     return true;
   }
 
-  globalThis.__shukatsuFill = { read, again, act, watch, show };
+  globalThis.__shukatsuFill = { read, again, act, watch, show, answers };
 })();

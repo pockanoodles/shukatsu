@@ -96,12 +96,20 @@ page, put it and the daemon's address in the extension's options, and turn it on
 Settings, Connections. The toolbar button saves any page as a posting. Which hosts and pages
 it reads comes from `platforms/index.mjs`.
 
-On a Greenhouse, Lever, or Ashby application form, Alt+Shift+F fills it (`apply/`): the resume
-goes in first, every answer is written over what the site's own resume reader put there, and a
-panel lists what to check and what is yours to answer. It never presses Submit. Work
-authorization, sponsorship, salary, and demographic questions are filled only from what you
-write in `data/form-answers.yml`. Work authorization and sponsorship go by country, so a
-question about a country you didn't list stays yours:
+On an application form, Alt+Shift+F fills it (`apply/`): the resume goes in first, every answer
+is written over what the site's own resume reader put there, and a panel lists what to check
+and what is yours to answer. It never presses Submit. Alt+Shift+P previews the same plan and
+writes nothing. Greenhouse, Lever, and Ashby are matched by their own field names; any other
+site by its labels. The form is matched to your posting by a link in its tracker row (the URL
+column or the notes), or by the company in the ATS address (`bloomberg.avature.net`), and the
+resume is the one the row's PDF column names.
+
+Work authorization, sponsorship, salary, and demographic questions are filled only from what you
+state on the Form answers page (under your name, top right), which writes
+`data/form-answers.yml`. After a fill, "Remember my answers" on the panel turns what you typed
+by hand into suggestions on that page; nothing is used until you accept it. Work authorization
+and sponsorship go by country, so a question about a country you didn't list stays yours. The
+file looks like this:
 
 ```yaml
 answers:

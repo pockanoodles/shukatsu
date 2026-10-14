@@ -48,6 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <div className="border-b hair px-4 py-3"><p className="font-bold">{user.name}</p><p className="label text-ink-3">{t(`role.${user.role}`)} · {user.login}</p></div>
               {allowed(user, "view.review") && <Link href="/activity" className="block border-b hair px-4 py-3 hover:bg-paper-2">{t("nav.activity")}</Link>}
               <Link href="/settings" className="block border-b hair px-4 py-3 hover:bg-paper-2">{t("nav.settings")}</Link>
+              {allowed(user, "answers.manage") && <Link href="/answers" className="block border-b hair px-4 py-3 hover:bg-paper-2">{t("answers.nav")}</Link>}
               {allowed(user, "connector.manage") && <Link href="/settings/connectors" className="block border-b hair px-4 py-3 hover:bg-paper-2">{t("connectors.title")}</Link>}
               {allowed(user, "agent.manage") && <Link href="/settings/agents" className="block border-b hair px-4 py-3 hover:bg-paper-2">{t("sys.nav.agents")}</Link>}
               <form action={signOutAction}><button className="w-full px-4 py-3 text-left hover:bg-paper-2">{t("nav.signOut")}</button></form>

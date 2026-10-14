@@ -474,10 +474,34 @@ used only for the country the question names; a question naming no country takes
 answer, or the one country listed, marked for a look. A Yes for the United States never
 answers a question about Canada.
 
-**The resume.** It is the newest `data/pdf-index.tsv` CV whose file name carries the
-posting's company. The panel always names it, so a wrong one is seen before Submit.
+**Which posting.** A form is matched to a packet or tracker row by link first: the row's
+URL column, or any link in its notes (where "apply on Avature: …" sits). Otherwise by
+company: an ATS address names its tenant (`bloomberg.avature.net`,
+`acme.wd1.myworkdayjobs.com`, `job-boards.greenhouse.io/acme`), and one open packet or one
+Evaluated row for that company is taken. The panel says it was matched by company. Two or
+more are matched to none, never guessed between.
 
-**Access.** The capture key gained `application.plan` and `application.filled`. A plan
+**The resume.** The one the tracker row's PDF column names, since that is the file made
+for this posting. Otherwise the newest `data/pdf-index.tsv` CV whose file name carries the
+company; two from the same newest day (a variant beside the main one) are left to the
+candidate. The panel always names it, so a wrong one is seen before Submit.
+
+**Preview.** Alt+Shift+P (or the toolbar button's menu) runs the same read and plan and
+writes nothing: the panel shows what would go where, with a "Fill it" button. It is the
+safe way to try Fill on a form that matters, or on a site it has never seen.
+
+**Form answers and learning from fills.** The Form answers page (`/answers`) is where the
+candidate states what forms ask: work authorization and sponsorship per country, salary
+and demographics, every other key (beside what the profile would fill), and questions in
+their exact wording. Stating one is `answers.set`, a stamp, written to
+`data/form-answers.yml` and committed. After a fill, "Remember my answers" on the panel
+sends what the candidate typed or picked by hand (trusted edits only, never what the site
+or the browser's autofill wrote) as `answers.suggest`, through the capture key. Those wait
+as suggestions, shown with the site they came from, until the candidate accepts (with an
+edit, if they like) or dismisses each one. A consent, a file, or an essay over 300
+characters is never suggested.
+
+**Access.** The capture key gained `application.plan`, `application.filled`, and `answers.suggest`. A plan
 returns the answer bank, so that key now reads contact details and stated answers, and
 it lives only in the extension. The top frame is reached through `activeTab` when the
 candidate presses Fill. A form framed from an ATS needs that ATS's host, which the options
@@ -489,13 +513,10 @@ Next:
    questions (`?questions=true`), so a posting's plan can be built when it is saved, and
    its free-text answers drafted into the packet for review then. It would need an egress
    entry and a DATAFLOW line.
-2. **Answers learned from corrections.** When the candidate changes a filled value or
-   answers a `yours` row, the new answer goes to the inbox as a proposal for
-   `data/form-answers.yml`, and is written only when the candidate accepts it.
-3. **A model for what nothing matched.** One batched call per form, through
+2. **A model for what nothing matched.** One batched call per form, through
    `core/llm.mjs`, that may only map a field to an answer key or pick an option index.
    It never writes a value, so coverage grows without a new way to be wrong.
-4. **Workday**, whose steps, per-tenant accounts, and fields that only register keystrokes
+3. **Workday**, whose steps, per-tenant accounts, and fields that only register keystrokes
    (modes/apply.md, Known ATS Quirks) make it a separate adapter.
 
 ## Campaigns
