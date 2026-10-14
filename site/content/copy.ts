@@ -78,7 +78,7 @@ export interface Dict {
   };
   home: { eyebrow: string; title: string; body: string; points: string[]; guide: string };
   open: { eyebrow: string; title: string; body: string; cta: string; by: string; more: string };
-  footer: { rights: string; license: string; source: string; setup: string; portfolio: string; product: string; maker: string };
+  footer: { rights: string; license: string; source: string; setup: string; privacy: string; portfolio: string; product: string; maker: string };
   menu: { menu: string; close: string; items: { href: string; label: string }[] };
   lang: { href: string; label: string; code: Locale };
 }
@@ -234,7 +234,7 @@ const en: Dict = {
     by: "Made by Kaito Soeno.",
     more: "See more of my work",
   },
-  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "Source", setup: "Run it at home", portfolio: "Portfolio", product: "Shukatsu", maker: "Kaito Soeno" },
+  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "Source", setup: "Run it at home", privacy: "Privacy", portfolio: "Portfolio", product: "Shukatsu", maker: "Kaito Soeno" },
   menu: {
     menu: "Menu",
     close: "Close",
@@ -379,7 +379,7 @@ const ja: Dict = {
     by: "制作は Kaito Soeno です。",
     more: "ほかの作品を見る",
   },
-  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "ソース", setup: "自宅で動かす", portfolio: "作品", product: "Shukatsu", maker: "Kaito Soeno" },
+  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "ソース", setup: "自宅で動かす", privacy: "プライバシー", portfolio: "作品", product: "Shukatsu", maker: "Kaito Soeno" },
   menu: {
     menu: "メニュー",
     close: "閉じる",

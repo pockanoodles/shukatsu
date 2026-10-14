@@ -10,3 +10,7 @@ export const HOME_URL: Record<"en" | "ja", string> = {
   en: "https://kaitosoeno.com/",
   ja: "https://kaitosoeno.com/ja",
 };
+export const PRIVACY_URL: Record<"en" | "ja", string> = {
+  en: "https://kaitosoeno.com/privacy",
+  ja: "https://kaitosoeno.com/ja/privacy",
+};

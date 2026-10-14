@@ -6,7 +6,7 @@
 // vermilion, only where something waits for the candidate's stamp.
 import type { Dict, Locale } from "@/content/copy";
 import { DIGEST_JA } from "@/content/copy";
-import { HOME_URL, PORTFOLIO_URL, REPO_URL, SETUP_URL } from "@/content/links";
+import { HOME_URL, PORTFOLIO_URL, PRIVACY_URL, REPO_URL, SETUP_URL } from "@/content/links";
 import { AppTour } from "./AppTour";
 import { Claim } from "./Claim";
 import { EsCounter } from "./EsCounter";
@@ -260,6 +260,9 @@ export function Landing({ t, locale }: { t: Dict; locale: Locale }) {
               </li>
               <li>
                 <a href={REPO_URL}>{t.footer.source}</a>
+              </li>
+              <li>
+                <a href={PRIVACY_URL[locale]}>{t.footer.privacy}</a>
               </li>
             </ul>
           </div>
