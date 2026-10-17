@@ -11,9 +11,19 @@
  * comment is the bullet's declared provenance, so a reworded line is checked
  * against the fact it says it states rather than found by guesswork. Markdown
  * renderers and bullet-lint ignore it; `finalize` strips it from the deliverable.
+ *
+ * `skills` is null for every live skill group, or a list of skill IDs: the groups
+ * one application shows, in that order (a manifest's `skills`).
+ *
+ * `header` overrides candidate fields for one application (a manifest's
+ * `header`); a null value drops that line, e.g. a co-op availability line on a
+ * full-time application.
+ *
+ * Education is not a bullet section, so `pick` narrows an education entity only
+ * when it names that entity; otherwise every live line shows.
  */
 
-import { entityLive, factText, isLive } from './facts.mjs';
+import { BULLET_SECTIONS, entityLive, factText, isLive } from './facts.mjs';
 
 export const JA_HEADINGS = {
   summary: '概要', work: '職務経歴', projects: 'プロジェクト', education: '学歴',
@@ -33,10 +43,10 @@ const LABELS = {
  * The contact block. In Japanese, `candidate.ja` overrides any field (name,
  * location, availability): Japanese employers want 2027年1月〜6月, not "co-op".
  */
-function headerLines(p, lang) {
+function headerLines(p, lang, header = {}) {
   const c = p.candidate || {};
   const ja = lang === 'ja' ? c.ja || {} : {};
-  const value = (k) => ja[k] ?? c[k];
+  const value = (k) => (k in header ? header[k] : ja[k] ?? c[k]);
   const title = lang === 'ja' ? `# 職務経歴書 -- ${value('name')}` : `# CV -- ${c.name}`;
   return [title, '', ...LABELS[lang === 'ja' ? 'ja' : 'en'].filter(([, k]) => value(k)).map(([l, k]) => `**${l}:** ${value(k)}`)];
 }
@@ -66,9 +76,9 @@ export function jaDates(s) {
   return [conv.join('〜'), ...rest].join(' · ');
 }
 
-export function render(p, { pick = null, lang = 'en', summaryId = null, tags = false } = {}) {
+export function render(p, { pick = null, lang = 'en', summaryId = null, tags = false, skills = null, header = {} } = {}) {
   const skipped = [];
-  const out = [...headerLines(p, lang), ''];
+  const out = [...headerLines(p, lang, header), ''];
   const section = (name, heading, lines) => {
     if (!lines.length) return;
     out.push(`## ${lang === 'ja' ? (JA_HEADINGS[name] || heading) : heading}`, '', ...lines, '');
@@ -91,12 +101,14 @@ export function render(p, { pick = null, lang = 'en', summaryId = null, tags = f
       // English, so a certification with no Japanese keeps its English wording.
       section(name, heading, (p.certifications || []).filter(isLive).map((f) => (lang === 'ja' ? factText(f, 'ja') ?? f.text : line(f))).filter(Boolean).map((t) => `- ${t}`));
     } else if (name === 'skills') {
-      section(name, heading, (p.skills || []).filter(isLive).map((f) => `- **${f.group}:** ${f.text}`));
+      const live = (p.skills || []).filter(isLive);
+      const shown = skills ? skills.map((id) => live.find((f) => f.id === id)).filter(Boolean) : live;
+      section(name, heading, shown.map((f) => `- **${f.group}:** ${f.text}`));
     } else {
       const lines = [];
       for (const e of p._entities.filter((x) => x.section === name && entityLive(x))) {
         let chosen;
-        if (pick) {
+        if (pick && (BULLET_SECTIONS.has(name) || pick.has(e.id))) {
           if (!pick.has(e.id)) continue;
           chosen = pick.get(e.id).filter(({ id }) => p._facts.has(id))
             .map(({ id, variant, text }) => [p._facts.get(id).fact, variant, text]);

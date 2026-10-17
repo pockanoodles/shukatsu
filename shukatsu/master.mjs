@@ -25,6 +25,12 @@
  *   node shukatsu/master.mjs render [--write] [--lang ja] [--manifest m.json] [--out f.md] [--tags]
  *   node shukatsu/master.mjs select --archetype A --company C --role R [--jd jds/x.md] [--num N]
  *   node shukatsu/master.mjs finalize <manifest.json> [--file draft.md|html]
+ *
+ * A manifest is also the recipe for rebuilding one resume: edit its `selection`
+ * (facts per entity, in bullet order, each optionally with reworded `text`),
+ * `skills` (skill IDs, or null for all) and `header` (candidate fields to
+ * override, null to drop one), then `render --manifest m --tags --out
+ * <draft>` and finalize. Change the list, not the draft.
  *   node shukatsu/master.mjs trace <resume.md|docx|html> [--save --company C --role R --date D --num N]
  *   node shukatsu/master.mjs sent <manifest.json> --on YYYY-MM-DD [--num N]
  *   node shukatsu/master.mjs used <fact-id> | --retired
@@ -59,7 +65,7 @@ function args(argv) {
   return out;
 }
 
-const pickFrom = (m) => new Map(m.selection.map((s) => [s.entity, s.facts.map((f) => ({ id: f.id, variant: f.variant }))]));
+const pickFrom = (m) => new Map(m.selection.map((s) => [s.entity, s.facts.map((f) => ({ id: f.id, variant: f.variant, text: f.text }))]));
 
 function cli(argv) {
   const root = getCareerOpsRoot();
@@ -95,12 +101,16 @@ function cli(argv) {
   if (cmd === 'render') {
     let pick = null;
     let summaryId = null;
+    let skills = null;
+    let header = {};
     if (a.manifest) {
       const m = JSON.parse(readFileSync(resolve(root, a.manifest), 'utf-8'));
       pick = pickFrom(m);
       summaryId = m.summary || null;
+      skills = m.skills || null;
+      header = m.header || {};
     }
-    const { text, skipped } = render(p, { pick, lang: a.lang || 'en', summaryId, tags: Boolean(a.tags) });
+    const { text, skipped } = render(p, { pick, lang: a.lang || 'en', summaryId, tags: Boolean(a.tags), skills, header });
     if (a.write) {
       writeFileSync(join(root, 'cv.md'), withBanner(text));
       console.log(`Wrote ${join(root, 'cv.md')}`);
@@ -122,7 +132,7 @@ function cli(argv) {
     writeFileSync(join(root, out), render(p, { pick: s.pick, summaryId: s.summaryId, tags: true }).text);
     const manifest = {
       schema: 1, created: today(), company: a.company, role: a.role, num: a.num ? String(a.num) : null,
-      archetype: a.archetype, jd: a.jd || null, lang: 'en', summary: s.summaryId,
+      archetype: a.archetype, jd: a.jd || null, lang: 'en', summary: s.summaryId, skills: null,
       selection: s.manifest, output: out, status: 'draft', final: [],
     };
     const mPath = join(manifestDir(root), `${name}.json`);
@@ -233,6 +243,18 @@ function selfTest() {
   const s = select(loaded, { archetype: 'a' });
   assert(s.manifest[0].facts[0].id === 'e.one', 'select ranks the tag match first');
   assert(select(loaded, { archetype: 'a', force: ['e.two'], drop: ['e.one'] }).manifest[0].facts.map((f) => f.id).join() === 'e.two', 'force and drop override the ranking inside the budget');
+  const picked = loadProfile('/nonexistent', JSON.stringify({
+    candidate: { name: 'T' }, layout: [{ section: 'skills', heading: 'Skills' }],
+    skills: [{ id: 's.a', group: 'A', text: 'one', review_status: 'verified' }, { id: 's.b', group: 'B', text: 'two', review_status: 'verified' }],
+  }));
+  assert(render(picked, { skills: ['s.b'] }).text.includes('**B:** two') && !render(picked, { skills: ['s.b'] }).text.includes('**A:**'), 'a manifest\'s skills pick the groups shown');
+  const edu = loadProfile('/nonexistent', JSON.stringify({
+    candidate: { name: 'T', availability: 'co-op' }, layout: [{ section: 'education', heading: 'Education' }, { section: 'work', heading: 'Work' }],
+    experiences: [{ id: 'w', section: 'work', heading: 'W', facts: [{ id: 'w.a', text: 'Did 1 thing', review_status: 'verified' }] }],
+    education: [{ id: 'u', section: 'education', heading: 'U', facts: [{ id: 'u.a', text: 'Minor in X', review_status: 'verified' }] }],
+  }));
+  const ePick = render(edu, { pick: new Map([['w', [{ id: 'w.a', text: 'Reworded 1 thing' }]]]), header: { availability: null } }).text;
+  assert(ePick.includes('Minor in X') && ePick.includes('Reworded 1 thing') && !ePick.includes('co-op'), 'a pick keeps unnamed education, applies reworded text, and a null header field drops the line');
   const tagged = render(loaded, { tags: true }).text;
   assert(tagged.includes('- Cut cost 10% on 5 runs <!-- fact:e.one -->'), 'tagged render declares each bullet\'s fact');
   const rows = trace(loaded, '## Work Experience\n### E\n- Reduced cost by 10% across 5 runs <!-- fact:e.one -->\n- Reduced cost by 12% across 5 runs <!-- fact:e.one -->\n- Wrote 3 docs <!-- fact:e.old -->\n', 'x.md', { bullets: true });

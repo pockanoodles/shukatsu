@@ -24,7 +24,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import { isMainModule } from '../lib/is-main-module.mjs';
 
 // Section order on the page; anything not listed follows in draft order.
-const ORDER = ['education', 'skills', 'certifications', 'work experience', 'experience', 'projects', 'volunteering'];
+const ORDER = ['education', 'skills', 'certifications', 'work experience', 'experience', 'projects', 'leadership', 'volunteering'];
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
