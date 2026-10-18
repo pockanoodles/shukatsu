@@ -35,7 +35,6 @@ These files contain your personal data, customizations, and work product. Update
 | `plugins.lock` | Integrity pins + recorded consent for your enabled plugins (generated; never auto-updated) |
 | `data/applications.md` | Your application tracker (source of truth) |
 | `data/career-profile.yml` | Your source-backed Master Career Profile; written only after explicit review of imported CV facts |
-| `data/form-answers.yml` | Your stated answers for application forms (work authorization, sponsorship, demographics, recurring questions). The shukatsu filler answers a sensitive question only from here; written by you, never derived |
 | `data/applications.db` | Derived query index over `applications.md` (SQLite, rebuilt by `node tracker.mjs sync` — safe to delete) |
 | `data/pipeline.md` | Your URL inbox |
 | `data/scan-history.tsv` | Your scan history: one tab-separated row per posting the scanners have seen. Columns are append-only — a new column goes at the end and existing ones never move — so older rows may have fewer columns, and a missing cell reads as empty. The column order is declared in `lib/scan-history-columns.mjs`; what each column holds is in the Scan History table of `modes/scan.md`. A cell that would run as a spreadsheet formula is stored with one extra leading `'`; `parseScanHistoryLine` removes it. |
