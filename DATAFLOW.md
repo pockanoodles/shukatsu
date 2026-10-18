@@ -17,6 +17,7 @@ Shukatsu runs on a computer you own, and its author runs no server. The author r
 | **An agent you name** (Claude Code, claude.ai, or another MCP client) | Whatever that agent's operations return: the record, the tracker, packets, the calendar and the inbox | So the agent can do the work you gave it, and it never sees compensation or contacts unless you tick that box for that agent |
 | **Calendar apps that subscribe** (Apple Calendar, Google Calendar, Outlook) | The schedule behind one private link, fetched about once an hour | So interviews and deadlines show up in the calendar app. Each link is for one person and can be revoked alone |
 | **Your backup disk** | A snapshot of the data root and the app database | So a dead machine loses nothing. Point it at an encrypted disk you own |
+| **The data root's private remote**, only if you add one | What you commit in the data root: the record, the tracker, resume recipes and the resumes themselves. Never `.shukatsu/`, which git ignores | So the history survives a dead machine. It must be private and yours |
 | **GitHub**, when you update | A `git fetch` of the code, and the career-ops update check | To pull new versions of the app and of the career-ops engine |
 
 Applications are never sent by Shukatsu. You submit them yourself, outside the app, and then mark them sent.
@@ -29,7 +30,7 @@ Family and mentors reach the app through the tunnel or tailnet you set up, with 
 
 ## Where things are kept
 
-Everything is on the machine, in two places. The data root is your private git repo holding the record (`career-profile.yml`), the tracker, resumes and archived postings, and it has no remote. Beside it, `.shukatsu/` holds the app database (accounts, comments, proposals, the activity log), the connectors' copies of mail and calendar events, and the egress log. Those files are never committed to this repository.
+Everything is on the machine, in the data root: your private git repo holding the record (`career-profile.yml`), the tracker, resumes and archived postings. By default it has no remote. You may give it one, so its history survives the machine, as long as the remote is private and yours: a private GitHub repository, or a bare repo on a disk or server you control. Whoever hosts that remote can read everything you commit to it. Never give the data root a public remote. Inside it, `.shukatsu/` holds the app database (accounts, comments, proposals, the activity log), the connectors' copies of mail and calendar events, and the egress log. The data root's `.gitignore` keeps `.shukatsu/` out of git, so it never reaches a remote, and none of these files are committed to this repository.
 
 Credentials that connectors store are encrypted with a key kept in the Mac's Keychain, or in a private file under `~/.config/shukatsu/` on Linux. The key is never in the data root, so backups and git history carry no password.
 
@@ -64,7 +65,7 @@ These commands are upstream's, and their network calls are not in one audited cl
 
 ## Removing someone, or everything
 
-"Remove access" on the People page signs that person out everywhere at once and stops their invite links. Their past comments and proposals stay, credited to them, because the record of who suggested what is part of the history. To delete everything, delete the data root and the `.shukatsu/` folder next to it, and remove Shukatsu under your Google account's third-party access if you connected Gmail.
+"Remove access" on the People page signs that person out everywhere at once and stops their invite links. Their past comments and proposals stay, credited to them, because the record of who suggested what is part of the history. To delete everything, delete the data root (`.shukatsu/` is inside it) and its private remote if you gave it one, and remove Shukatsu under your Google account's third-party access if you connected Gmail.
 
 ## What is never collected
 

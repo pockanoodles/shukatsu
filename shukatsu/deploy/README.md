@@ -9,7 +9,8 @@ Two repos live on the machine:
 
 - the engine: this fork, `pockanoodles/shukatsu` (public), and
 - the data root: the candidate's private repo (`~/Projects/resume` on the laptop), which
-  has no remote and must never get a public one.
+  has no remote by default. A private remote the candidate owns is allowed; a public one
+  never is.
 
 When the machine exists, add it to `~/Projects/homelab/inventory.toml` like any other
 device: its own SSH key, Remote Login, and the sleep setting checked by `bin/check`. Per
@@ -20,7 +21,7 @@ machine can read all of it.
 
 ```sh
 git clone https://github.com/pockanoodles/shukatsu.git ~/shukatsu
-# The data root has no remote. Make the server's copy the primary, cloned once from the laptop:
+# Make the server's copy the primary, cloned once from the laptop (this works with or without a remote):
 git clone laptop:Projects/resume ~/resume          # over SSH, from the machine
 echo "$HOME/resume" > ~/shukatsu/.career-ops-data   # the engine finds it through this marker
 ```
