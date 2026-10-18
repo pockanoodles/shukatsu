@@ -182,6 +182,7 @@ export function disableUser(root, { actor, id }) {
   tx(root, (d) => {
     d.prepare('UPDATE users SET disabled_at = ? WHERE id = ?').run(now(), id);
     d.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
+    d.prepare('DELETE FROM passkeys WHERE user_id = ?').run(id);
     d.prepare('UPDATE invites SET revoked_at = ? WHERE user_id = ? AND used_at IS NULL AND revoked_at IS NULL').run(now(), id);
   });
   logActivity(root, { actor, verb: 'person.disabled', subject: `person:${id}`, detail: { name: target.name } });

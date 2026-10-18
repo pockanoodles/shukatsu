@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   acceptInvite, can, createInvite, createSession, disableUser, endSession, hasOwner, peekInvite, sessionUser, signIn, updateUser,
 } from '../core/people.mjs';
+import { db } from '../core/store.mjs';
 import { makeRoot, people } from './helpers.mjs';
 
 test('there is no way in until the CLI creates the owner invite', () => {
@@ -34,7 +35,7 @@ test('sign-in checks the password and throttles guessing', () => {
   assert.throws(() => signIn(root, { login: 'mom', password: 'another long secret', ip: '3.3.3.3' }), /signin\.throttled/);
 });
 
-test('a session resolves to its user until it ends or the user is disabled', () => {
+test('a session resolves to its user until it ends or the user is disabled, and disabling takes their passkeys too', () => {
   const root = makeRoot();
   const { owner, editor } = people(root);
   const s = createSession(root, editor);
@@ -42,8 +43,10 @@ test('a session resolves to its user until it ends or the user is disabled', () 
   endSession(root, s.token);
   assert.equal(sessionUser(root, s.token), null);
   const s2 = createSession(root, editor);
+  db(root).prepare(`INSERT INTO passkeys (id, user_id, public_key, counter, created_at) VALUES ('k1', ?, x'00', 0, '2026-10-18T00:00:00Z')`).run(editor.id);
   disableUser(root, { actor: owner, id: editor.id });
   assert.equal(sessionUser(root, s2.token), null);
+  assert.equal(db(root).prepare('SELECT COUNT(*) AS n FROM passkeys WHERE user_id = ?').get(editor.id).n, 0);
 });
 
 test('permissions follow the role, and compensation is granted per person', () => {
