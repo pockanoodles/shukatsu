@@ -1,0 +1,10 @@
+{
+  "id": "line",
+  "name": "LINE",
+  "description": "Sends the weekly digest to the people who link their LINE account, through the install's own LINE Official Account. It reads nothing from LINE but the link codes people send it.",
+  "capabilities": ["notify"],
+  "auth": "token",
+  "allowedHosts": ["api.line.me"],
+  "intervalMinutes": 1440,
+  "scopes": []
+}

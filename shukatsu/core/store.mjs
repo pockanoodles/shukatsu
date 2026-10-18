@@ -264,6 +264,23 @@ const MIGRATIONS = [
    CREATE UNIQUE INDEX events_source ON events(source, source_ref) WHERE source_ref IS NOT NULL;`,
   // 4: replies, so a comment thread reads as a discussion.
   `ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE;`,
+  // 5: where a person gets the digest outside the app (their LINE account), and
+  // the short-lived codes that prove a chat account belongs to a signed-in person.
+  `CREATE TABLE notify_links (
+     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     channel TEXT NOT NULL CHECK (channel IN ('line')),
+     address TEXT NOT NULL,
+     linked_at TEXT NOT NULL,
+     PRIMARY KEY (user_id, channel),
+     UNIQUE (channel, address)
+   );
+   CREATE TABLE notify_codes (
+     code_hash TEXT PRIMARY KEY,
+     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     channel TEXT NOT NULL CHECK (channel IN ('line')),
+     created_at TEXT NOT NULL,
+     expires_at TEXT NOT NULL
+   );`,
 ];
 
 const open = new Map();

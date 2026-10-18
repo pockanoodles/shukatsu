@@ -295,7 +295,7 @@ the message's words, so an instruction hidden in an email can't become an action
 | `msgraph` | mail.read, calendar.read | One connector for Outlook, Hotmail, and school Microsoft 365 accounts through the `common` endpoint. School tenants often require administrator consent for third-party apps, and when that blocks sign-in the fallback is a forwarding rule into the Gmail account. |
 | `gcal` | calendar.read | Google Calendar busy times and events for conflict checks. |
 | `eventkit` | calendar.read | Later, and macOS only. A small helper reads every account set up in Calendar.app without OAuth. |
-| `line` | notify | Later. Sends the Japanese digest to family through the LINE Messaging API. |
+| `line` | notify | The weekly digest to each person who links their own LINE account, through the install's own Official Account and the Messaging API. A nudge (counts and a link, no names) by default, or the digest in full; at a weekday and hour the owner sets. People link with a six-digit code from their own Settings, sent to the account and read by a signed webhook (`/connectors/line/webhook`); the links live in `app.db` (`notify_links`), since they belong to people and can't be fetched again. Its daily sync only checks the token. |
 
 Slack, Teams, and Notion stay out of v1 because none of them carries the search itself.
 
@@ -583,5 +583,5 @@ following.
 | 4 | `platforms/`, the passive extension and `browser` connector, form filling (`apply/`, `application.plan`), then the board readers, `msgraph`, `gcal`, `eventkit`, `line` | More of the same pattern |
 
 Phases 0 to 3 shipped together in October 2026. In phase 4, the platform registry and the
-passive extension shipped first, then form filling for Greenhouse, Lever, and Ashby; the
-board readers wait on pages kept from real use.
+passive extension shipped first, then form filling for Greenhouse, Lever, and Ashby, then
+`line`; the board readers wait on pages kept from real use.

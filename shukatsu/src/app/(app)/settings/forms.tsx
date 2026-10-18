@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { accountAction, passwordAction } from "@/app/actions/work";
+import { lineCodeAction } from "@/app/actions/notify";
 import { Submit } from "@/components/client";
 
 type L = Record<string, string>;
@@ -32,6 +33,25 @@ export function PasswordForm({ l }: { l: L }) {
       <label className="grid gap-1.5"><span className="label text-ink-2">{l.current}</span><input name="current" type="password" required autoComplete="current-password" className="field" /></label>
       <label className="grid gap-1.5"><span className="label text-ink-2">{l.next}</span><input name="password" type="password" required minLength={10} autoComplete="new-password" className="field" /></label>
       <div className="flex items-center gap-4"><Submit className="btn btn-ghost btn-sm" pending={l.working}>{l.change}</Submit><Msg s={edited === state ? null : state} /></div>
+    </form>
+  );
+}
+
+/** A link code for your own LINE account, shown large enough to read off a phone and type on another. */
+export function LineCodeForm({ lang, l }: { lang: string; l: L }) {
+  const [state, action] = useActionState(lineCodeAction, null);
+  const got = state?.ok ? (state.data as { code: string; expires_at: string }) : null;
+  const until = got ? new Intl.DateTimeFormat(lang === "ja" ? "ja-JP" : "en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(got.expires_at)) : "";
+  return (
+    <form action={action} className="grid gap-3">
+      {got && (
+        <div className="grid gap-1" role="status">
+          <span className="label text-ink-2">{l.codeFor}</span>
+          <span className="code text-[32px] tracking-[0.2em]">{got.code}</span>
+          <span className="label text-ink-3">{l.codeUntil.replace("{time}", until)}</span>
+        </div>
+      )}
+      <div className="flex items-center gap-4"><Submit className={got ? "btn btn-ghost btn-sm" : "btn btn-sm"} pending={l.working}>{got ? l.newCode : l.getCode}</Submit>{state && !state.ok && <Msg s={state} />}</div>
     </form>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { addBrowserAction, addFeedAction, addGmailAction, pauseAccountAction, purgeAction, removeAccountAction, syncAccountAction } from "@/app/actions/connectors";
+import { addLineAction, sendLineAction, updateLineAction } from "@/app/actions/notify";
 import { ConfirmSubmit, Submit } from "@/components/client";
 
 type L = Record<string, string>;
@@ -65,6 +66,59 @@ export function PurgeForm({ connector, label, confirm, ghost = true }: { connect
     <form action={action} className="flex flex-wrap items-center gap-4">
       {connector && <input type="hidden" name="connector" value={connector} />}
       <ConfirmSubmit message={confirm} className={ghost ? "btn btn-ghost btn-sm" : "btn btn-sm"}>{label}</ConfirmSubmit>
+      <Msg s={state} />
+    </form>
+  );
+}
+
+/** The schedule and what LINE gets, shared by connecting and changing it. Day and mode names come translated from the page. */
+function LineSchedule({ v, days, modes, l }: { v: { mode: string; weekday: number; hour: number; timezone: string }; days: string[]; modes: Record<string, string>; l: L }) {
+  return (
+    <>
+      <label className="grid gap-1.5"><span className="label text-ink-2">{l.mode}</span>
+        <select name="mode" defaultValue={v.mode} className="field">{Object.entries(modes).map(([k, name]) => <option key={k} value={k}>{name}</option>)}</select></label>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className="grid gap-1.5"><span className="label text-ink-2">{l.weekday}</span>
+          <select name="weekday" defaultValue={v.weekday} className="field">{days.map((d, i) => <option key={d} value={i}>{d}</option>)}</select></label>
+        <label className="grid gap-1.5"><span className="label text-ink-2">{l.hour}</span>
+          <select name="hour" defaultValue={v.hour} className="field">{Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{`${h}:00`}</option>)}</select></label>
+        <label className="grid gap-1.5"><span className="label text-ink-2">{l.timezone}</span><input name="timezone" defaultValue={v.timezone} className="field code" /></label>
+      </div>
+    </>
+  );
+}
+
+const LINE_DEFAULTS = { mode: "nudge", weekday: 0, hour: 9, timezone: "Asia/Tokyo" };
+
+export function LineForm({ days, modes, l }: { days: string[]; modes: Record<string, string>; l: L }) {
+  const [state, action] = useActionState(addLineAction, null);
+  return (
+    <form action={action} className="grid max-w-xl gap-4">
+      <label className="grid gap-1.5"><span className="label text-ink-2">{l.secret}</span><input name="channel_secret" required autoComplete="off" spellCheck={false} className="field code" maxLength={64} /></label>
+      <label className="grid gap-1.5"><span className="label text-ink-2">{l.token}</span><input name="channel_access_token" type="password" required autoComplete="off" className="field code" maxLength={1000} /></label>
+      <LineSchedule v={LINE_DEFAULTS} days={days} modes={modes} l={l} />
+      <div className="flex items-center gap-4"><Submit className="btn btn-sm" pending={l.working}>{l.add}</Submit><Msg s={state} /></div>
+    </form>
+  );
+}
+
+export function LineSettingsForm({ id, v, days, modes, l }: { id: number; v: typeof LINE_DEFAULTS; days: string[]; modes: Record<string, string>; l: L }) {
+  const [state, action] = useActionState(updateLineAction, null);
+  return (
+    <form action={action} className="grid max-w-xl gap-4">
+      <input type="hidden" name="id" value={id} />
+      <LineSchedule v={v} days={days} modes={modes} l={l} />
+      <label className="grid gap-1.5"><span className="label text-ink-2">{l.newToken}</span><input name="channel_access_token" type="password" autoComplete="off" className="field code" maxLength={1000} /></label>
+      <div className="flex items-center gap-4"><Submit className="btn btn-ghost btn-sm" pending={l.working}>{l.save}</Submit><Msg s={state} /></div>
+    </form>
+  );
+}
+
+export function SendLineForm({ l }: { l: L }) {
+  const [state, action] = useActionState(sendLineAction, null);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-4">
+      <ConfirmSubmit message={l.sendConfirm} className="btn btn-sm">{l.sendNow}</ConfirmSubmit>
       <Msg s={state} />
     </form>
   );

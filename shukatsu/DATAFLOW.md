@@ -76,6 +76,15 @@ These can be turned on, each by the candidate:
    answers page, which writes `data/form-answers.yml` and commits it to the data root's own
    history.
 
+8. **The weekly digest on LINE** (off until the candidate connects LINE). Each person who
+   links their own LINE account gets the weekly digest there, from the install's own LINE
+   Official Account. What goes is the candidate's choice. A **nudge** (the default) carries
+   the week's dates, three counts, and a link to the app, with no company, role, or name in
+   it. **Full** carries the digest itself: companies, roles, status changes, and the names of
+   the people who helped that week. Never compensation or contacts. Messages from an Official
+   Account aren't end-to-end encrypted, so LINE's operator (LY Corporation) stores whatever is
+   sent. Details under Connectors, LINE.
+
 Applications themselves are never sent by shukatsu. The candidate presses the site's Submit,
 and then marks them sent.
 
@@ -165,9 +174,33 @@ log under that person's or agent's name.
   pages, and Remove turns it off and deletes everything it kept. Revoking the capture key
   under Agents stops the extension at once.
 
+### LINE (`line`)
+
+This connector sends out rather than reading in.
+
+- **What leaves.** To `api.line.me` only: once a day, a check of who the LINE account is
+  (which proves the token still works); each week, the digest to every linked person who
+  still has access, in nudge or full form as above; and a short fixed reply when someone
+  messages the account. A digest goes to a person's LINE account by the id LINE gave it,
+  which shukatsu keeps in `.shukatsu/app.db` and never shows on any page. The egress log
+  records each request without the token, the id, or the message.
+- **What arrives.** LINE posts to `/connectors/line/webhook` when someone adds, blocks, or
+  messages the account, signed with the channel secret; anything unsigned is refused. A
+  six-digit code links the sender to the person who asked for it in their own Settings (it
+  works once, for 15 minutes, and guessing is limited). Blocking the account unlinks them.
+  shukatsu keeps no message text: anything that isn't a code gets a reply asking them to
+  use the app, and is dropped.
+- **Who can see it.** The candidate sees who is linked, on the Connections page. Each person
+  sees only their own link. Agents can't link, unlink, or send.
+- **How to remove it.** A person unlinks themselves in Settings, or by blocking the account
+  in LINE. The candidate unlinks anyone, pauses LINE, or removes it on the Connections page,
+  which deletes the channel secret and token. Removing someone's access stops their digest
+  at once. To end LINE's side, delete the Official Account in LINE Official Account Manager:
+  messages already sent stay in each person's LINE until they delete them.
+
 ## Removing someone
 
 "Remove access" on the People page signs that person out everywhere at once and stops
-their sign-in links from working. Their past comments and proposals stay, credited to them,
+their sign-in links from working, and stops their LINE digest. Their past comments and proposals stay, credited to them,
 because the record of who suggested what is part of the history. To erase a person
 entirely, the candidate deletes their row from `.shukatsu/app.db`.

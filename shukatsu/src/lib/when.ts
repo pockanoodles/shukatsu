@@ -15,6 +15,10 @@ export const homeZone = () => process.env.SHUKATSU_TZ || Intl.DateTimeFormat().r
 
 const loc = (lang: Lang) => (lang === "ja" ? "ja-JP" : "en-US");
 
+/** Sunday to Saturday, as the weekday numbers core/ uses (0 is Sunday). 2026-01-04 was a Sunday. */
+export const weekdayNames = (lang: Lang) =>
+  Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(loc(lang), { weekday: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2026, 0, 4 + i))));
+
 export function fmtDay(iso: string, lang: Lang, tz = homeZone()) {
   const d = iso.length === 10 ? new Date(`${iso}T12:00:00Z`) : new Date(iso);
   return new Intl.DateTimeFormat(loc(lang), { weekday: "short", month: "short", day: "numeric", timeZone: iso.length === 10 ? "UTC" : tz }).format(d);

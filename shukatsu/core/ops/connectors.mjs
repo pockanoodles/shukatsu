@@ -42,8 +42,13 @@ const FIELDS = {
   url: S.str('A calendar feed address (https:// or webcal://). For Canvas: Calendar, then Calendar Feed.', { maxLength: 2000 }),
   client_id: S.str('The OAuth client id from your Google Cloud project.', { maxLength: 300 }),
   client_secret: S.str('The OAuth client secret from the same project.', { maxLength: 300 }),
-  timezone: S.str('Where a feed\'s times with no zone are read, e.g. America/New_York.', { format: 'timezone' }),
+  timezone: S.str('A time zone, e.g. America/New_York: where a feed\'s times with no zone are read, or when the LINE digest goes out.', { format: 'timezone' }),
   lookback_days: S.int('How far back the first Gmail sync looks.', { minimum: 1, maximum: 365 }),
+  channel_secret: S.str('The LINE channel secret, under Basic settings in the LINE Developers console.', { maxLength: 64 }),
+  channel_access_token: S.str('A LINE channel access token, under Messaging API in the same console.', { maxLength: 1000 }),
+  mode: S.enum(['nudge', 'full'], 'What LINE gets: a nudge (counts and a link, no names) or the digest in full.'),
+  weekday: S.int('The day the LINE digest goes out, 0 (Sunday) to 6, in its time zone.', { minimum: 0, maximum: 6 }),
+  hour: S.int('The hour the LINE digest goes out, 0 to 23, in its time zone.', { minimum: 0, maximum: 23 }),
 };
 
 const subject = (id) => `connector:${id}`;
@@ -73,7 +78,7 @@ export default [
   {
     name: 'connector.add',
     kind: 'command',
-    summary: 'Connect a calendar feed or Gmail. A person does this signed in, since it decides what outside data reaches this machine.',
+    summary: 'Connect a calendar feed, Gmail, the browser extension, or LINE. A person does this signed in, since it decides what outside data reaches this machine.',
     permission: 'connector.manage',
     stamp: true,
     agent: false,

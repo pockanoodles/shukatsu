@@ -80,6 +80,13 @@ addresses only) in front. Set `SHUKATSU_URL` and `SHUKATSU_ALLOWED_ORIGINS` to t
 Then invite people from the People page (or `node shukatsu/people.mjs invite --name Mom --role
 editor --lang ja`) and send each link over LINE or iMessage.
 
+**LINE (optional).** To send the weekly digest on LINE, connect it under Settings,
+Connections; the page walks through the Official Account and shows the webhook address.
+LINE has to reach that address from the internet, so with Cloudflare it just works (with
+Access in front, `/connectors/*` is already on the bypass list). With Tailscale alone it
+can't: either add `tailscale funnel` for that one path, or keep LINE off. Each person then
+links their own LINE account from their Settings page.
+
 ## 6. Back it up
 
 ```sh

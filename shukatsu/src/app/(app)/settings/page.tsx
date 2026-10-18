@@ -5,10 +5,22 @@ import { relative, translator } from "@/lib/i18n";
 import { Head } from "@/components/marks";
 import { AddPasskey } from "@/components/auth-forms";
 import { endSessionAction, removePasskeyAction } from "@/app/actions/work";
-import { AccountForm, PasswordForm } from "./forms";
+import { unlinkLineAction } from "@/app/actions/notify";
+import { read } from "@/lib/server/op";
+import { weekdayNames, zoneShort } from "@/lib/when";
+import { ConfirmSubmit } from "@/components/client";
+import Link from "next/link";
+import { AccountForm, LineCodeForm, PasswordForm } from "./forms";
 import { JaHeaderForm } from "../record/forms";
 
 export const metadata: Metadata = { title: "Settings" };
+
+type LineStatus = {
+  line: {
+    connected: boolean; paused?: boolean; add_friend_url?: string | null; linked: boolean; linked_at?: string | null;
+    schedule?: { weekday: number; hour: number; timezone: string } | null;
+  };
+};
 
 const device = (ua: string | null) => {
   if (!ua) return "–";
@@ -26,6 +38,8 @@ export default async function SettingsPage() {
   // Browsers allow passkeys over HTTPS, or on localhost (never on a bare IP like 127.0.0.1).
   const here = new URL(process.env.SHUKATSU_URL || (await requestOrigin()));
   const https = here.protocol === "https:" || here.hostname === "localhost" || here.hostname.endsWith(".localhost");
+  const { line } = await read<LineStatus>("notify.status");
+  const sched = line.schedule ? t("notify.schedule", { day: weekdayNames(user.lang)[line.schedule.weekday], hour: line.schedule.hour, zone: zoneShort(line.schedule.timezone) }) : "";
   return (
     <div>
       <Head title={t("settings.title")} />
@@ -67,6 +81,35 @@ export default async function SettingsPage() {
             ))}
           </ul>
         </section>
+        {(line.connected || user.role === "owner") && (
+          <section className="grid content-start gap-5 border-b-2 rule px-4 py-8 sm:px-10 lg:col-span-2">
+            <h2 className="heading text-[22px]">{t("notify.title")}</h2>
+            {!line.connected ? <p className="max-w-xl text-ink-3">{t("notify.notSetUp")} <Link href="/settings/connectors" className="underline underline-offset-4">→</Link></p> : (
+              <>
+                <p className="max-w-xl text-[15px] text-ink-2">{t("notify.lead")}</p>
+                {line.paused && <p className="text-[14px] text-shu">{t("notify.paused")}</p>}
+                {line.linked ? (
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                    <span>{t("notify.linked", { when: relative(line.linked_at, user.lang), schedule: sched })}</span>
+                    <form action={unlinkLineAction}><ConfirmSubmit message={t("notify.unlinkConfirm")} className="label text-ink-2 underline underline-offset-4">{t("notify.unlink")}</ConfirmSubmit></form>
+                  </div>
+                ) : (
+                  <ol className="grid max-w-xl gap-5">
+                    <li className="grid gap-2">
+                      <span>1. {t("notify.step1")}</span>
+                      {line.add_friend_url ? <a href={line.add_friend_url} className="btn btn-sm justify-self-start" target="_blank" rel="noreferrer">{t("notify.addFriend")}</a>
+                        : <span className="text-[14px] text-ink-3">{t("notify.noFriendLink")}</span>}
+                    </li>
+                    <li className="grid gap-2">
+                      <span>2. {t("notify.step2")}</span>
+                      <LineCodeForm lang={user.lang} l={{ getCode: t("notify.getCode"), newCode: t("notify.newCode"), codeFor: t("notify.codeFor"), codeUntil: t("notify.codeUntil"), working: t("common.loading") }} />
+                    </li>
+                  </ol>
+                )}
+              </>
+            )}
+          </section>
+        )}
         {user.role === "owner" && (() => {
           const c = candidate.candidateJa(root);
           return (

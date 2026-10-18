@@ -9,13 +9,15 @@
  *   boot(root, { register, addBusySource })   once, at start
  *   syncDue(root)                             every minute; runs what is due, never throws
  *   syncNow(root, accountId)                  one account now (the Sync button)
- *   handleConnector(req, res, ctx)            /connectors/{id}/start|callback, false if not ours
+ *   handleConnector(req, res, ctx)            /connectors/{id}/start|callback and the LINE webhook, false if not ours
  *
  * Every request a connector makes goes through ctx.mjs's guarded fetch, pinned
  * to the manifest's hosts and written to egress.log. After each sync the
  * signals step (signals.mjs) reads what arrived. A push connector (the
  * browser extension, manifest `push: true`) fetches nothing: what it keeps
- * arrives through its own operation, and the scheduler never runs it.
+ * arrives through its own operation, and the scheduler never runs it. A
+ * notify connector (LINE) sends out instead of reading in: its sync only
+ * checks the credential, and its `deliverDue` runs on the same minute tick.
  */
 
 import { readFileSync } from 'fs';
@@ -29,6 +31,7 @@ import { processRecords } from './signals.mjs';
 import * as browser from './browser/index.mjs';
 import * as gmail from './gmail/index.mjs';
 import * as icsIn from './ics-in/index.mjs';
+import * as line from './line/index.mjs';
 
 const manifestOf = (id) => JSON.parse(readFileSync(new URL(`./${id}/manifest.json`, import.meta.url), 'utf-8'));
 
@@ -36,6 +39,7 @@ const MODULES = {
   'ics-in': { ...icsIn, manifest: manifestOf('ics-in') },
   gmail: { ...gmail, manifest: manifestOf('gmail') },
   browser: { ...browser, manifest: manifestOf('browser') },
+  line: { ...line, manifest: manifestOf('line') },
 };
 
 export const CONNECTORS = Object.values(MODULES).map((m) => m.manifest);
@@ -66,7 +70,7 @@ export function createAccount(root, connector, input) {
 export function changeAccount(root, id, input) {
   const account = getAccount(root, id);
   if (!account) throw fail('No such account.', 'not_found', 404);
-  const touched = ['url', 'client_id', 'client_secret', 'timezone', 'lookback_days'].some((k) => input[k] !== undefined);
+  const touched = ['url', 'client_id', 'client_secret', 'timezone', 'lookback_days', 'channel_secret', 'channel_access_token', 'mode', 'weekday', 'hour'].some((k) => input[k] !== undefined);
   if (touched) {
     const next = prepareAccount(account.connector, input, { settings: account.settings, secret: getSecret(root, id) });
     updateAccount(root, id, { settings: next.settings, ...(next.status ? { status: next.status } : {}) });
@@ -155,6 +159,10 @@ export async function syncDue(root, { fetch = null, nowMs = Date.now() } = {}) {
   } catch (e) {
     console.error(`shukatsu: connector sync failed: ${e?.message || e}`);
   }
+  for (const [id, m] of Object.entries(MODULES)) {
+    if (!m.deliverDue) continue;
+    try { await m.deliverDue(root, { fetch, nowMs }); } catch (e) { console.error(`shukatsu: ${id} delivery failed: ${e?.message || e}`); }
+  }
   return results;
 }
 
@@ -182,9 +190,24 @@ const back = (ctx, query) => ctx.send(302, '', { Location: `/settings/connectors
  * /connectors/gmail/callback receives the code. Both need the owner signed in
  * by session, because connecting an account is a stamp. Returns false for
  * any other path so the daemon can try its next route.
+ *
+ * POST /connectors/line/webhook is LINE's, signed with the channel secret
+ * instead of a session, so it sits behind no sign-in (and behind a bypass
+ * if Cloudflare Access is in front).
  */
 export async function handleConnector(req, res, ctx, { fetch = null } = {}) {
   const url = new URL(req.url || '/', 'http://localhost');
+  if (url.pathname === '/connectors/line/webhook') {
+    if (req.method !== 'POST') { ctx.send(405, '', { Allow: 'POST' }); return true; }
+    try {
+      const raw = await ctx.body(256_000);
+      const out = await line.webhook(ctx.root, { raw, signature: req.headers['x-line-signature'], limited: ctx.limited, fetch });
+      ctx.send(out.status, '');
+    } catch (e) {
+      ctx.send(e?.status || 500, '');
+    }
+    return true;
+  }
   const m = url.pathname.match(/^\/connectors\/([\w-]+)\/(start|callback)\/?$/);
   if (!m || m[1] !== 'gmail' || req.method !== 'GET') return false;
   const user = ctx.sessionUser();

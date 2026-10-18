@@ -7,7 +7,9 @@
  * leaves out what the reader may not see (compensation, contacts).
  *
  * `digestText(d, lang)` renders it as plain text sized for a chat message, in
- * English or Japanese.
+ * English or Japanese. `digestNudge(d, lang, url)` is the short form for a
+ * channel outside the app: counts and a link, never a company, a role, or a
+ * name, so what the chat service keeps says only that something happened.
  */
 
 import { readTracker, readPipeline, statusLog } from './tracker.mjs';
@@ -85,6 +87,9 @@ const T = {
     decided: (c, r, u) => `This week: ${c} confirmed, ${r} rejected, ${u} unsure`,
     inbox: (n) => `Postings waiting to be evaluated: ${n}`,
     thanks: (list) => `Help this week: ${list}`,
+    nudge: (sent, moved, waiting) => [`${sent} applied`, `${moved} moved`, ...(waiting ? [`${waiting} waiting for review`] : [])].join(' · '),
+    open: (url) => `Details in the app: ${url}`,
+    openNoUrl: 'Details are in the app.',
   },
   ja: {
     title: (d) => `就活レポート ${d.period.from}〜${d.period.to}`,
@@ -100,6 +105,9 @@ const T = {
     decided: (c, r, u) => `今週の確認：承認${c}件・却下${r}件・不明${u}件`,
     inbox: (n) => `評価待ちの求人：${n}件`,
     thanks: (list) => `今週のサポート：${list}`,
+    nudge: (sent, moved, waiting) => [`応募${sent}件`, `進捗${moved}件`, ...(waiting ? [`本人の確認待ち${waiting}件`] : [])].join('・'),
+    open: (url) => `詳しくはアプリで：${url}`,
+    openNoUrl: '詳しくはアプリでご覧ください。',
   },
 };
 
@@ -126,4 +134,10 @@ export function digestText(d, lang = 'en') {
   lines.push(t.inbox(d.pipeline.pending));
   if (d.contributors.length) lines.push('', t.thanks(d.contributors.map((c) => `${c.name} (${c.n})`).join(', ')));
   return `${lines.join('\n')}\n`;
+}
+
+export function digestNudge(d, lang = 'en', url = null) {
+  const t = T[lang] || T.en;
+  const waiting = d.packets.inReview.length + d.review.total;
+  return `${[t.title(d), t.nudge(d.applications.sent.length, d.applications.movement.length, waiting), url ? t.open(url) : t.openNoUrl].join('\n')}\n`;
 }

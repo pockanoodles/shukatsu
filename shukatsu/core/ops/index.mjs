@@ -40,9 +40,10 @@ import schedule from './schedule.mjs';
 import inbox from './inbox.mjs';
 import people from './people.mjs';
 import connectors from './connectors.mjs';
+import notify from './notify.mjs';
 import applications from './applications.mjs';
 
-const AREAS = [record, review, postings, tracker, packets, campaigns, schedule, inbox, people, connectors, applications];
+const AREAS = [record, review, postings, tracker, packets, campaigns, schedule, inbox, people, connectors, notify, applications];
 
 export const OPS = new Map();
 for (const op of AREAS.flat()) {

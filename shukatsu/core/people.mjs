@@ -62,6 +62,8 @@ const MATRIX = {
   'page.observe': ['owner'],
   'application.fill': ['owner'],
   'answers.manage': ['owner'],
+  // Linking your own chat account for the digest. People only: an agent has no phone to link.
+  'notify.self': ['owner', 'editor', 'reviewer', 'viewer'],
   // Stamps: owner only, and never an agent whatever this table says (see can()).
   'review.decide': ['owner'],
   'packet.send': ['owner'],
