@@ -224,13 +224,25 @@ Shukatsu には作者が運営するサーバーも、作者に作るアカウ�
 
 ## フォークの保守
 
-Shukatsu は career-ops を定期的にマージします（`git fetch upstream && git merge upstream/main`）。Shukatsu 独自の作業は `shukatsu/`、`site/`、2つのモードフォルダにあるので、ほとんどのファイルは上流のもので、問題なくマージできます。例外はこの README と `README.ja.md` で、どちらも Shukatsu 独自のものです。`.gitattributes` で両方に `merge=ours` を指定しているので、マージのたびにこちらの版が残ります。この指定にはマージドライバが必要で、クローンごとに git config を1行実行します。
+Shukatsu は career-ops のリリースごとに、そのタグを専用のブランチでマージします。使うのは次のスクリプトひとつです。
+
+```bash
+node shukatsu/upstream.mjs review      # 最新リリースの変更のうち、ここに関係するもの
+node shukatsu/upstream.mjs merge       # update/<version> ブランチでマージ（コミットはしない）
+node shukatsu/upstream.mjs pick <sha>  # リリースの合間に上流の修正をひとつ取り込む
+```
+
+review は4つを一覧にします。アプリが頼っているエンジンのコード（シーム。`shukatsu/core/seam.mjs` で宣言し、`shukatsu/tests/seam.spec.mjs` でテストしています）、リリースで増えたネットワーク通信（それぞれ [DATAFLOW.md](DATAFLOW.md) に1行必要です）、エージェントへの指示とモードの変更、そしてフォークが手を入れている上流のファイルです。merge は、フォークが一度も編集していないファイルの衝突を上流の版で解決し、残りは人に任せます。`shukatsu/` での `npm test` が通り、`node test-all.mjs`（上流のテストが本物のデータルートに触れないよう、`CAREER_OPS_DATA_DIR` をこのチェックアウトにして実行）で `main` にない失敗が出ないことを確かめてから、リリースを `main` に入れます。取り込むのはリリースだけで、`upstream/main` は取り込みません。`update-system.mjs apply` も使いません。apply はマージではなくファイルのコピーなので、フォークが編集したファイルには上流の変更が届かなくなり、git も何がマージ済みかを追えなくなるからです。
+
+Shukatsu 独自の作業は `shukatsu/`、`site/`、2つのモードフォルダ（`config/local-paths.txt` で宣言）にあるので、ほとんどのファイルは上流のもので、問題なくマージできます。例外はこの README と `README.ja.md` で、どちらも Shukatsu 独自のものです。`.gitattributes` で両方に `merge=ours` を指定しているので、マージのたびにこちらの版が残ります。この指定にはマージドライバが必要で、クローンごとに git config を1行実行します（未設定なら `merge` が設定します）。
 
 ```bash
 git config merge.ours.driver true
 ```
 
 上流のほかの翻訳 README（`README.es.md` など）は、衝突しないように手を入れておらず、Shukatsu ではなく career-ops について書かれています。
+
+フォークが上流のコードに入れた修正は、issue とプルリクエストで上流に送り、フォークで抱え続けないようにします。リリースに同じ内容が入ると review がその編集を「adopted」と表示するので、フォーク側の編集は消せます。
 
 ## ライセンス
 

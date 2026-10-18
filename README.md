@@ -224,13 +224,25 @@ Shukatsu has no server run by its author, no account to create with the author, 
 
 ## Maintaining the fork
 
-Shukatsu merges career-ops regularly (`git fetch upstream && git merge upstream/main`). Almost every file is upstream's and merges cleanly, because Shukatsu's own work is in `shukatsu/`, `site/` and two mode folders. The exceptions are this README and `README.ja.md`, which are Shukatsu's own, and `.gitattributes` marks both `merge=ours` so a merge always keeps these versions. That attribute needs a merge driver, which is one line of git config per clone.
+Shukatsu takes each career-ops release by merging its tag on a branch of its own, through one script:
+
+```bash
+node shukatsu/upstream.mjs review      # what the newest release changes that matters here
+node shukatsu/upstream.mjs merge       # merges it on update/<version>, uncommitted
+node shukatsu/upstream.mjs pick <sha>  # one upstream fix between releases
+```
+
+The review lists four things: the engine code the app depends on (the seam, declared in `shukatsu/core/seam.mjs` and tested in `shukatsu/tests/seam.spec.mjs`), the network calls the release adds, each of which needs a line in [DATAFLOW.md](DATAFLOW.md), changes to the agent instructions and modes, and the upstream files the fork edits. The merge resolves conflicts in files the fork never edited to upstream's version and leaves the rest for a person. The release reaches `main` once `npm test` in `shukatsu/` passes and `node test-all.mjs` (run with `CAREER_OPS_DATA_DIR` set to the checkout, so upstream's tests stay out of the real data root) shows no failure that `main` doesn't already have. Shukatsu takes releases only, never `upstream/main`, and never runs `update-system.mjs apply`, which copies files instead of merging them, so a file the fork edits stops receiving upstream changes and git loses track of what was merged.
+
+Almost every file is upstream's and merges cleanly, because Shukatsu's own work is in `shukatsu/`, `site/` and two mode folders, declared in `config/local-paths.txt`. The exceptions are this README and `README.ja.md`, which are Shukatsu's own, and `.gitattributes` marks both `merge=ours` so a merge always keeps these versions. That attribute needs a merge driver, which is one line of git config per clone (`merge` sets it when a clone lacks it).
 
 ```bash
 git config merge.ours.driver true
 ```
 
 Upstream's other translated READMEs (`README.es.md` and the rest) are left untouched so they cannot conflict, and they describe career-ops rather than Shukatsu.
+
+A fix the fork makes to upstream's code goes upstream as an issue and a pull request, so the fork doesn't carry it. The review marks a carried edit "adopted" once a release has the same content, and the fork's copy of the edit can go.
 
 ## License
 

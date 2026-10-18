@@ -12,3 +12,8 @@ site/
 # Fork-owned modes.
 modes/shukatsu/
 modes/shinsotsu/
+
+# Fork-owned docs: what leaves the machine, and the fork's rules for agents
+# (Claude Code reads .claude/CLAUDE.md beside the root CLAUDE.md, which is upstream's).
+DATAFLOW.md
+.claude/CLAUDE.md
