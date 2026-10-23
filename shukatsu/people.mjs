@@ -3,7 +3,7 @@
 /**
  * people.mjs -- who can use this install, from the terminal.
  *
- *   node shukatsu/people.mjs init --name "Kaito Soeno" [--lang en]
+ *   node shukatsu/people.mjs init --name "Sam Candidate" [--lang en]
  *        The first run on a new server: prints a one-time link that creates the
  *        owner. There is no public sign-up page, so this is the only way in.
  *   node shukatsu/people.mjs invite --name "Mom" --role editor [--relation Mother] [--lang ja] [--days 7]

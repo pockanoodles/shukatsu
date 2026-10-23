@@ -50,7 +50,7 @@ export function registerMix(text) {
 }
 
 // "co-op" doesn't parse for a Japanese employer; say 長期インターン with dates.
-// Em dashes and semicolons break Kaito's voice rules in either language.
+// Em dashes and semicolons break the candidate's voice rules in either language.
 export function styleWarnings(text) {
   const warnings = [];
   if (/co-?op|コープ|コーオプ/iu.test(text)) {
