@@ -6,7 +6,7 @@
  * characters of the job description. Nothing else from the profile, no names
  * of the people using the app, no contacts. Every call writes one line to
  * {DATA_ROOT}/.shukatsu/egress.log (time, who, model, sizes, status, never the
- * bodies). See shukatsu/DATAFLOW.md.
+ * bodies). See DATAFLOW.md.
  *
  * Judgment is the model's, gates are ours: every suggestion must keep the
  * fact's figures exactly, still read as the same claim, and pass the bullet
@@ -14,28 +14,15 @@
  * suggestion: a person picks it, and the packet's check runs again.
  */
 
-import { appendFileSync, mkdirSync } from 'fs';
-import { join } from 'path';
 import { sameNumbers, similarity } from './facts.mjs';
 import { WEAK } from './trace.mjs';
 import { lintWording } from './validate.mjs';
-import { stateDir } from './lock.mjs';
+import { logEgress } from './egress.mjs';
 import { assertCan } from './people.mjs';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 export const MODEL = process.env.SHUKATSU_MODEL || 'claude-opus-5-5';
 export const llmEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY);
-
-function audit(root, entry) {
-  try {
-    mkdirSync(stateDir(root), { recursive: true });
-    appendFileSync(join(stateDir(root), 'egress.log'), `${JSON.stringify({ at: new Date().toISOString(), ...entry })}\n`);
-  } catch {
-    // An unwritable log must not turn into a failed request, but it is the
-    // audit trail, so say so where an operator will see it.
-    console.error('shukatsu: could not write egress.log');
-  }
-}
 
 const SYSTEM = `You reword one resume bullet so it reads well for a specific job posting.
 
@@ -83,7 +70,7 @@ export async function suggestRewordings(root, { actor, fact, entity, jdText, cur
     if (!res.ok) throw new Error(data?.error?.message || `The model answered ${res.status}.`);
     text = (data.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
   } finally {
-    audit(root, { actor: actor.id, purpose: 'reword', model: MODEL, fact: fact.id, sent_chars: user.length, received_chars: text.length, status, ms: Date.now() - started });
+    logEgress(root, { actor: actor.id, purpose: 'reword', model: MODEL, fact: fact.id, sent_chars: user.length, received_chars: text.length, status, ms: Date.now() - started });
   }
   let rewordings = [];
   try {

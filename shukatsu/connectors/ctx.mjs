@@ -1,8 +1,8 @@
 /**
  * The context a connector runs with: the guarded fetch from
  * plugins/_engine.mjs, pinned to the connector's declared hosts, plus the one
- * audit line each request leaves in {DATA_ROOT}/.shukatsu/egress.log (the
- * same file and shape core/llm.mjs writes).
+ * audit line each request leaves in {DATA_ROOT}/.shukatsu/egress.log
+ * (core/egress.mjs).
  *
  * A line holds the time, the connector and account, what the call was for,
  * the host, the method, how many characters were sent, the status, and how
@@ -13,20 +13,8 @@
  * and the audit line, so what a recorded run sends is checked the same way.
  */
 
-import { appendFileSync, mkdirSync } from 'fs';
-import { join } from 'path';
 import { buildCtx } from '../../plugins/_engine.mjs';
-import { stateDir } from '../core/lock.mjs';
-
-export function audit(root, entry) {
-  try {
-    mkdirSync(stateDir(root), { recursive: true });
-    appendFileSync(join(stateDir(root), 'egress.log'), `${JSON.stringify({ at: new Date().toISOString(), ...entry })}\n`);
-  } catch {
-    // The log is the audit trail, so an unwritable one is worth saying out loud, but it must not fail a sync.
-    console.error('shukatsu: could not write egress.log');
-  }
-}
+import { logEgress } from '../core/egress.mjs';
 
 /** The hosts a connector may reach for this account: its manifest's, plus the account's own feed host when the manifest says so. */
 export function hostsFor(manifest, account) {
@@ -50,10 +38,10 @@ export function makeConnectorCtx(root, manifest, account, { fetch: base = null, 
       if (u.protocol !== 'https:') throw new Error(`egress must use HTTPS: ${u.hostname}`);
       if (!hosts.includes(u.hostname)) throw new Error(`egress to "${u.hostname}" is not in allowedHosts [${hosts.join(', ')}]`);
       const res = await send(url, { timeoutMs: 30_000, ...rest });
-      audit(root, { ...line, status: res.status ?? 200, received_chars: Number(res.headers?.get?.('content-length')) || null, ms: Date.now() - started });
+      logEgress(root, { ...line, status: res.status ?? 200, received_chars: Number(res.headers?.get?.('content-length')) || null, ms: Date.now() - started });
       return res;
     } catch (err) {
-      audit(root, { ...line, status: err?.status ?? 'error', received_chars: null, ms: Date.now() - started });
+      logEgress(root, { ...line, status: err?.status ?? 'error', received_chars: null, ms: Date.now() - started });
       throw err;
     }
   };

@@ -306,15 +306,18 @@ are partner-only, Handshake's are for employers, NUworks runs on Symplicity with
 students) and sit behind the candidate's own sign-in. Their web apps fetch the candidate's
 own data from private endpoints, so software holding that session could reach it, but every
 one of their terms forbids automated access, and LinkedIn restricts accounts for it. So
-shukatsu reads them three ways, none of which makes a request to the board.
+shukatsu reads them three ways, none of which makes a request to the board, and LinkedIn
+only the first (see Held, and refused).
 
 1. **Mail, with every notification on.** Each board can email messages, application
    updates, and confirmations, and the employer's applicant tracking system sends the real
    status of an application whichever board it came through. With the boards' email
    notifications all switched on, the `gmail` connector carries most of what happens.
-2. **The passive extension.** Reads the pages the candidate opens anyway, as they load.
+2. **The passive extension.** Reads the pages the candidate opens anyway, as they load, on
+   NUworks, Handshake, and careerforum.net.
 3. **Capture.** The extension's toolbar button (and the bookmarklet, and an iOS Shortcut)
-   saves whatever page the candidate is reading, on any site.
+   saves whatever page the candidate is reading, on any site but LinkedIn, where it saves the
+   address alone as a blocked inbox item that asks for the employer's posting.
 
 ### The extension
 
@@ -356,8 +359,11 @@ from the shapes the extension logs.
 ### Readers (next)
 
 A reader turns one board's kept page into records: an applications list into application
-observations, a thread into a message and a person. Each is written against real kept
-pages (as recorded fixtures, so tests stay offline) and lives beside its platform entry.
+observations, a thread into a message and a person. Each is written from real kept pages,
+which stay in the private data root: their text is the board's and other people's, and the
+boards' terms bar republishing it. The tests in this public repo run on synthetic pages built
+to the same shape, so they stay offline and nothing real is ever committed here. A reader
+lives beside its platform entry.
 The observations go through the signal step, which matches them to tracker rows the way it
 matches mail, so drift between a board and the tracker (applied on Handshake with no row, a
 row still Applied that NUworks shows as Not selected) becomes an inbox item with the
@@ -371,9 +377,13 @@ canonical fix.
   system under the university's acceptable-use policy. It waits until mail and the passive
   extension have shown what they actually miss, and if it comes it is per board and off by
   default.
-- **LinkedIn is never automated** (`automation: 'never'` in its entry): reading the pages
-  the candidate opens and the occasional data export are the only ways in, because losing
-  the account costs more than any data from it.
+- **LinkedIn is never automated, and never read** (`automation: 'never'` in its entry).
+  Decided 2026-10-14 for automation, because losing the account costs more than any data
+  from it, and widened 2026-10-23: section 8.2 of its User Agreement bans browser plugins
+  that copy the service, profiles and other data included, so the extension runs nothing
+  there either. Its notification mail and the occasional data export are the only ways in,
+  and a LinkedIn posting is captured by its address and confirmed at the employer, whose
+  posting is the canonical one anyway.
 
 ### Filling application forms
 
@@ -381,7 +391,8 @@ Decided 2026-10-14. The candidate presses Fill (Alt+Shift+F, or the toolbar butt
 menu) on an application form. shukatsu fills it, lists what went where, and outlines the
 site's Submit button. Pressing that button is always the candidate's, and so is the
 stamp that records it: `packet.markSent` (permission `packet.send`, a stamp). No agent,
-token, or schedule can do either. It never runs on LinkedIn (`automation: 'never'`).
+token, or schedule can do either. It never runs on LinkedIn (`automation: 'never'`): the
+extension stops before it touches the page, and `application.plan` refuses the form too.
 Employer ATS forms come first: Greenhouse, Lever, Ashby.
 
 **The model reads, code acts.** A filler that takes a screenshot, asks a model where to
@@ -549,8 +560,9 @@ schedule rows, which keeps upstream tools working on the tracker unchanged.
 
 ## Data flow additions
 
-`DATAFLOW.md` gains a section for each connector, written for a non-engineer, that covers the
-following.
+`DATAFLOW.md` (one file, at the repo root) gains a section for each connector, written for a
+non-engineer, and `tests/dataflow.spec.mjs` fails when a connector, a host one may reach, or a
+module that calls out is missing from it. Each section covers the following.
 
 - **What arrives.** Messages that match the search, calendar events, feeds the candidate
   adds, and the board pages the extension reads. Messages contain other people's names and addresses, so they are kept in `sync.db`,
@@ -568,7 +580,8 @@ following.
   permission, its stamp rule, and its schema.
 - A guard test fails if any server action, CLI, or MCP handler writes to the data root
   without going through `ops.run`.
-- Connectors are tested against recorded responses, with no live network.
+- Connectors are tested against recorded responses, with no live network. Every fixture is
+  synthetic: no real posting, message, page, or person, since this repo is public.
 - The MCP surface is tested by listing tools and calling one from each permission tier with
   an agent token, which asserts that every stamp is refused.
 

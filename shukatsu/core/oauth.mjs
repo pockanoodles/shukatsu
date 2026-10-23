@@ -24,6 +24,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { request as httpsRequest } from 'node:https';
 import { consumeRefresh, getUser, issueToken, revokeToken, tokenUser } from './people.mjs';
 import { db, getSetting, logActivity, now, setSetting } from './store.mjs';
+import { logEgress } from './egress.mjs';
 import { readForm, readJson } from './http.mjs';
 import { resolveAndValidate } from '../../plugins/_net.mjs';
 
@@ -150,7 +151,17 @@ export async function resolveClient(root, clientId) {
   if (row?.kind === 'metadata' && Date.now() - Date.parse(row.created_at) < METADATA_CACHE_MS) {
     return { client_id: clientId, kind: 'metadata', name: row.name, redirect_uris: JSON.parse(row.metadata).redirect_uris };
   }
-  const doc = await fetchDocument(clientId);
+  // The one request the daemon makes on a client's word: a GET of its public metadata document, carrying nothing of ours.
+  const line = { actor: 'oauth', purpose: 'client.metadata', host: new URL(clientId).hostname, method: 'GET', sent_chars: 0 };
+  const started = Date.now();
+  let doc;
+  try {
+    doc = await fetchDocument(clientId);
+    logEgress(root, { ...line, status: 200, ms: Date.now() - started });
+  } catch (e) {
+    logEgress(root, { ...line, status: 'error', ms: Date.now() - started });
+    throw e;
+  }
   if (doc?.client_id !== clientId) throw new OAuthError('invalid_client_metadata', 'The document\'s client_id must equal the URL it was served from.', 401);
   const meta = checkedMetadata(doc, clientId);
   d.prepare(`INSERT INTO oauth_clients (client_id, kind, name, metadata, created_at) VALUES (?, 'metadata', ?, ?, ?)

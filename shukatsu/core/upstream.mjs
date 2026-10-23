@@ -18,7 +18,12 @@ import { SEAM, seamClosure } from './seam.mjs';
 const TAG_GLOB = 'career-ops-v*';
 const AUTO_UPDATE = /^chore: auto-update system files/;
 const AGENT_FILES = /^(AGENTS|CLAUDE|CODEX|GEMINI|OPENCODE|KIMI)\.md$|^modes\/|^\.claude\/|^\.agents\/|^batch\/batch-prompt\.md$/;
-const NETWORK_CALL = /\bfetch\s*\(|\bhttps?\.(request|get)\s*\(|new\s+WebSocket\s*\(|\bundici\b|\baxios\b/;
+/**
+ * A line that calls out, or imports a way to: fetch, http(s).request/get (also
+ * imported under another name), a socket, or a client library. Shared with
+ * tests/dataflow.spec.mjs, which holds the fork's own code to the same test.
+ */
+export const NETWORK_CALL = /\bfetch\s*\(|\bhttps?2?\.(request|get|connect)\s*\(|new\s+WebSocket\s*\(|\bundici\b|\baxios\b|import\s*\{[^}]*\b(request|get|connect)\b[^}]*\}\s*from\s*['"](node:)?https?2?['"]|import\s*\{[^}]*\b(connect|createConnection)\b[^}]*\}\s*from\s*['"](node:)?(net|tls)['"]/;
 const HOST = /https?:\/\/([a-z0-9-]+(?:\.[a-z0-9-]+)+)/gi;
 const PLACEHOLDER_HOST = /(^|\.)(example\.(com|org|net)|localhost|test|invalid)$/;
 const CODE = /\.(mjs|cjs|js|ts|tsx|go)$/;

@@ -132,9 +132,11 @@ Every operation, whether it comes from a page, an agent or the CLI, goes through
 | Suggest wordings (`shukatsu/core/llm.mjs`) | Anthropic API | Only when `ANTHROPIC_API_KEY` is set and someone presses the button on a packet |
 | Gmail connector | `gmail.googleapis.com`, `oauth2.googleapis.com` | Only after the candidate connects it, and read-only |
 | Calendar feed connector | The feed's own host | Only after the candidate pastes a feed address |
+| LINE connector | `api.line.me` | Only after the candidate connects it: the weekly digest, and a daily check that its token still works |
+| OAuth sign-in (`shukatsu/core/oauth.mjs`) | The address an MCP client gives as its ID, for its public description | When such a client signs in, at most once an hour per client, and never a private address |
 | Agents you name | Whatever model runs the agent | When you connect one, and it receives what its operations return |
 
-Nothing else in the app calls out. Every connector request and every model call writes one line to `.shukatsu/egress.log` (time, who, host or model, sizes and status, never the text). The plain-language version, with what is sent and who can see it, is [DATAFLOW.md](DATAFLOW.md).
+Nothing else in the app calls out. Every one of these calls writes one line to `.shukatsu/egress.log` (time, who, host or model, sizes and status, never the text). The plain-language version, with what is sent and who can see it, is [DATAFLOW.md](DATAFLOW.md).
 
 ## Built on career-ops
 
