@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- launchd agent for deploy/backup.mjs on a Mac: a snapshot nightly at 04:45, and another whenever
+     a disk is mounted, so an external disk that is only plugged in now and then still gets one.
+     --min-hours 20 keeps it to about one a day per target, and a target whose disk isn't attached
+     is skipped. If the Mac is asleep at 04:45, launchd runs the job at the next wake.
+       cp shukatsu/deploy/com.shukatsu.backup.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.shukatsu.backup.plist
+       tail ~/Library/Logs/shukatsu-backup.log
+     Edit the paths and the targets to match this machine. Every target must be encrypted. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.shukatsu.backup</string>
+  <key>WorkingDirectory</key><string>/Users/USER/Projects/shukatsu</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>shukatsu/deploy/backup.mjs</string>
+    <string>/Users/USER/Library/Application Support/shukatsu/backups</string>
+    <string>/Volumes/DISK/Backups/shukatsu</string>
+    <string>--keep</string><string>14</string>
+    <string>--min-hours</string><string>20</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict><key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin</string></dict>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>45</integer></dict>
+  <key>StartOnMount</key><true/>
+  <key>StandardOutPath</key><string>/Users/USER/Library/Logs/shukatsu-backup.log</string>
+  <key>StandardErrorPath</key><string>/Users/USER/Library/Logs/shukatsu-backup.log</string>
+</dict>
+</plist>

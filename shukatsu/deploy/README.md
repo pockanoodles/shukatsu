@@ -48,7 +48,7 @@ npm run build
 There is no public sign-up page. The first account is made from the machine:
 
 ```sh
-cd ~/shukatsu && SHUKATSU_URL=https://your-address node shukatsu/people.mjs init --name "Kaito Soeno"
+cd ~/shukatsu && SHUKATSU_URL=https://your-address node shukatsu/people.mjs init --name "Sam Candidate"
 ```
 
 It prints a link that works once, for 24 hours. Open it, choose a login and password, and
@@ -90,13 +90,19 @@ links their own LINE account from their Settings page.
 ## 6. Back it up
 
 ```sh
-node shukatsu/deploy/backup.mjs /Volumes/<encrypted-disk>/shukatsu --keep 14
+node shukatsu/deploy/backup.mjs ~/Library/Application\ Support/shukatsu/backups /Volumes/<encrypted-disk>/Backups/shukatsu --keep 14 --min-hours 20
 ```
 
 It snapshots the app database (people, sessions, proposals, comments) while the app runs,
 bundles the data root's whole git history, and tars the gitignored files worth keeping
-(`jds/`, `output/`, the pipeline inbox). The database holds password hashes, so the target
-must be an encrypted volume. Schedule it daily with cron or a second launchd agent.
+(`jds/`, `output/`, the pipeline inbox), once into each target. The database holds password
+hashes, so every target must be encrypted (an internal disk under FileVault counts). A
+target on a disk that isn't plugged in is skipped, never created on the boot disk, and
+`--min-hours` skips a target whose newest snapshot is younger than that.
+
+On a Mac, `deploy/com.shukatsu.backup.plist` runs it nightly and again whenever a disk is
+mounted, so an external disk that is attached only now and then still gets a snapshot. On
+Linux, a daily cron line or systemd timer with the same command does the nightly part.
 
 ## 7. Updating
 
