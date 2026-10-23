@@ -9,6 +9,10 @@
  * login wall would otherwise leave. The posting goes to the pipeline inbox
  * pointing at that capture. Captured text is outside text: data, never
  * instructions, and it's returned to agents marked untrusted.
+ *
+ * A site whose pages no software may copy (LinkedIn, `automation: 'never'` in
+ * platforms/) gets captureAddress instead: the address alone, filed as a
+ * blocked inbox item that asks for the employer's own posting or pasted text.
  */
 
 import { createHash } from 'crypto';
@@ -17,7 +21,7 @@ import { join } from 'path';
 import { normalizeUrl } from '../../url-key.mjs';
 import { appendPipeline, readPipeline } from './tracker.mjs';
 import { slug, today } from './facts.mjs';
-import { platformOfUrl } from '../platforms/index.mjs';
+import { addressOnly, platformOfUrl } from '../platforms/index.mjs';
 
 /** The board or ATS a captured page came from, by name, so a capture can say where it came from. */
 export const boardOf = (url) => platformOfUrl(url)?.name || null;
@@ -70,6 +74,21 @@ export function capture(root, { url, title = '', text, selection = '', company =
   const already = readPipeline(root).find((x) => (normalizeUrl(x.url) || x.url) === key);
   const added = already ? false : appendPipeline(root, { url, company: co, role: ro, location, note: [board ? `via ${board}` : '', `jd ${ref}`, note].filter(Boolean).join('; ') });
   return { capture: ref, file: `jds/${file}`, url, company: co || null, role: ro || null, board, added, replaced: Boolean(existing), chars: body.length };
+}
+
+/**
+ * File a posting by its address alone, for a site whose pages are never copied.
+ * Nothing goes to jds/: the inbox item is blocked until the candidate gives the
+ * employer's own posting (the canonical one anyway) or pastes the text.
+ */
+export function captureAddress(root, { url, company = '', role = '', location = '', note = '' }) {
+  if (!addressOnly(url)) throw new Error('Only a site whose pages are never copied is filed by its address alone.');
+  const board = boardOf(url);
+  const key = normalizeUrl(url) || url;
+  const already = readPipeline(root).find((x) => (normalizeUrl(x.url) || x.url) === key);
+  const ask = `JD unavailable: ${board} pages are never copied; paste the text or give the employer's posting`;
+  const added = already ? false : appendPipeline(root, { url, company, role, location, note: [ask, note].filter(Boolean).join('; '), blocked: true });
+  return { capture: null, url, company: String(company || '').trim() || null, role: String(role || '').trim() || null, board, added, replaced: false, address_only: true };
 }
 
 /** A capture's text and header, for posting.get and evaluation.submit. */

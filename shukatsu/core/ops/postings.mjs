@@ -8,7 +8,8 @@ import { appendPipeline, readPipeline, readTracker } from '../tracker.mjs';
 import { propose } from '../proposals.mjs';
 import { can } from '../people.mjs';
 import { logActivity } from '../store.mjs';
-import { capture, readCapture } from '../capture.mjs';
+import { capture, captureAddress, readCapture } from '../capture.mjs';
+import { addressOnly } from '../../platforms/index.mjs';
 import { FINAL_DECISIONS, LEGITIMACY, WORK_AUTH, readReport, submitEvaluation } from '../evaluations.mjs';
 import { normalizeUrl } from '../../../url-key.mjs';
 import { getRecord } from '../sync.mjs';
@@ -19,6 +20,9 @@ const ITEM = S.obj({
 });
 
 const block = (d) => S.text(d, 40000, { minLength: 1 });
+
+/** The capture clients that read a page's text themselves, as opposed to a person pasting it. */
+const READS_PAGES = new Set(['extension', 'bookmarklet', 'shortcut']);
 
 export default [
   {
@@ -81,7 +85,7 @@ export default [
   {
     name: 'posting.capture',
     kind: 'command',
-    summary: 'Save the posting page the candidate is reading (URL, title, visible text) as its archived job description and file it in the pipeline. For boards behind a sign-in: NUworks, Handshake, CareerForum.Net.',
+    summary: 'Save the posting page the candidate is reading (URL, title, visible text) as its archived job description and file it in the pipeline. For boards behind a sign-in: NUworks, Handshake, CareerForum.Net. LinkedIn pages are never copied, so a LinkedIn URL is filed by its address alone, as a blocked inbox item that asks for the employer\'s posting; text read from a LinkedIn page by the extension, bookmarklet, or a Shortcut is dropped, and only text a person pasted is kept.',
     permission: 'posting.capture',
     untrusted: true,
     input: S.obj({
@@ -97,16 +101,23 @@ export default [
       record: S.int('A posting page the browser extension already read (an inbox signal\'s record), in place of url and text.', { minimum: 1 }),
     }),
     output: S.obj({
-      capture: S.str(), file: S.str(), url: S.str(), company: S.nullable(S.str()), role: S.nullable(S.str()), board: S.nullable(S.str()),
-      added: S.bool(), replaced: S.bool(), chars: S.int(),
-    }, ['capture', 'added']),
-    activity: (input, out) => ({ verb: 'posting.captured', subject: `capture:${out.capture.replace(/^local:jds\//, '')}`, detail: { url: input.url, board: out.board, company: out.company } }),
+      capture: S.nullable(S.str()), file: S.str(), url: S.str(), company: S.nullable(S.str()), role: S.nullable(S.str()), board: S.nullable(S.str()),
+      added: S.bool(), replaced: S.bool(), chars: S.int(), address_only: S.bool(),
+    }, ['added']),
+    activity: (input, out) => ({
+      verb: 'posting.captured',
+      subject: out.capture ? `capture:${out.capture.replace(/^local:jds\//, '')}` : null,
+      detail: { url: out.url || input.url, board: out.board, company: out.company, ...(out.address_only ? { address_only: true } : {}) },
+    }),
     run: ({ root, input }) => {
       if (input.record) {
         const r = getRecord(root, input.record);
         if (r?.kind !== 'page' || r.fields.page !== 'posting') throw Object.assign(new Error('That record isn\'t a posting page the extension read.'), { code: 'not_found', status: 404 });
+        if (addressOnly(r.fields.url)) return captureAddress(root, { ...input, url: r.fields.url });
         return capture(root, { ...input, url: r.fields.url, title: input.title || r.fields.title, text: r.text, via: 'extension' });
       }
+      // LinkedIn's terms ban software that copies its pages, so what a page-reading client sent from one is dropped here.
+      if (input.url && addressOnly(input.url) && (!input.text || READS_PAGES.has(input.via))) return captureAddress(root, input);
       if (!input.url || !input.text) throw Object.assign(new Error('Pass url and text, or record.'), { code: 'invalid_input', status: 400 });
       return capture(root, input);
     },

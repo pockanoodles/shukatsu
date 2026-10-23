@@ -252,6 +252,12 @@ test('on Lever a box or radio is left to the candidate, since a scripted click t
   assert.match(plan.entries[0].note, /Decline to self-identify/);
 });
 
+test('a form on LinkedIn is never planned, whoever asks: its terms ban software acting in the session', async () => {
+  const s = setup();
+  await rejects(run(s.root, s.extP, 'application.plan', { url: 'https://www.linkedin.com/jobs/view/4012345/apply/', fields: [] }), 'invalid_input');
+  assert.throws(() => planForm(s.root, { url: 'https://www.linkedin.com/jobs/view/4012345/', fields: [] }), /never fills a form on LinkedIn/);
+});
+
 test('only the candidate\'s own key plans a form, and recording a fill is not sending it', async () => {
   const s = setup();
   await rejects(run(s.root, s.agentP, 'application.plan', { url: FORM_URL, fields: [] }), 'denied');

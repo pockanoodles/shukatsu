@@ -152,7 +152,7 @@ export default [
   {
     name: 'page.observe',
     kind: 'command',
-    summary: 'A page of a login-walled board (NUworks, Handshake, LinkedIn, CareerForum.Net) the candidate opened, as the browser extension read it. The board and page kind are decided from the URL; a posting becomes an inbox signal to save it, and any other page of the board is kept by its path alone.',
+    summary: 'A page of a login-walled board (NUworks, Handshake, CareerForum.Net; never LinkedIn) the candidate opened, as the browser extension read it. The board and page kind are decided from the URL; a posting becomes an inbox signal to save it, and any other page of the board is kept by its path alone.',
     permission: 'page.observe',
     untrusted: true,
     input: S.obj({

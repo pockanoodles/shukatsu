@@ -116,8 +116,8 @@ export async function revokeTokenAction(form: FormData) {
 
 // ---------------------------------------------------------------- capture
 
-export async function captureAction(input: { url: string; title: string; text: string; selection: string; company: string; role: string; location: string; note: string }): Promise<ActionResult> {
-  const r = await op("posting.capture", { ...input, via: "bookmarklet" });
+export async function captureAction({ pasted, ...input }: { url: string; title: string; text: string; selection: string; company: string; role: string; location: string; note: string; pasted?: boolean }): Promise<ActionResult> {
+  const r = await op("posting.capture", { ...input, via: pasted ? "app" : "bookmarklet" });
   if (r.ok) revalidatePath("/applications");
   return out(r);
 }

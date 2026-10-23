@@ -142,13 +142,17 @@ export function readPipeline(root) {
   return items;
 }
 
-/** Append one inbox item under "## Pending" (created if missing). Returns false for a duplicate URL. */
-export function appendPipeline(root, { url, company = '', role = '', location = '', note = '' }) {
+/**
+ * Append one inbox item under "## Pending" (created if missing). Returns false for a duplicate URL.
+ * `blocked` writes it as `- [!]`, the pipeline's mark for an item that can't go on until the
+ * candidate supplies something (a posting whose text shukatsu may not copy).
+ */
+export function appendPipeline(root, { url, company = '', role = '', location = '', note = '', blocked = false }) {
   const path = PIPELINE(root);
   const text = existsSync(path) ? readFileSync(path, 'utf-8') : '# Pipeline — Pending URLs\n\n## Pending\n';
   if (text.includes(url)) return false;
   const cell = (s) => String(s || '').replace(/\s*\|\s*/g, ' / ').replace(/\s+/g, ' ').trim();
-  const entry = `- [ ] ${[url, cell(company) || '?', cell(role) || '?', cell(location), note ? `note: ${cell(note)}` : ''].filter(Boolean).join(' | ')}`;
+  const entry = `- [${blocked ? '!' : ' '}] ${[url, cell(company) || '?', cell(role) || '?', cell(location), note ? `note: ${cell(note)}` : ''].filter(Boolean).join(' | ')}`;
   const lines = text.split('\n');
   let at = lines.findIndex((l) => /^##\s+Pending/i.test(l));
   if (at === -1) { lines.push('', '## Pending', ''); at = lines.length - 2; }

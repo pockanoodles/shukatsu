@@ -88,13 +88,14 @@ tracker, evaluations, packets, the calendar, campaigns, the inbox) and can never
 
 ### Browser extension
 
-`extension/` reads the NUworks, Handshake, LinkedIn, and CareerForum.Net pages you open, as
+`extension/` reads the NUworks, Handshake, and CareerForum.Net pages you open, as
 they load, and sends them to your shukatsu: postings wait in the inbox to be saved, and your
 applications and threads are kept for the board readers. It never clicks or fetches anything
 on those sites. Load it unpacked from `chrome://extensions`, make a capture key on the Agents
 page, put it and the daemon's address in the extension's options, and turn it on under
-Settings, Connections. The toolbar button saves any page as a posting. Which hosts and pages
-it reads comes from `platforms/index.mjs`.
+Settings, Connections. The toolbar button saves any page as a posting, except on LinkedIn,
+whose terms ban extensions that copy its pages: there the extension runs nothing, and the
+button saves the address alone. Which hosts and pages it reads comes from `platforms/index.mjs`.
 
 On an application form, Alt+Shift+F fills it (`apply/`): the resume goes in first, every answer
 is written over what the site's own resume reader put there, and a panel lists what to check
@@ -152,4 +153,4 @@ questions:            # a recurring question, in its exact wording
 | `/people`, `/settings`, `/activity` | Access, account and passkeys, the full log |
 | `/settings/agents`, `/settings/connectors` | Agents and their keys, client setup, the bookmarklet; mail and calendar accounts |
 
-Data handling: `DATAFLOW.md`. Running it at home: `deploy/README.md`.
+Data handling: `../DATAFLOW.md`. Running it at home: `deploy/README.md`.

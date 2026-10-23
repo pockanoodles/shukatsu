@@ -1,10 +1,11 @@
 /**
  * The browser extension's side of the daemon. The extension reads pages of a
- * login-walled board (platforms/: NUworks, Handshake, LinkedIn,
- * CareerForum.Net) as the candidate opens them and posts each one to
- * page.observe. Nothing here fetches anything: the connector is push-only, so
- * the scheduler never runs it, and its one account exists so the owner can
- * turn it on, pause it, and delete what it kept from the connections page.
+ * login-walled board (platforms/: NUworks, Handshake, CareerForum.Net; never
+ * LinkedIn, whose pages no software may copy) as the candidate opens them,
+ * and posts each one to page.observe. Nothing here fetches anything: the
+ * connector is push-only, so the scheduler never runs it, and its one account
+ * exists so the owner can turn it on, pause it, and delete what it kept from
+ * the connections page.
  *
  * The extension first sends a page's URL alone. A page the board lists comes
  * back asking for its text (wants_text), and only then is the text read and

@@ -48,7 +48,7 @@ const dict = {
       steps: "In Chrome, open chrome://extensions, turn on Developer mode, choose Load unpacked, and pick the extension folder inside shukatsu. Make a capture key under Settings, Agents, then paste it with the address below into the extension's options. Turn it on here last.",
       address: "Address for the extension",
       keptTitle: "What it reads, and what it keeps",
-      kept: "Only pages you open yourself on NUworks, Handshake, LinkedIn, and CareerForum.Net. It never clicks, scrolls, or loads anything on those sites. A posting you open waits in the inbox for one press to save it. Your applications list and message threads are kept so shukatsu can learn to read them. For every other page there, only its path is kept, never its text.",
+      kept: "Only pages you open yourself on NUworks, Handshake, and CareerForum.Net. It never clicks, scrolls, or loads anything on those sites, and it reads nothing on LinkedIn: there, the button sends only the page's address. A posting you open waits in the inbox for one press to save it. Your applications list and message threads are kept so shukatsu can learn to read them. For every other page there, only its path is kept, never its text.",
       add: "Turn it on",
       added: "The extension can now send pages.",
       detail: "Pages you open",

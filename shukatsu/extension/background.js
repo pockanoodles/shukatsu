@@ -6,7 +6,8 @@
  *   observe   from reader.js on a board page, unless reading is off for that
  *             board or altogether -> page.observe
  *   the toolbar button   any page at all, pressed by the candidate ->
- *             posting.capture with the page's text (the bookmarklet's job)
+ *             posting.capture with the page's text (the bookmarklet's job),
+ *             or with the address alone on a site in NEVER_HOSTS
  *   Fill      the shortcut (Alt+Shift+F) or the toolbar button's menu, on an
  *             application form -> application.plan, then filler.js fills
  *             it, panel.js lists what went where, and application.filled
@@ -16,7 +17,24 @@
  *
  * The badge says what happened: + a posting went to the inbox, ✓ saved,
  * … filling, ! something failed (the options page says what).
+ *
+ * On a site in NEVER_HOSTS the extension runs nothing in the page: no reader,
+ * no Fill, and the toolbar button sends only the address. Those are the
+ * platforms/ entries with automation 'never' (LinkedIn, whose terms ban
+ * software that acts in a session or copies its pages); tests/browser.spec.mjs
+ * keeps the two lists equal.
  */
+
+const NEVER_HOSTS = ['linkedin.com'];
+
+const never = (url) => {
+  try {
+    const host = new URL(url).hostname;
+    return NEVER_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+  } catch {
+    return false;
+  }
+};
 
 const settings = () => chrome.storage.local.get({ url: 'http://127.0.0.1:3000', token: '', reading: true, off: [] });
 
@@ -78,6 +96,11 @@ chrome.runtime.onInstalled.addListener(({ reason }) => { if (reason === 'install
 
 chrome.action.onClicked.addListener(async (tab) => {
   try {
+    if (never(tab.url)) {
+      await call('posting.capture', { url: tab.url, via: 'extension' });
+      await badge(tab.id, '+');
+      return;
+    }
     const [{ result: page }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: grab });
     await call('posting.capture', { ...page, via: 'extension' });
     await badge(tab.id, '✓');
@@ -99,6 +122,10 @@ const reports = new Map(); // tabId -> { url, frames left to report }
 /** Fill the form in the tab, or with `dry`, show what would go where and write nothing. */
 async function fill(tab, { dry = false } = {}) {
   const started = Date.now();
+  if (never(tab.url)) {
+    await badge(tab.id, '!', `shukatsu never fills a form on ${new URL(tab.url).hostname}: the site's terms ban software acting in your session.`);
+    return;
+  }
   await badge(tab.id, '…');
   try {
     // Every frame we may reach: a Greenhouse form often sits in an iframe on the company's own site.

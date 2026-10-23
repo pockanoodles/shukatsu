@@ -23,8 +23,10 @@
  *              against the path and query. A page on a passive host that
  *              matches none is logged by its path alone, so a wrong pattern
  *              shows up without its text ever being kept.
- *   automation 'never' where no software may act in the candidate's session
- *              (LinkedIn restricts accounts for it)
+ *   automation 'never' where no software may act in the candidate's session or
+ *              copy its pages (LinkedIn's User Agreement, section 8.2, bans
+ *              both): the extension reads none of its pages and never fills
+ *              there, and Send to shukatsu keeps only a page's address
  *   fill       for an ATS whose application form the extension may fill when
  *              the candidate presses Fill (apply/, docs/specs/v1-headless.md):
  *                fields  the form's own field names, by input name or id,
@@ -73,13 +75,7 @@ export const PLATFORMS = [
     hosts: ['linkedin.com'],
     // Only the senders that write about an application or a message, never the feed's notifications.
     mail: ['jobs-noreply@linkedin.com', 'messages-noreply@linkedin.com', 'inmail-hit-reply@linkedin.com', 'hit-reply@linkedin.com'],
-    passive: 'dom',
     automation: 'never',
-    pages: [
-      ['posting', /^\/jobs\/view\/\d+|^\/jobs\/(search|collections)\/.*[?&]currentJobId=\d+/],
-      ['applications', /^\/my-items\/saved-jobs\/?\?.*cardType=APPLIED/],
-      ['thread', /^\/messaging\/thread\//],
-    ],
   },
   {
     id: 'careerforum', name: 'CareerForum.Net', kind: 'board',
@@ -186,6 +182,12 @@ export const isPostingLink = (url) => {
 
 /** The hosts whose forms the extension may fill. extension/manifest.json asks for exactly these, optionally. */
 export const fillHosts = () => PLATFORMS.filter((p) => p.fill && p.automation !== 'never').flatMap((p) => p.hosts);
+
+/** Whether a page's address is all software may keep of it: its site copies nothing (automation 'never'). */
+export const addressOnly = (url) => platformOfUrl(url)?.automation === 'never';
+
+/** The hosts whose pages are never copied, for clients that read a page before sending it (the bookmarklet). */
+export const addressOnlyHosts = () => PLATFORMS.filter((p) => p.automation === 'never').flatMap((p) => p.hosts);
 
 /** The hosts the extension reads passively. extension/manifest.json must list exactly these. */
 export const passiveHosts = () => PLATFORMS.filter((p) => p.passive).flatMap((p) => p.hosts);

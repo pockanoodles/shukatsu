@@ -1,7 +1,7 @@
 {
   "id": "browser",
   "name": "Browser extension",
-  "description": "Pages of NUworks, Handshake, LinkedIn, and CareerForum.Net that you open yourself, read by the shukatsu extension as they load. It makes no request of its own and fetches nothing.",
+  "description": "Pages of NUworks, Handshake, and CareerForum.Net that you open yourself, read by the shukatsu extension as they load. It makes no request of its own, fetches nothing, and reads nothing on LinkedIn.",
   "capabilities": ["page.read"],
   "auth": "token",
   "push": true,

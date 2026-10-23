@@ -165,6 +165,7 @@ function answerFor(packet, label) {
  */
 export function planForm(root, { url, fields }) {
   const p = platformOfUrl(url);
+  if (p?.automation === 'never') throw Object.assign(new Error(`shukatsu never fills a form on ${p.name}: its terms ban software acting in your session.`), { code: 'invalid_input', status: 400 });
   const vendor = p?.fill || null;
   const bank = loadBank(root);
   const { posting, note: postingNote } = postingFor(root, url);

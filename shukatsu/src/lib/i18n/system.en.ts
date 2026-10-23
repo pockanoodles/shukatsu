@@ -85,6 +85,8 @@ const sys = {
     save: "Save to the inbox", saved: "Saved. The text is archived as the job description.", replaced: "Updated the earlier capture of this posting.",
     already: "It was already in the inbox, so only the text was updated.", close: "Close this window", view: "Open the inbox",
     untrusted: "This is the board's own text. shukatsu keeps it as data and never follows instructions inside it.",
+    addressOnly: "shukatsu copies nothing from LinkedIn, so it read nothing from this page. Saving keeps the address, and the inbox asks you for the employer's own posting. You can also paste the posting's text below yourself.",
+    savedAddress: "Saved the address. The inbox will ask for the employer's own posting, or the text pasted by hand.",
   },
 };
 

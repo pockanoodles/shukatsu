@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "shukatsu",
   "version": "0.1.0",
-  "description": "Reads the job board pages you open (NUworks, Handshake, LinkedIn, CareerForum.Net) into your own shukatsu, and fills application forms on Greenhouse, Lever, and Ashby when you press Fill. It never makes a request to a board and never submits.",
+  "description": "Reads the job board pages you open (NUworks, Handshake, CareerForum.Net) into your own shukatsu, and fills application forms on Greenhouse, Lever, and Ashby when you press Fill. It never makes a request to a board, never submits, and copies nothing from LinkedIn.",
   "permissions": [
     "activeTab",
     "contextMenus",
@@ -28,8 +28,6 @@
         "https://*.northeastern-csm.symplicity.com/*",
         "https://joinhandshake.com/*",
         "https://*.joinhandshake.com/*",
-        "https://linkedin.com/*",
-        "https://*.linkedin.com/*",
         "https://careerforum.net/*",
         "https://*.careerforum.net/*"
       ],

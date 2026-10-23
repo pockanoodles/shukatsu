@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'crypto';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { DatabaseSync } from 'node:sqlite';
@@ -16,7 +16,7 @@ const { stateDir } = await import('../core/lock.mjs');
 const sync = await import('../core/sync.mjs');
 const connectors = await import('../connectors/index.mjs');
 const { shapeOf } = await import('../connectors/browser/index.mjs');
-const { fillHosts, fromBoard, isPostingLink, pageOf, passiveHosts, platformOfSender, platformOfUrl } = await import('../platforms/index.mjs');
+const { addressOnly, addressOnlyHosts, fillHosts, fromBoard, isPostingLink, pageOf, passiveHosts, platformOfSender, platformOfUrl } = await import('../platforms/index.mjs');
 const { makeRoot, people, read } = await import('./helpers.mjs');
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -44,10 +44,8 @@ test('pages are told apart by URL, on passive boards only', () => {
   assert.deepEqual(['posting', 'handshake'], [pageOf(POSTING).kind, pageOf(POSTING).platform.id]);
   assert.equal(pageOf('https://northeastern.joinhandshake.com/stu/applications').kind, 'applications');
   assert.equal(pageOf('https://app.joinhandshake.com/stu/messages/55').kind, 'thread');
-  assert.equal(pageOf('https://www.linkedin.com/jobs/view/4012345/').kind, 'posting');
-  assert.equal(pageOf('https://www.linkedin.com/jobs/search/?currentJobId=4012345&keywords=analyst').kind, 'posting');
-  assert.equal(pageOf('https://www.linkedin.com/my-items/saved-jobs/?cardType=APPLIED').kind, 'applications');
-  assert.equal(pageOf('https://www.linkedin.com/feed/').kind, 'other');
+  assert.equal(pageOf('https://www.linkedin.com/jobs/view/4012345/'), null, 'no LinkedIn page is read: its terms ban software that copies its pages');
+  assert.equal(pageOf('https://www.linkedin.com/feed/'), null);
   assert.equal(pageOf('https://northeastern-csm.symplicity.com/students/app/jobs/detail/abc123').kind, 'posting');
   assert.equal(pageOf('https://boards.greenhouse.io/globex/jobs/9'), null, 'an ATS is not read passively');
   assert.equal(pageOf('https://example.com/jobs/1'), null);
@@ -66,8 +64,8 @@ test('senders and links resolve to platforms', () => {
 });
 
 test('a path folds its ids, so other pages are kept by shape', () => {
-  assert.equal(shapeOf('/jobs/view/4012345/'), '/jobs/view/:id');
-  assert.equal(shapeOf('/in/sam-candidate-0a1b2c3/'), '/in/:id');
+  assert.equal(shapeOf('/stu/jobs/9876543/'), '/stu/jobs/:id');
+  assert.equal(shapeOf('/stu/users/sam-candidate-0a1b2c3/'), '/stu/users/:id');
   assert.equal(shapeOf('/feed/'), '/feed');
   assert.equal(shapeOf('/'), '/');
 });
@@ -81,6 +79,15 @@ test('the extension asks for exactly the hosts the registry reads passively, and
   assert.ok(!fillHosts().some((h) => h.includes('linkedin')), 'LinkedIn is never filled');
   assert.deepEqual([...manifest.permissions].sort(), ['activeTab', 'contextMenus', 'scripting', 'storage']);
   assert.equal(manifest.content_scripts[0].world ?? 'ISOLATED', 'ISOLATED', 'the reader never runs in the page\'s own world');
+});
+
+test('the extension runs nothing on a site whose pages are never copied, and its list of them is the registry\'s', () => {
+  assert.deepEqual(addressOnlyHosts(), ['linkedin.com']);
+  assert.ok(addressOnly('https://www.linkedin.com/jobs/view/4012345/') && !addressOnly(POSTING));
+  assert.ok(!passiveHosts().some((h) => addressOnlyHosts().includes(h)), 'no never-copied host is read passively');
+  const background = readFileSync(join(HERE, '..', 'extension', 'background.js'), 'utf-8');
+  const listed = JSON.parse(background.match(/const NEVER_HOSTS = (\[[^\]]*\]);/)[1].replace(/'/g, '"'));
+  assert.deepEqual(listed.sort(), addressOnlyHosts().sort(), 'background.js NEVER_HOSTS mirrors platforms/');
 });
 
 // ---------------------------------------------------------------- page.observe
@@ -124,12 +131,12 @@ test('a posting already in the pipeline makes no signal', async () => {
 
 test('other pages of a board are kept by path alone, with a count, and make no signal', async () => {
   const s = await setup();
-  await run(s.root, s.extP, 'page.observe', { url: 'https://www.linkedin.com/in/someone-0a1b2c3/?miniProfile=1', text: 'Someone. Their whole profile.' });
-  const out = await run(s.root, s.extP, 'page.observe', { url: 'https://www.linkedin.com/in/someone-else-9z8y7x6/' });
+  await run(s.root, s.extP, 'page.observe', { url: 'https://app.joinhandshake.com/stu/users/someone-0a1b2c3?ref=card', text: 'Someone. Their whole profile.' });
+  const out = await run(s.root, s.extP, 'page.observe', { url: 'https://app.joinhandshake.com/stu/users/someone-else-9z8y7x6' });
   assert.equal(out.kept, 'path');
   const r = sync.getRecord(s.root, out.record);
   assert.equal(r.text, null, 'no text is kept for a page the registry doesn\'t list');
-  assert.equal(r.fields.shape, '/in/:id');
+  assert.equal(r.fields.shape, '/stu/users/:id');
   assert.equal(r.fields.seen, 2);
   assert.equal(JSON.stringify(r.fields).includes('someone'), false);
   assert.equal((await run(s.root, s.ownerP, 'inbox.list', { status: 'all' })).signals.length, 0);
@@ -143,12 +150,36 @@ test('an applications list is kept as a page for the readers, with no signal yet
   assert.match(sync.getRecord(s.root, out.record).text, /Reviewed/);
 });
 
+test('a LinkedIn posting is filed by its address alone: text a client read there is dropped, and only a person\'s paste is kept', async () => {
+  const s = await setup();
+  const captures = () => (existsSync(join(s.root, 'jds')) ? readdirSync(join(s.root, 'jds')).filter((f) => f.startsWith('capture-')) : []);
+  const url = 'https://www.linkedin.com/jobs/view/4012345/';
+  const out = await run(s.root, s.extP, 'posting.capture', { url, via: 'extension' });
+  assert.equal(out.address_only, true);
+  assert.equal(out.capture, null);
+  assert.equal(out.board, 'LinkedIn');
+  const [item] = readPipeline(s.root);
+  assert.equal(item.state, 'blocked', 'it waits for the employer\'s posting');
+  assert.match(item.note, /never copied/);
+  assert.deepEqual(captures(), []);
+
+  const read = await run(s.root, s.extP, 'posting.capture', { url: 'https://www.linkedin.com/jobs/view/4099999/', title: 'Analyst | Globex | LinkedIn', text: JD, via: 'bookmarklet' });
+  assert.equal(read.address_only, true, 'text a page-reading client sent from LinkedIn is not kept');
+  assert.deepEqual(captures(), []);
+
+  const pasted = await run(s.root, s.ownerP, 'posting.capture', { url: 'https://www.linkedin.com/jobs/view/4088888/', text: JD, via: 'app' });
+  assert.ok(pasted.capture, 'text the candidate pasted by hand is theirs to keep');
+  assert.equal(captures().length, 1);
+  await rejects(run(s.root, s.ownerP, 'posting.capture', { url: POSTING, via: 'extension' }), 'invalid_input');
+});
+
 test('page.observe is refused off the boards, before the owner turns it on, while paused, and for an empty page', async () => {
   const off = await setup({ connect: false });
   await rejects(run(off.root, off.extP, 'page.observe', { url: POSTING, text: JD }), 'not_connected');
 
   const s = await setup();
   await rejects(run(s.root, s.extP, 'page.observe', { url: 'https://boards.greenhouse.io/globex/jobs/9', text: JD }), 'invalid_input');
+  await rejects(run(s.root, s.extP, 'page.observe', { url: 'https://www.linkedin.com/jobs/view/4012345/', text: JD }), 'invalid_input');
   await rejects(run(s.root, s.extP, 'page.observe', { url: POSTING, text: 'Loading…' }), 'invalid_input');
   await run(s.root, s.ownerP, 'connector.update', { id: s.account.id, paused: true });
   await rejects(run(s.root, s.extP, 'page.observe', { url: POSTING, text: JD }), 'paused');

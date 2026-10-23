@@ -63,7 +63,17 @@ type L = Record<string, string>;
  * pressed on (address, title, visible text). Nothing is saved until the
  * candidate presses Save; a board that blocks the handoff leaves the paste box.
  */
-export function CaptureForm({ l }: { l: L }) {
+/** Whether a URL is on a site whose pages are never copied, so it is saved by its address alone. */
+const onSite = (url: string, hosts: string[]) => {
+  try {
+    const h = new URL(url).hostname;
+    return hosts.some((x) => h === x || h.endsWith(`.${x}`));
+  } catch {
+    return false;
+  }
+};
+
+export function CaptureForm({ l, never }: { l: L; never: string[] }) {
   const [page, setPage] = useState<Capture | null>(null);
   const [fields, setFields] = useState({ company: "", role: "", location: "", note: "", url: "", text: "" });
   const [result, setResult] = useState<ActionResult | null>(null);
@@ -81,17 +91,19 @@ export function CaptureForm({ l }: { l: L }) {
     return () => window.removeEventListener("message", onMessage);
   }, []);
   const set = (k: keyof typeof fields) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setFields((f) => ({ ...f, [k]: e.target.value }));
+  const addressOnly = onSite(fields.url, never);
   const save = async () => {
     setBusy(true);
-    const r = await captureAction({ url: fields.url, title: page?.title || "", text: fields.text, selection: "", company: fields.company, role: fields.role, location: fields.location, note: fields.note });
+    // On a never-copied site the bookmarklet read nothing, so any text here is the candidate's own paste.
+    const r = await captureAction({ url: fields.url, title: page?.title || "", text: fields.text, selection: "", company: fields.company, role: fields.role, location: fields.location, note: fields.note, pasted: addressOnly && fields.text.length > 0 });
     setResult(r);
     setBusy(false);
   };
-  const saved = result?.ok ? (result.data as { added: boolean; replaced: boolean; company: string | null; role: string | null }) : null;
+  const saved = result?.ok ? (result.data as { added: boolean; replaced: boolean; address_only?: boolean; company: string | null; role: string | null }) : null;
   if (saved) {
     return (
       <div className="grid gap-4">
-        <p role="status" className="text-[17px]">{saved.replaced ? l.replaced : l.saved}</p>
+        <p role="status" className="text-[17px]">{saved.address_only ? l.savedAddress : saved.replaced ? l.replaced : l.saved}</p>
         {!saved.added && <p className="text-ink-2">{l.already}</p>}
         <div className="flex flex-wrap gap-3">
           <button type="button" className="btn" onClick={() => window.close()}>{l.close}</button>
@@ -103,6 +115,7 @@ export function CaptureForm({ l }: { l: L }) {
   return (
     <div className="grid gap-5">
       {!page && <p className="border-l-4 border-shu pl-4 text-[15px] text-ink-2">{l.waiting}</p>}
+      {addressOnly && <p className="border-l-4 border-shu pl-4 text-[15px] text-ink-2">{l.addressOnly}</p>}
       {page && (
         <div className="grid gap-1 border-b hair pb-3">
           <span className="label text-ink-3">{l.from}</span>
@@ -121,7 +134,7 @@ export function CaptureForm({ l }: { l: L }) {
         <textarea value={fields.text} onChange={set("text")} rows={10} className="field font-mono text-[12.5px]" placeholder={l.paste} /></label>
       <p className="text-[13px] text-ink-3">{l.untrusted}</p>
       <div className="flex flex-wrap items-center gap-4">
-        <button type="button" className="btn" disabled={busy || !fields.url || fields.text.length < 200} onClick={save}>{busy ? l.working : l.save}</button>
+        <button type="button" className="btn" disabled={busy || !fields.url || (!addressOnly && fields.text.length < 200)} onClick={save}>{busy ? l.working : l.save}</button>
         {result && !result.ok && <span role="alert" className="text-[14px] text-shu">{result.error}</span>}
       </div>
     </div>

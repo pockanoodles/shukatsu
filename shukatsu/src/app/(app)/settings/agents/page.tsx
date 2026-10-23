@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requestOrigin, requireCan } from "@/lib/server/session";
 import { read } from "@/lib/server/op";
+import { engine } from "@/lib/server/engine";
 import { relative, translator } from "@/lib/i18n";
 import { Head } from "@/components/marks";
 import { ConfirmSubmit, CopyButton } from "@/components/client";
@@ -15,9 +16,11 @@ type Token = { id: number; user_id: number; kind: string; name: string; prefix: 
 /**
  * The bookmarklet: opens shukatsu's capture window and hands it the page the
  * candidate is reading, retrying until the window says it has it. It carries
- * no token; the window uses the candidate's own session.
+ * no token; the window uses the candidate's own session. On a site whose pages
+ * are never copied (`never`, from platforms/: LinkedIn) it reads nothing and
+ * hands over the address alone.
  */
-const bookmarklet = (base: string) => `javascript:(()=>{const B=${JSON.stringify(base)};const w=window.open(B+'/capture','shukatsu_capture','width=620,height=820');if(!w)return alert('Allow pop-ups to send this page to shukatsu.');const d={type:'shukatsu.capture',url:location.href,title:document.title,text:(document.body.innerText||'').slice(0,400000),selection:String(getSelection()||'').slice(0,200000)};let n=0;const t=setInterval(()=>{try{w.postMessage(d,B)}catch(e){}if(++n>80)clearInterval(t)},250);addEventListener('message',e=>{if(e.origin===B&&e.data==='shukatsu.capture.ok')clearInterval(t)})})()`;
+const bookmarklet = (base: string, never: string[]) => `javascript:(()=>{const B=${JSON.stringify(base)},N=${JSON.stringify(never)},h=location.hostname,o=N.some(x=>h===x||h.endsWith('.'+x));const w=window.open(B+'/capture','shukatsu_capture','width=620,height=820');if(!w)return alert('Allow pop-ups to send this page to shukatsu.');const d={type:'shukatsu.capture',url:location.href,title:o?'':document.title,text:o?'':(document.body.innerText||'').slice(0,400000),selection:o?'':String(getSelection()||'').slice(0,200000)};let n=0;const t=setInterval(()=>{try{w.postMessage(d,B)}catch(e){}if(++n>80)clearInterval(t)},250);addEventListener('message',e=>{if(e.origin===B&&e.data==='shukatsu.capture.ok')clearInterval(t)})})()`;
 
 function Snippet({ text, copy, copied }: { text: string; copy: string; copied: string }) {
   return (
@@ -33,6 +36,7 @@ export default async function AgentsPage() {
   const { t } = translator(user.lang);
   const { agents, tokens } = await read<{ agents: Agent[]; tokens: Token[] }>("agent.list");
   const base = (process.env.SHUKATSU_URL || (await requestOrigin())).replace(/\/$/, "");
+  const never: string[] = (await engine()).platforms.addressOnlyHosts();
   const keysFor = (id: number) => tokens.filter((k) => k.user_id === id && (k.kind === "agent" || k.kind === "oauth"));
   const copy = { copy: t("common.copy"), copied: t("common.copied") };
   // An agent signs in by key only, so it was last seen when one of its keys was last used.
@@ -103,7 +107,7 @@ export default async function AgentsPage() {
           </section>
           <section className="grid gap-4 px-4 py-7 sm:px-10">
             <h2 className="heading text-[22px]">{t("agents.capture")}</h2>
-            <Bookmarklet href={bookmarklet(base)} label={t("agents.bookmarklet")} hint={t("agents.dragHint")} />
+            <Bookmarklet href={bookmarklet(base, never)} label={t("agents.bookmarklet")} hint={t("agents.dragHint")} />
           </section>
         </div>
       </div>
