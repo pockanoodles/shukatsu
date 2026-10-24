@@ -51,7 +51,7 @@ const MATRIX = {
   'packet.edit': ['owner', 'editor', 'agent'],
   'tracker.write': ['owner', 'agent'],
   'pipeline.write': ['owner', 'agent'],
-  'evaluation.submit': ['owner', 'agent'],
+  'evaluation.file': ['owner', 'agent'],
   'calendar.read': ['owner', 'editor', 'reviewer', 'viewer', 'agent'],
   'calendar.write': ['owner', 'agent'],
   'campaign.write': ['owner', 'agent'],

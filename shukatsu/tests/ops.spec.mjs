@@ -52,7 +52,7 @@ test('an agent never stamps, whatever its role table says', async () => {
 test('an agent\'s tool list has no stamps and no app-only operations', () => {
   const { agentP, ownerP } = setup();
   const names = available(agentP).map((o) => o.name);
-  assert.ok(names.includes('evaluation.submit'));
+  assert.ok(names.includes('evaluation.file'));
   assert.ok(names.includes('tracker.setStatus'));
   for (const n of names) assert.equal(OPS.get(n).stamp, false, n);
   assert.ok(!names.includes('account.password'));
@@ -80,17 +80,17 @@ test('an evaluation missing a block is refused by name, and nothing is written',
   const { root, agentP } = setup();
   const ev = EVAL();
   delete ev.blocks.g;
-  await assert.rejects(run(root, agentP, 'evaluation.submit', ev), /G\) Posting Legitimacy/);
-  assert.ok(!existsSync(join(root, 'reports')) || !readFileSync(join(root, '.shukatsu', 'app.db')).includes('evaluation.submitted'));
+  await assert.rejects(run(root, agentP, 'evaluation.file', ev), /G\) Posting Legitimacy/);
+  assert.ok(!existsSync(join(root, 'reports')) || !readFileSync(join(root, '.shukatsu', 'app.db')).includes('evaluation.filed'));
   const thin = EVAL({ jd_text: 'Short.' });
-  await assert.rejects(run(root, agentP, 'evaluation.submit', thin), /archived job description/);
+  await assert.rejects(run(root, agentP, 'evaluation.file', thin), /archived job description/);
   const high = EVAL({ score: 4.6 });
-  await assert.rejects(run(root, agentP, 'evaluation.submit', high), /H\) Draft Application Answers/);
+  await assert.rejects(run(root, agentP, 'evaluation.file', high), /H\) Draft Application Answers/);
 });
 
 test('a complete evaluation becomes a canonical report and one tracker row', async () => {
   const { root, agentP, ownerP } = setup();
-  const out = await run(root, agentP, 'evaluation.submit', EVAL());
+  const out = await run(root, agentP, 'evaluation.file', EVAL());
   const report = readFileSync(join(root, out.report), 'utf-8');
   assert.match(report, /^\*\*URL:\*\* https:\/\/boards\.greenhouse\.io\/acme\/jobs\/123$/m);
   assert.match(report, /^\*\*Legitimacy:\*\* High Confidence$/m);

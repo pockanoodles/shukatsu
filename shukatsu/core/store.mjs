@@ -281,6 +281,11 @@ const MIGRATIONS = [
      created_at TEXT NOT NULL,
      expires_at TEXT NOT NULL
    );`,
+  // 6: two operations renamed so that "submit" only ever means the candidate's own
+  // click on an application form: evaluation.submit is evaluation.file, and
+  // packet.submit is packet.requestReview. Their activity verbs follow.
+  `UPDATE activity SET verb = 'evaluation.filed' WHERE verb = 'evaluation.submitted';
+   UPDATE activity SET verb = 'packet.reviewRequested' WHERE verb = 'packet.submitted';`,
 ];
 
 const open = new Map();
@@ -348,7 +353,7 @@ export function setSetting(root, key, value) {
 
 /**
  * Append to the activity log. `verb` is a stable key the UI translates
- * (review.accepted, proposal.created, packet.submitted, ...); `subject`
+ * (review.accepted, proposal.created, packet.reviewRequested, ...); `subject`
  * names the thing ("fact:foresight.cache", "proposal:12", "packet:3").
  */
 export function logActivity(root, { actor, verb, subject = null, detail = null }) {

@@ -51,7 +51,7 @@ export function digest(root, { days = 7, until = new Date() } = {}) {
     WHERE a.created_at >= ? AND a.created_at <= ? ORDER BY a.id`).all(from.toISOString(), new Date(to.getTime() + DAY).toISOString());
   const count = (verb) => acts.filter((a) => a.verb === verb).length;
   const contributors = new Map();
-  for (const a of acts.filter((x) => ['proposal.created', 'comment.added', 'packet.submitted'].includes(x.verb))) {
+  for (const a of acts.filter((x) => ['proposal.created', 'comment.added', 'packet.reviewRequested'].includes(x.verb))) {
     contributors.set(a.actor, (contributors.get(a.actor) || 0) + 1);
   }
 

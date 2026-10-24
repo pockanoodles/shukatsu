@@ -15,7 +15,7 @@ const APP = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 // Engine functions that write. Calling one of these from outside core/ is going around the registry.
 const WRITERS = [
   'decide', 'reopen', 'propose', 'withdraw', 'revise', 'addComment', 'resolveComment', 'setStatus', 'addTrackerRow', 'appendPipeline',
-  'createPacket', 'setBullet', 'changeSelection', 'checkPacket', 'setCover', 'setAnswers', 'submitForReview', 'withdrawReview', 'markReady',
+  'createPacket', 'setBullet', 'changeSelection', 'checkPacket', 'setCover', 'setAnswers', 'requestReview', 'withdrawReview', 'markReady',
   'markSent', 'closePacket', 'setCandidateJa', 'updateUser', 'disableUser', 'enableUser', 'revokeInvite', 'setPassword', 'removePasskey',
   'endSessionByHash', 'logActivity', 'issueToken', 'revokeToken', 'createAgent', 'disableAgent', 'createEvent', 'updateEvent', 'cancelEvent',
   'markDone', 'createCampaign', 'updateCampaign', 'linkRows', 'submitEvaluation', 'capture', 'editProfile', 'suggestRewordings',

@@ -91,7 +91,7 @@ export function captureAddress(root, { url, company = '', role = '', location = 
   return { capture: null, url, company: String(company || '').trim() || null, role: String(role || '').trim() || null, board, added, replaced: false, address_only: true };
 }
 
-/** A capture's text and header, for posting.get and evaluation.submit. */
+/** A capture's text and header, for posting.get and evaluation.file. */
 export function readCapture(root, ref) {
   const m = String(ref).match(/^(?:local:)?jds\/([\w.\-]+)$/);
   if (!m) return null;

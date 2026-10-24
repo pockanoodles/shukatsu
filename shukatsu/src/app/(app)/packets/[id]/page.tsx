@@ -47,7 +47,7 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
     suggestions: t("packets.suggestions"), use: t("packets.use"), dropped: t("packets.suggestDropped"), cancel: t("common.cancel"),
     chars: t("common.chars"), pass: t("review.rules.pass"), figures: t("record.figuresChanged"), working: t("common.loading"),
   };
-  const done = sp.done ? ({ sent: t("packets.sentDone"), ready: t("packets.markReady"), submit: t("packets.submitReview"), withdraw: t("packets.withdraw"), close: t("packets.closePacket") } as Record<string, string>)[sp.done] : null;
+  const done = sp.done ? ({ sent: t("packets.sentDone"), ready: t("packets.markReady"), requestReview: t("packets.requestReview"), withdraw: t("packets.withdraw"), close: t("packets.closePacket") } as Record<string, string>)[sp.done] : null;
   return (
     <div>
       {sp.error && <Flash tone="shu">{sp.error}</Flash>}
@@ -183,7 +183,7 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
 
           <section aria-label={t("packets.title")} className="grid gap-4 border-b-2 rule px-4 py-6 sm:px-8">
             {!owner && (pk.status === "drafting" || pk.status === "changes_requested") && allowed(user, "packet.edit") && (
-              <><Step id={pk.id} step="submit" label={t("packets.submitReview")} tone="btn btn-shu" /></>
+              <><Step id={pk.id} step="requestReview" label={t("packets.requestReview")} tone="btn btn-shu" /></>
             )}
             {pk.status === "in_review" && !owner && pk.created_by === user.id && <Step id={pk.id} step="withdraw" label={t("packets.withdraw")} tone="btn btn-ghost" />}
             {pk.status === "in_review" && owner && <Link href={`/review?item=${encodeURIComponent(`packet:${pk.id}`)}`} className="btn btn-shu justify-self-start"><Seal k="承" />{t("review.out.approve")} / {t("review.out.changes")} →</Link>}

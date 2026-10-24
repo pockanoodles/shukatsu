@@ -93,9 +93,9 @@ from the operation and can't drift from it.
 |---|---|---|
 | Record | `record.get`, `record.search`, `record.trace` | `profile.propose` |
 | Review | `review.list`, `review.get`, `proposal.mine` | `review.decide` (stamp), `review.reopen` (stamp), `proposal.update`, `comment.add` |
-| Postings | `pipeline.list`, `posting.get` | `posting.add`, `posting.capture`, `evaluation.submit` |
+| Postings | `pipeline.list`, `posting.get` | `posting.add`, `posting.capture`, `evaluation.file` |
 | Tracker | `tracker.list`, `company.history` | `tracker.setStatus`, `tracker.add` (each a stamp when the row goes to Applied or Hired) |
-| Packets | `packet.list`, `packet.get` | `packet.create`, `packet.select`, `packet.edit`, `packet.check`, `packet.submit`, `packet.close`, `packet.ready` (stamp), `packet.markSent` (stamp), `candidate.setJa` (stamp) |
+| Packets | `packet.list`, `packet.get` | `packet.create`, `packet.select`, `packet.edit`, `packet.check`, `packet.requestReview`, `packet.close`, `packet.ready` (stamp), `packet.markSent` (stamp), `candidate.setJa` (stamp) |
 | Campaigns | `campaign.list`, `campaign.get` | `campaign.create`, `campaign.update`, `campaign.link`, `campaign.schedule` |
 | Schedule | `calendar.upcoming`, `calendar.conflicts` | `event.create`, `event.update` |
 | Inbox | `inbox.list`, `inbox.get`, `connector.list` | `signal.update`, `connector.sync`, and the stamps `connector.add`, `connector.update`, `connector.remove`, `connector.purge` |
@@ -115,7 +115,7 @@ calls an engine writer or writes SQL directly.
 
 ### What moves from instructions into code
 
-`evaluation.submit` is the clearest case. It takes the report body plus its machine summary,
+`evaluation.file` is the clearest case. It takes the report body plus its machine summary,
 then reserves the report number itself through `reserve-report-num.mjs`, checks for the
 `**URL:**` and `**Legitimacy:**` headers and the archived job description that
 `check-jd-archive.mjs` requires, writes the tracker addition, and runs `merge-tracker.mjs`.
@@ -140,7 +140,7 @@ says which one did what.
 | read record, tracker, packets, review queue | yes | yes | yes | most | some |
 | comment, suggest postings, propose profile changes | yes | yes | yes | some | no |
 | create and edit packets, run checks | yes | yes | yes | no | no |
-| `tracker.write`, `pipeline.write`, `evaluation.submit` | yes | yes | no | no | no |
+| `tracker.write`, `pipeline.write`, `evaluation.file` | yes | yes | no | no | no |
 | `calendar.write`, `campaign.write`, `inbox.write` | yes | yes | no | no | no |
 | `review.decide`, `packet.markSent`, `tracker.decide` (a row to Applied or Hired), `profile.write` | **stamp** | no | no | no | no |
 | `people.manage`, `settings.system`, `agent.*`, `token.*` | **stamp** | no | no | no | no |

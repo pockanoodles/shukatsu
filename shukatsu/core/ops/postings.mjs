@@ -1,6 +1,6 @@
 /**
  * Postings: the pipeline inbox, captures from login-walled boards, and
- * evaluations. evaluation.submit is where the report contract in
+ * evaluations. evaluation.file is where the report contract in
  * modes/oferta.md stops being an instruction and becomes a check.
  */
 
@@ -123,10 +123,10 @@ export default [
     },
   },
   {
-    name: 'evaluation.submit',
+    name: 'evaluation.file',
     kind: 'command',
     summary: 'File a finished evaluation (modes/oferta.md): blocks A to G, the risk summary, the score evidence, the machine summary, and the job description verbatim. shukatsu numbers the report, writes it in the canonical layout, checks the archived JD, and merges the tracker row. A missing block is refused by name.',
-    permission: 'evaluation.submit',
+    permission: 'evaluation.file',
     input: S.obj({
       company: S.str(null, { minLength: 1, maxLength: 80 }),
       role: S.str(null, { minLength: 1, maxLength: 160 }),
@@ -162,7 +162,7 @@ export default [
       jd_capture: S.str('Or a capture from posting.capture, local:jds/{file}.', { pattern: '^local:jds/[\\w.\\-]+$' }),
     }, ['company', 'role', 'url', 'archetype', 'score', 'legitimacy', 'blocks', 'machine_summary']),
     output: S.obj({ num: S.int(), report: S.str(), tracker: S.any() }, ['num', 'report']),
-    activity: (input, out) => ({ verb: 'evaluation.submitted', subject: `app:${out.tracker?.num ?? out.num}`, detail: { company: input.company, role: input.role, score: input.score, report: out.report } }),
+    activity: (input, out) => ({ verb: 'evaluation.filed', subject: `app:${out.tracker?.num ?? out.num}`, detail: { company: input.company, role: input.role, score: input.score, report: out.report } }),
     run: ({ root, input }) => {
       if (!input.jd_text && !input.jd_capture) throw new Error('The archived job description is required: pass jd_text (verbatim) or jd_capture.');
       return submitEvaluation(root, input);

@@ -4,7 +4,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { loadProfile } from '../core/facts.mjs';
 import {
-  changeSelection, checkPacket, coverCheck, createPacket, getPacket, markReady, setBullet, submitForReview,
+  changeSelection, checkPacket, coverCheck, createPacket, getPacket, markReady, setBullet, requestReview,
 } from '../core/packets.mjs';
 import { decide, queue } from '../core/review.mjs';
 import { readTracker } from '../core/tracker.mjs';
@@ -59,7 +59,7 @@ test("an editor's packet goes to the owner's queue and needs a passing check to 
   const root = makeRoot();
   const { owner, editor } = people(root);
   const id = createPacket(root, { actor: editor, company: 'Example Co', role: 'Ops Intern', jdText: JD, archetype: 'analyst' });
-  submitForReview(root, { actor: editor, id });
+  requestReview(root, { actor: editor, id });
   assert.throws(() => setBullet(root, { actor: editor, id, factId: 'acme.routing', text: 'x'.repeat(40) }), /waiting for review/);
   assert.ok(queue(root).some((x) => x.key === `packet:${id}`));
   assert.throws(() => decide(root, { actor: owner, key: `packet:${id}`, outcome: 'accept' }), /check/);
@@ -81,7 +81,7 @@ test('the digest reads in English and Japanese', () => {
   const root = makeRoot();
   const { owner, editor } = people(root);
   const id = createPacket(root, { actor: editor, company: 'Example Co', role: 'Ops Intern', jdText: JD, archetype: 'analyst' });
-  submitForReview(root, { actor: editor, id });
+  requestReview(root, { actor: editor, id });
   const d = digest(root);
   assert.equal(d.packets.inReview.length, 1);
   assert.match(digestText(d, 'en'), /1 waiting for Owner's review/);

@@ -59,7 +59,7 @@ export function linkRows(root, { actor, id, rows, remove = false }) {
   if (!getCampaignRow(root, id)) throw new Error('No such campaign.');
   const known = new Set(readTracker(root).rows.map((r) => r.num));
   const missing = rows.filter((r) => !remove && !known.has(r.tracker_num)).map((r) => r.tracker_num);
-  if (missing.length) throw new Error(`Not in the tracker: #${missing.join(', #')}. Add the application first (tracker.add or evaluation.submit).`);
+  if (missing.length) throw new Error(`Not in the tracker: #${missing.join(', #')}. Add the application first (tracker.add or evaluation.file).`);
   tx(root, (d) => {
     for (const r of rows) {
       if (remove) d.prepare('DELETE FROM campaign_rows WHERE campaign_id = ? AND tracker_num = ?').run(id, r.tracker_num);

@@ -105,13 +105,13 @@ export default [
     run: ({ root, actor, input }) => packets.checkPacket(root, { actor, id: input.id }),
   },
   {
-    name: 'packet.submit',
+    name: 'packet.requestReview',
     kind: 'command',
     summary: 'Send a packet to the candidate for review, or withdraw it from review to keep editing.',
     permission: 'packet.edit',
     input: S.obj({ id: ID, withdraw: S.bool(null, { default: false }) }, ['id']),
     output: S.any(),
-    run: ({ root, actor, input }) => (input.withdraw ? packets.withdrawReview(root, { actor, id: input.id }) : packets.submitForReview(root, { actor, id: input.id })) ?? { ok: true },
+    run: ({ root, actor, input }) => (input.withdraw ? packets.withdrawReview(root, { actor, id: input.id }) : packets.requestReview(root, { actor, id: input.id })) ?? { ok: true },
   },
   {
     name: 'packet.ready',

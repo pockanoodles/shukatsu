@@ -306,14 +306,14 @@ export function setAnswers(root, { actor, id, answers }) {
   return clean;
 }
 
-export function submitForReview(root, { actor, id }) {
+export function requestReview(root, { actor, id }) {
   const pk = getPacketRow(root, id);
   if (!pk) throw new Error('No such packet.');
   assertCan(actor, 'packet.edit');
   if (!['drafting', 'changes_requested'].includes(pk.status)) throw new Error('Only a draft can be sent for review.');
   if (actor.role === 'owner') throw new Error('Your own packets don\'t need review. Mark it ready instead.');
   touch(root, id, { status: 'in_review' });
-  logActivity(root, { actor, verb: 'packet.submitted', subject: `packet:${id}`, detail: { company: pk.company, role: pk.role } });
+  logActivity(root, { actor, verb: 'packet.reviewRequested', subject: `packet:${id}`, detail: { company: pk.company, role: pk.role } });
 }
 
 export function withdrawReview(root, { actor, id }) {

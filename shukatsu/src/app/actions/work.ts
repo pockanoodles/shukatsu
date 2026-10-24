@@ -163,8 +163,8 @@ export async function answersAction(packetId: number, answers: { question: strin
 }
 
 const STEPS: Record<string, (id: number, form: FormData) => [string, Record<string, unknown>]> = {
-  submit: (id) => ["packet.submit", { id }],
-  withdraw: (id) => ["packet.submit", { id, withdraw: true }],
+  requestReview: (id) => ["packet.requestReview", { id }],
+  withdraw: (id) => ["packet.requestReview", { id, withdraw: true }],
   ready: (id) => ["packet.ready", { id }],
   sent: (id, form) => ["packet.markSent", { id, ...(str(form, "on") ? { on: str(form, "on") } : {}) }],
   close: (id) => ["packet.close", { id }],
