@@ -10,14 +10,14 @@ function root() {
   const r = makeRoot();
   mkdirSync(join(r, 'config'), { recursive: true });
   writeFileSync(join(r, 'config', 'profile.yml'), 'candidate:\n  full_name: Test Candidate\n  email: test@example.com\n  phone: "+1 617 555 0142"\n  linkedin: https://www.linkedin.com/in/test-candidate-0a1b2c\n');
-  writeFileSync(join(r, 'data', 'targets.yml'), 'companies:\n  - { name: Globex Securities, tier: A }\n  - { name: Initech, tier: B }\n');
+  writeFileSync(join(r, 'data', 'targets.yml'), 'companies:\n  - { name: Globex Securities, ja: [グローベックス証券], tier: A }\n  - { name: Initech, tier: B }\n');
   writeFileSync(join(r, 'data', 'applications.md'), '# Applications Tracker\n\n| # | Date | Company | Role | Status |\n|---|---|---|---|---|\n| 1 | 2026-10-14 | Umbrella Corp | Analyst | Applied |\n');
   return r;
 }
 
 test('the words to keep out come from the data root: name, contact details, record, tracker, targets', () => {
   const terms = termsFrom(root());
-  for (const w of ['Test Candidate', 'Candidate', 'test@example.com', '5550142', 'linkedin.com/in/test-candidate-0a1b2c', 'Globex Securities', 'Globex', 'Initech', 'Umbrella Corp', 'Umbrella']) {
+  for (const w of ['Test Candidate', 'Candidate', 'test@example.com', '5550142', 'linkedin.com/in/test-candidate-0a1b2c', 'Globex Securities', 'Globex', 'グローベックス証券', 'Initech', 'Umbrella Corp', 'Umbrella']) {
     assert.ok(terms.has(w), `${w} is a word to keep out`);
   }
   assert.ok(![...terms.keys()].some((w) => w.length < 4), 'short words are too common to check');

@@ -100,7 +100,11 @@ export function termsFrom(root) {
       if (company && company !== '?') { add(company, 'your tracker'); add(shortName(company), 'your tracker'); }
     }
   }
-  for (const c of load(root, 'data/targets.yml')?.companies || []) { add(c.name, 'your targets'); add(shortName(c.name), 'your targets'); }
+  for (const c of load(root, 'data/targets.yml')?.companies || []) {
+    add(c.name, 'your targets');
+    add(shortName(c.name), 'your targets');
+    for (const ja of [].concat(c.ja ?? [])) add(ja, 'your targets');
+  }
   return terms;
 }
 
