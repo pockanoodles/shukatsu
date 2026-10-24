@@ -43,6 +43,10 @@ test('an agent never stamps, whatever its role table says', async () => {
   await rejects(run(root, agentP, 'packet.markSent', { id: 1 }), 'stamp_required');
   await rejects(run(root, agentP, 'token.create', { user_id: agent.id, kind: 'agent', name: 'more' }), 'stamp_required');
   await rejects(run(root, agentP, 'people.invite', { name: 'X', role: 'viewer' }), 'stamp_required');
+  // Recording that the candidate applied or took the job is theirs, however the row gets there.
+  await rejects(run(root, agentP, 'tracker.setStatus', { num: 1, state: 'Applied' }), 'stamp_required');
+  await rejects(run(root, agentP, 'tracker.setStatus', { num: 1, state: 'Hired' }), 'stamp_required');
+  await rejects(run(root, agentP, 'tracker.add', { company: 'Initech', role: 'Analyst', status: 'Applied' }), 'stamp_required');
 });
 
 test('an agent\'s tool list has no stamps and no app-only operations', () => {
@@ -85,7 +89,7 @@ test('an evaluation missing a block is refused by name, and nothing is written',
 });
 
 test('a complete evaluation becomes a canonical report and one tracker row', async () => {
-  const { root, agentP } = setup();
+  const { root, agentP, ownerP } = setup();
   const out = await run(root, agentP, 'evaluation.submit', EVAL());
   const report = readFileSync(join(root, out.report), 'utf-8');
   assert.match(report, /^\*\*URL:\*\* https:\/\/boards\.greenhouse\.io\/acme\/jobs\/123$/m);
@@ -96,9 +100,11 @@ test('a complete evaluation becomes a canonical report and one tracker row', asy
   assert.equal(rows.length, 1);
   assert.equal(rows[0].company, 'Acme Robotics');
   assert.equal(rows[0].status, 'Evaluated');
-  const set = await run(root, agentP, 'tracker.setStatus', { num: rows[0].num, state: 'Applied', note: 'via Avature' });
+  await rejects(run(root, agentP, 'tracker.setStatus', { num: rows[0].num, state: 'Applied', note: 'via Avature' }), 'stamp_required');
+  const set = await run(root, ownerP, 'tracker.setStatus', { num: rows[0].num, state: 'Applied', note: 'via Avature' });
   assert.equal(set.state, 'Applied');
   assert.equal((await run(root, agentP, 'tracker.list', { status: 'Applied' })).rows.length, 1);
+  await run(root, agentP, 'tracker.setStatus', { num: rows[0].num, state: 'Interview', note: 'invitation by email' });
   const log = (await run(root, agentP, 'activity.list', {})).activity;
   assert.ok(log.some((a) => a.verb === 'tracker.status' && a.actor_name === 'Claude Code on the laptop'));
 });

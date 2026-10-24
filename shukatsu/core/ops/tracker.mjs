@@ -3,7 +3,9 @@
  * through upstream's CLIs (set-status.mjs, merge-tracker.mjs), so the states
  * contract, the lock, and data/status-log.tsv stay theirs. An agent's status
  * change is logged with source `set-status` like any other; app.db's
- * activity log is what records which agent made it.
+ * activity log is what records which agent made it. Applied and Hired record
+ * the candidate's own act (they sent it, they took the job), so moving a row
+ * there is a stamp, the same as packet.markSent: an agent never does it.
  */
 
 import { spawnSync } from 'child_process';
@@ -13,6 +15,10 @@ import { ENGINE } from '../trace.mjs';
 import { S } from './schema.mjs';
 
 const STATES = canonicalStates().map((s) => s.label);
+
+/** The permission a move to this state needs: a stamp for the candidate's own act, tracker.write for the rest. */
+const OWN_ACT = new Set(['Applied', 'Hired']);
+const toState = (state) => (OWN_ACT.has(state) ? 'tracker.decide' : 'tracker.write');
 
 const ROW = S.obj({
   num: S.int(), date: S.nullable(S.str()), company: S.str(), role: S.str(), score: S.nullable(S.str()), status: S.str(),
@@ -63,8 +69,8 @@ export default [
   {
     name: 'tracker.setStatus',
     kind: 'command',
-    summary: 'Move an application to a new canonical state, through set-status.mjs (validated, locked, logged to the status log).',
-    permission: 'tracker.write',
+    summary: 'Move an application to a new canonical state, through set-status.mjs (validated, locked, logged to the status log). Applied and Hired record the candidate\'s own act, so they are stamps: an agent leaves those to the candidate.',
+    permission: (input) => toState(input.state),
     input: S.obj({
       num: S.tracker(),
       state: S.enum(STATES),
@@ -81,8 +87,8 @@ export default [
   {
     name: 'tracker.add',
     kind: 'command',
-    summary: 'Add an application to the tracker without an evaluation (e.g. one applied to through a career fair site). The row goes in through merge-tracker.mjs, which updates an existing company+role row instead of duplicating it.',
-    permission: 'tracker.write',
+    summary: 'Add an application to the tracker without an evaluation (e.g. one applied to through a career fair site). The row goes in through merge-tracker.mjs, which updates an existing company+role row instead of duplicating it. Adding it as Applied or Hired is a stamp, so an agent adds it as Evaluated and leaves the rest to the candidate.',
+    permission: (input) => toState(input.status),
     input: S.obj({
       company: S.str(null, { minLength: 1, maxLength: 80 }),
       role: S.str(null, { minLength: 1, maxLength: 160 }),

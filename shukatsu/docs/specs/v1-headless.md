@@ -94,7 +94,7 @@ from the operation and can't drift from it.
 | Record | `record.get`, `record.search`, `record.trace` | `profile.propose` |
 | Review | `review.list`, `review.get`, `proposal.mine` | `review.decide` (stamp), `review.reopen` (stamp), `proposal.update`, `comment.add` |
 | Postings | `pipeline.list`, `posting.get` | `posting.add`, `posting.capture`, `evaluation.submit` |
-| Tracker | `tracker.list`, `company.history` | `tracker.setStatus`, `tracker.add` |
+| Tracker | `tracker.list`, `company.history` | `tracker.setStatus`, `tracker.add` (each a stamp when the row goes to Applied or Hired) |
 | Packets | `packet.list`, `packet.get` | `packet.create`, `packet.select`, `packet.edit`, `packet.check`, `packet.submit`, `packet.close`, `packet.ready` (stamp), `packet.markSent` (stamp), `candidate.setJa` (stamp) |
 | Campaigns | `campaign.list`, `campaign.get` | `campaign.create`, `campaign.update`, `campaign.link`, `campaign.schedule` |
 | Schedule | `calendar.upcoming`, `calendar.conflicts` | `event.create`, `event.update` |
@@ -142,13 +142,13 @@ says which one did what.
 | create and edit packets, run checks | yes | yes | yes | no | no |
 | `tracker.write`, `pipeline.write`, `evaluation.submit` | yes | yes | no | no | no |
 | `calendar.write`, `campaign.write`, `inbox.write` | yes | yes | no | no | no |
-| `review.decide`, `packet.markSent`, `profile.write` | **stamp** | no | no | no | no |
+| `review.decide`, `packet.markSent`, `tracker.decide` (a row to Applied or Hired), `profile.write` | **stamp** | no | no | no | no |
 | `people.manage`, `settings.system`, `agent.*`, `token.*` | **stamp** | no | no | no | no |
 | contacts, compensation | yes | per-agent grant | per-person grant | per-person grant | no |
 
 The stamp operations are exactly the ones that make a claim true or final, which are
 confirming, correcting, or marking a fact unknown, accepting a proposal, marking a packet
-sent, and changing who has access. They check the principal's kind as well as its role, so
+sent or a row Applied or Hired, and changing who has access. They check the principal's kind as well as its role, so
 an agent token is refused even if someone later edits the matrix. A stamp needs a person
 signed in by session, or the owner at their own terminal, and granting a remote client access
 through OAuth also needs a sign-in within the last ten minutes.
@@ -390,7 +390,8 @@ canonical fix.
 Decided 2026-10-14. The candidate presses Fill (Alt+Shift+F, or the toolbar button's
 menu) on an application form. shukatsu fills it, lists what went where, and outlines the
 site's Submit button. Pressing that button is always the candidate's, and so is the
-stamp that records it: `packet.markSent` (permission `packet.send`, a stamp). No agent,
+stamp that records it: `packet.markSent` (permission `packet.send`), or moving the row to
+Applied by itself (`tracker.decide`), both stamps. No agent,
 token, or schedule can do either. It never runs on LinkedIn (`automation: 'never'`): the
 extension stops before it touches the page, and `application.plan` refuses the form too.
 Employer ATS forms come first: Greenhouse, Lever, Ashby.

@@ -67,6 +67,8 @@ const MATRIX = {
   // Stamps: owner only, and never an agent whatever this table says (see can()).
   'review.decide': ['owner'],
   'packet.send': ['owner'],
+  // Moving a row to Applied or Hired, the states that record the candidate's own act.
+  'tracker.decide': ['owner'],
   'profile.write': ['owner'],
   'people.manage': ['owner'],
   'settings.system': ['owner'],
@@ -76,7 +78,7 @@ const MATRIX = {
 };
 
 /** The permissions that make something true or final. A human session only. */
-export const STAMPS = new Set(['review.decide', 'packet.send', 'profile.write', 'people.manage', 'settings.system', 'agent.manage', 'token.manage', 'connector.manage']);
+export const STAMPS = new Set(['review.decide', 'packet.send', 'tracker.decide', 'profile.write', 'people.manage', 'settings.system', 'agent.manage', 'token.manage', 'connector.manage']);
 
 /** Every permission name, so a caller can precompute what a person may do. */
 export const PERMISSIONS = [...Object.keys(MATRIX), 'view.comp', 'view.contacts'];

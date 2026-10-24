@@ -8,7 +8,8 @@
  *   name        'tracker.setStatus' (area.verb)
  *   kind        'query' | 'command'
  *   summary     one line an agent reads when choosing a tool
- *   permission  checked by people.can(); a string, or (input) => string
+ *   permission  checked by people.can(); a string, or (input) => string, and a
+ *               call whose input asks for a stamp permission is a stamp
  *   stamp       true -> a person signed in by session (or the owner's own
  *               terminal), never a token-borne agent, whatever the role
  *   input       JSON Schema (also the MCP tool's inputSchema)
@@ -110,7 +111,8 @@ export function allowed(principal, op) {
   if (principal.token && !principal.token.scopes.includes('*') && !principal.token.scopes.includes(op.name)) return false;
   if (op.stamp && !human(principal)) return false;
   if (principal.via !== 'session' && principal.via !== 'cli' && op.agent === false) return false;
-  const perm = typeof op.permission === 'function' ? null : op.permission;
+  // A permission that depends on the input is listed by what a plain call asks; run() refuses the stamped inputs.
+  const perm = typeof op.permission === 'function' ? op.permission({}) : op.permission;
   return perm == null || perm === 'any' || can(principal.user, perm);
 }
 
@@ -142,6 +144,9 @@ function refuse(principal, op, input) {
     return new OpError('denied', `${op.name} is only available in the app.`, { status: 403 });
   }
   const perm = typeof op.permission === 'function' ? op.permission(input) : op.permission;
+  if (typeof op.permission === 'function' && STAMPS.has(perm) && !human(principal)) {
+    return new OpError('stamp_required', `This ${op.name} call is a stamp: it makes something true or final, so the candidate does it signed in, not an agent or a token.`, { status: 403 });
+  }
   if (perm && perm !== 'any' && !can(user, perm)) {
     return new OpError(STAMPS.has(perm) ? 'stamp_required' : 'denied', STAMPS.has(perm) && user.kind === 'agent'
       ? `${op.name} is a stamp, and agents never stamp. Leave it for the candidate.`
