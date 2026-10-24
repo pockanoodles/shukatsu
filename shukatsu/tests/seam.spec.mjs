@@ -127,6 +127,16 @@ test('reply-matcher: a rejection classifies as Rejected, and a reply matches its
   assert.ok([...getAppDomains(rows[0], [])].includes('acme.com'), 'the Gmail query is built from these domains');
 });
 
+test('reply-matcher: a company is named by its name in any case or spacing, a short one only as a whole word', async () => {
+  const { checkCompanyMatch, normalizeStr } = await import(join(ENGINE, 'reply-matcher.mjs'));
+  // signals.mjs finds one company's several rows with these, to choose between them.
+  assert.equal(checkCompanyMatch('Your application to INITECH, Tokyo', 'Initech'), true);
+  assert.equal(checkCompanyMatch('Acme Robotics careers', 'AcmeRobotics'), true);
+  assert.equal(checkCompanyMatch('Join the Zyxers', 'Zyx'), false);
+  assert.equal(checkCompanyMatch('Greetings from Zyx Japan', 'Zyx'), true);
+  assert.equal(normalizeStr('Acme  Robotics'), normalizeStr('acme robotics'));
+});
+
 test('invite-match: an interview invitation classifies as invite, with the fields the app reads', async () => {
   const { analyzeInvite } = await import(join(ENGINE, 'invite-match.mjs'));
   const r = analyzeInvite('Interview invitation\nWe would like to invite you to an interview for the Analyst role at Acme.', []);

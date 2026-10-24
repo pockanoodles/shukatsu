@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'crypto';
-import { existsSync, mkdtempSync, readFileSync, statSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -23,7 +23,7 @@ const { occurrences, parseIcs, parseLine, unfold } = await import('../connectors
 const { busyTimes } = await import('../connectors/ics-in/index.mjs');
 const { buildQueries, registrable, searchDomains } = await import('../connectors/gmail/query.mjs');
 const gmail = await import('../connectors/gmail/index.mjs');
-const { kindOf, signalFor } = await import('../connectors/signals.mjs');
+const { companyAliases, kindOf, signalFor } = await import('../connectors/signals.mjs');
 const { makeRoot, people } = await import('./helpers.mjs');
 
 const RECORDED = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'recorded');
@@ -419,6 +419,67 @@ test('a stale or ambiguous message proposes nothing, and noise closes itself', (
   assert.deepEqual([noise.kind, noise.status], ['noise', 'dismissed']);
   const unknown = signalFor(rec({ from: 'someone@nowhere.example.com', subject: 'Interview invitation' }, 'We would like to invite you to interview with us.'), { rows });
   assert.deepEqual([unknown.kind, unknown.tracker_num, unknown.confidence, unknown.status], ['interview', null, 'low', 'open']);
+});
+
+const mail = (fields, text) => ({ id: 1, external_id: 'x', kind: 'message', connector: 'gmail', fields: { links: [], ...fields }, text });
+const OIINORI = '選考の結果、誠に残念ながら今回はご期待に沿えない結果となりました。今後のご活躍をお祈り申し上げます。';
+
+test('classification: Japanese mail by its set phrases, and moving an interview is not a rejection', () => {
+  const k = (subject, text, from = 'saiyo@globex.example.co.jp') => kindOf({ from, subject, text }).kind;
+  assert.equal(k('【選考結果のご連絡】', OIINORI), 'rejection');
+  assert.equal(k('【面接のご案内】', '書類選考の結果、面接にお進みいただきたくご連絡いたしました。'), 'interview');
+  assert.equal(k('内定のご連絡', 'このたび内定をお出しすることになりました。'), 'offer');
+  assert.notEqual(k('内定者座談会のご案内', '内定者との座談会を開催します。'), 'offer', 'an event for 内定者 is not an offer');
+  assert.equal(k('Webテストのご案内', 'Webテストを受検してください。'), 'assessment');
+  assert.equal(k('エントリー受付のお知らせ', 'エントリーを受け付けました。'), 'confirmation');
+  assert.equal(k('今週のおすすめ求人', '最終面接で差がつく逆質問。配信停止はこちら。', 'news@mynavi.jp'), 'noise', 'a board\'s newsletter, interview talk and all');
+  assert.equal(k('Change to your interview', 'Unfortunately, we need to reschedule your interview. Please pick a new time.', 'x@acme.example.com'), 'interview');
+});
+
+test('one company\'s rows: its own name in a title counts for nothing, a word only one role has decides, and news after sending goes to the one sent', () => {
+  const rows = [
+    { num: 1, company: 'Initech', role: '2027 Initech Field Service Summer Internship', status: 'Evaluated', date: '2026-10-01', notes: '', via: 'CFN' },
+    { num: 2, company: 'Initech', role: 'Market Research and Strategy Associate (2028 Entry)', status: 'Applied', date: '2026-10-01', notes: '', via: 'CFN' },
+  ];
+  const from = 'Initech Recruiting <recruiting@initech.example.com>';
+  const named = signalFor(mail({ from, subject: 'Your application: Research & Strategy' }, 'Thank you for your interest in the Research & Strategy role at Initech. Unfortunately, we have decided not to move forward with your application.'), { rows });
+  assert.deepEqual([named.kind, named.tracker_num], ['rejection', 2]);
+  const generic = 'After careful consideration, we regret to inform you that we will not be moving forward with your candidacy.';
+  const sent = signalFor(mail({ from, subject: 'Your application to Initech' }, generic), { rows });
+  assert.deepEqual([sent.tracker_num, sent.confidence, sent.proposed.actions[0].input.state], [2, 'medium', 'Rejected']);
+  // Both sent, and nothing in the message tells them apart: no row, and both listed for the candidate to pick.
+  const unsure = signalFor(mail({ from, subject: 'Your application to Initech' }, generic), { rows: rows.map((r) => ({ ...r, status: 'Applied' })) });
+  assert.deepEqual([unsure.tracker_num, unsure.proposed.actions, unsure.proposed.choices], [null, [], [1, 2]]);
+});
+
+test('a board\'s mail speaks only for the rows that went through that board', () => {
+  const rows = [
+    { num: 1, company: 'Initech', role: 'Operations Analyst', status: 'Applied', date: '2026-10-01', notes: 'applied on https://initech.wd1.myworkdayjobs.com/en-US/careers/job/123', via: '' },
+    { num: 2, company: 'Globex', role: 'Data Analyst', status: 'Applied', date: '2026-10-01', notes: '', via: 'Handshake' },
+  ];
+  const from = 'Handshake <noreply@joinhandshake.com>';
+  const news = signalFor(mail({ from, subject: 'Initech wants to interview students like you' }, 'Initech is inviting students to interview. We would like to invite you to apply on Handshake.'), { rows });
+  assert.deepEqual([news.kind, news.tracker_num, news.status], ['other', null, 'dismissed']);
+  const own = signalFor(mail({ from, subject: 'Globex invited you to interview' }, 'Globex would like to invite you to interview for the Data Analyst role.'), { rows });
+  assert.deepEqual([own.kind, own.tracker_num, own.proposed.actions[0].input.state], ['interview', 2, 'Interview']);
+});
+
+test('mail in Japanese finds its row by the company\'s Japanese name in targets.yml', () => {
+  const root = mkdtempSync(join(tmpdir(), 'shukatsu-aka-'));
+  mkdirSync(join(root, 'data'));
+  writeFileSync(join(root, 'data', 'targets.yml'), 'companies:\n  - name: "Globex Securities Group"\n    ja: [グローベックス証券]\n  - name: "Initech"\n');
+  const rows = [
+    { num: 1, company: 'Globex Securities', role: 'リサーチ・アナリスト Research Analyst internship', status: 'Applied', date: '2026-08-03', notes: '', via: 'CFN' },
+    { num: 2, company: 'Initech', role: 'Analyst', status: 'Applied', date: '2026-08-03', notes: '', via: 'CFN' },
+  ];
+  const aliases = companyAliases(root, rows);
+  assert.deepEqual([...aliases], [['Globex Securities', ['グローベックス証券']]]);
+  const from = 'CareerForum.Net <info@careerforum.net>';
+  const no = signalFor(mail({ from, subject: '【選考結果のご連絡】グローベックス証券' }, OIINORI), { rows, aliases });
+  assert.deepEqual([no.kind, no.tracker_num, no.proposed.actions[0].input.state], ['rejection', 1, 'Rejected']);
+  const yes = signalFor(mail({ from, subject: '【面接のご案内】グローベックス証券' }, '書類選考の結果、面接にお進みいただきたくご連絡いたしました。'), { rows, aliases });
+  assert.deepEqual([yes.kind, yes.tracker_num], ['interview', 1]);
+  rmSync(root, { recursive: true, force: true });
 });
 
 test('a calendar event about an interview becomes a medium-confidence signal; other events make none', () => {

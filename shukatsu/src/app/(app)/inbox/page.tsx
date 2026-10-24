@@ -9,7 +9,7 @@ import { dismissSignalAction, signalAction } from "@/app/actions/system";
 export const metadata: Metadata = { title: "Inbox" };
 
 type Action = { op: string; input: Record<string, unknown> };
-type Signal = { id: number; kind: string; status: string; confidence: string; tracker_num: number | null; proposed: { actions?: Action[]; matched?: { company?: string; role?: string } | null; hints?: Record<string, string> } | null; created_at: string; record: { connector: string | null; received_at: string | null } };
+type Signal = { id: number; kind: string; status: string; confidence: string; tracker_num: number | null; proposed: { actions?: Action[]; matched?: { company?: string; role?: string } | null; choices?: number[]; hints?: Record<string, string> } | null; created_at: string; record: { connector: string | null; received_at: string | null } };
 type Item = { signal: number; from: string; subject: string; snippet: string };
 
 /** What a proposed action would do, in words. */
@@ -45,6 +45,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
                   <p className="flex flex-wrap gap-x-4 gap-y-1">
                     <span className={`label ${["interview", "assessment", "offer"].includes(s.kind) ? "text-shu" : "text-ink-2"}`}>{t(`inbox.kind.${s.kind}`)}</span>
                     {s.tracker_num && <span className="label text-ink-2">#{s.tracker_num} {s.proposed?.matched?.company || ""}</span>}
+                    {!s.tracker_num && !!s.proposed?.choices?.length && <span className="label text-ink-2">{t("inbox.choices", { rows: s.proposed.choices.map((n) => `#${n}`).join(" / ") })}</span>}
                     <span className="label text-ink-3">{relative(s.record.received_at || s.created_at, user.lang)}</span>
                   </p>
                   {/* Outside text: shown as text, never followed. */}

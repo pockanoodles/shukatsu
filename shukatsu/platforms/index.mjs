@@ -9,6 +9,7 @@
  * entry here, with no new connector.
  *
  *   id, name   stable key and display name
+ *   aka        other names a tracker row's Via cell uses for it ("CFN")
  *   kind       'board'      where postings are found and applied through
  *                           (NUworks, Handshake, LinkedIn)
  *              'ats'        an employer's applicant tracking system; its mail
@@ -78,7 +79,7 @@ export const PLATFORMS = [
     automation: 'never',
   },
   {
-    id: 'careerforum', name: 'CareerForum.Net', kind: 'board',
+    id: 'careerforum', name: 'CareerForum.Net', kind: 'board', aka: ['CFN', 'BCF', 'Boston Career Forum'],
     hosts: ['careerforum.net'], mail: ['careerforum.net'],
     passive: 'dom',
     pages: [
@@ -148,6 +149,12 @@ export function platformOfSender(from) {
   const domain = addr ? addr[1] : String(from || '').toLowerCase();
   const full = addr ? addr[0] : '';
   return PLATFORMS.find((p) => (p.mail || []).some((m) => (m.includes('@') ? m === full : under(domain, m)))) || null;
+}
+
+/** The platform a tracker row's Via cell names, by id, name, or aka. */
+export function platformNamed(name) {
+  const n = String(name || '').trim().toLowerCase();
+  return n ? PLATFORMS.find((p) => [p.id, p.name, ...(p.aka || [])].some((x) => x.toLowerCase() === n)) || null : null;
 }
 
 /**

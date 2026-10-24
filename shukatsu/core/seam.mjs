@@ -16,7 +16,7 @@ export const SEAM = {
     'path-resolver.mjs': ['getCareerOpsRoot', 'resolveTrackerPath', 'resolveTrackerPathForWrite'],
     'plugins/_engine.mjs': ['buildCtx'],
     'plugins/_net.mjs': ['resolveAndValidate'],
-    'reply-matcher.mjs': ['classifyReply', 'getAppDomains', 'matchCandidates'],
+    'reply-matcher.mjs': ['checkCompanyMatch', 'classifyReply', 'getAppDomains', 'matchCandidates', 'normalizeStr'],
     'tracker-parse.mjs': ['parseTrackerRow', 'resolveColumns'],
     'url-key.mjs': ['normalizeUrl'],
   },

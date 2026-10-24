@@ -275,14 +275,24 @@ application, and 面接. Everything else stays in the mailbox and never reaches 
 A scheduled step runs each new message and event through the upstream matchers
 (`reply-matcher.mjs` and `invite-match.mjs`), which classify it as an interview invitation,
 rejection, assessment, confirmation, offer, or noise, and link it to a tracker row or
-campaign when one fits. Each signal waits in the Inbox with the actions it proposes (a status
+campaign when one fits. shukatsu reads Japanese mail itself, by its set phrases (お祈り for a
+rejection, 面接のご案内 or 選考通過 for an invitation, 内定のご連絡 for an offer), since the
+upstream classifiers don't, and a company named in Japanese finds its row through the
+Japanese names (`ja`) in the data root's `targets.yml`. When one company has several rows,
+the words only one role has decide between them, then which one was sent; failing both, the
+signal lists them for the candidate. A job board's mail speaks only for rows that went
+through that board, so a board's newsletter naming an employer applied to some other way is
+the board's news, not the application's. Each signal waits in the Inbox with the actions it proposes (a status
 change, an event to add, a posting to file), each an ordinary operation call. The review
 queue stays reserved for claims about the candidate, which a status change or a calendar
 entry isn't, so a signal needs no stamp. The candidate presses the action in the Inbox, or an
 agent reading the inbox does it within its own permissions, for example by moving a row to
 `Interview` and adding the event, which shows up in the activity log under that agent's name.
 The proposed actions are built from tracker data and a date checked to be a date, never from
-the message's words, so an instruction hidden in an email can't become an action.
+the message's words, so an instruction hidden in an email can't become an action. No
+scheduled job carries out a signal's actions by itself: mail only ever suggests (decided
+2026-10-24, after a test on made-up mail found the matchers reading a reschedule as a
+rejection and a newsletter as an invitation).
 
 ### First connectors
 

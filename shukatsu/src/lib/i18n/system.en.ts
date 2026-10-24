@@ -20,7 +20,7 @@ const sys = {
     title: "Inbox",
     lead: "What connected mail and calendars turned up: interview invitations, rejections, assessments, offers, each matched to an application when one fits. Nothing changes until you press a button.",
     none: "Nothing waiting. New mail is checked every few minutes once a mailbox is connected.",
-    connectors: "Connected accounts", dismiss: "Dismiss",
+    connectors: "Connected accounts", dismiss: "Dismiss", choices: "{rows}: which one?",
     doStatus: "Move #{n} to {state}", doEvent: "Add \"{title}\" to the calendar", doPosting: "File the posting", doCapture: "Save the posting",
     kind: { interview: "Interview invitation", rejection: "Rejection", assessment: "Assessment", confirmation: "Confirmation", offer: "Offer", posting: "Posting you opened", noise: "Not about a search", other: "Other" },
   },

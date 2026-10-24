@@ -23,7 +23,7 @@ const notFound = (what) => Object.assign(new Error(`There is no such ${what}.`),
 const SIGNAL = S.obj({
   id: S.int(), kind: S.str(), status: S.str(), confidence: S.str(),
   tracker_num: S.nullable(S.int()), campaign_id: S.nullable(S.int()),
-  proposed: S.any('What it proposes: actions (each an operation name and input to call), matched (the tracker row), hints (a date or platform read from the text).'),
+  proposed: S.any('What it proposes: actions (each an operation name and input to call), matched (the tracker row), choices (the rows it could be, when one company has several and nothing tells them apart), hints (a date or platform read from the text).'),
   created_at: S.str(), resolved_at: S.nullable(S.str()), resolution: S.any(),
   record: S.obj({ id: S.int(), kind: S.str(), connector: S.nullable(S.str()), account_id: S.int(), received_at: S.nullable(S.str()) }),
 });
