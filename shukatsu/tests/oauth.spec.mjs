@@ -6,7 +6,7 @@ import { makeRoot, people } from './helpers.mjs';
 import { createAgent } from '../core/people.mjs';
 import { makeCtx } from '../core/http.mjs';
 import { handleMcp } from '../core/mcp.mjs';
-import { deny, grant, handleOAuth, readPending, setMetadataFetcher, validRedirectUri } from '../core/oauth.mjs';
+import { deny, grant, handleOAuth, readPending, registeredRedirect, setMetadataFetcher, validRedirectUri } from '../core/oauth.mjs';
 
 let root, server, base, owner, editor, agent, freshOwner, clientA, clientB;
 const REDIRECT = 'http://127.0.0.1:8976/callback';
@@ -112,6 +112,16 @@ describe('oauth: redirect URIs and registration', () => {
     assert.ok(!validRedirectUri('https://example.com/cb#frag'));
     assert.ok(!validRedirectUri('https://user:pw@example.com/cb'));
     assert.ok(!validRedirectUri('nonsense'));
+  });
+
+  it('takes a registered loopback redirect on any port, and anything else only exactly', () => {
+    // A native app (Claude Code) registers once, then listens on whatever port is free at each sign-in.
+    const client = { redirect_uris: ['http://localhost:51212/callback', 'https://claude.ai/api/mcp/auth_callback'] };
+    assert.ok(registeredRedirect(client, 'http://localhost:51212/callback'));
+    assert.ok(registeredRedirect(client, 'http://localhost:60431/callback'));
+    assert.ok(!registeredRedirect(client, 'http://localhost:60431/other'));
+    assert.ok(!registeredRedirect(client, 'http://127.0.0.1:60431/callback'), 'the host still has to match');
+    assert.ok(!registeredRedirect(client, 'https://claude.ai:8443/api/mcp/auth_callback'), 'https matches exactly');
   });
 
   it('registers a public client', async () => {

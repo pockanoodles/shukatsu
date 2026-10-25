@@ -67,6 +67,21 @@ export function validRedirectUri(uri) {
   return u.protocol === 'http:' && LOOPBACK.has(u.hostname);
 }
 
+/**
+ * Whether a redirect_uri is one the client registered. A native app listens on
+ * whatever loopback port is free each time it signs in, so for http on a
+ * loopback host the port is ignored (RFC 8252, section 7.3); everything else
+ * must match exactly.
+ */
+export function registeredRedirect(client, uri) {
+  if (client.redirect_uris.includes(uri)) return true;
+  let u;
+  try { u = new URL(uri); } catch { return false; }
+  if (u.protocol !== 'http:' || !LOOPBACK.has(u.hostname)) return false;
+  const portless = (x) => { const v = new URL(x); v.port = ''; return v.href; };
+  return client.redirect_uris.some((r) => { try { return new URL(r).protocol === 'http:' && portless(r) === portless(uri); } catch { return false; } });
+}
+
 // ---------------------------------------------------------------- client metadata documents
 
 /** The pinned fetch: resolve and validate the host once, then connect to exactly those addresses. */
@@ -229,7 +244,7 @@ export async function startAuthorization(root, params, { baseUrl }) {
   const redirectUri = params.redirect_uri;
   if (!redirectUri) {
     if (client.redirect_uris.length !== 1) throw new OAuthError('invalid_request', 'redirect_uri is required.');
-  } else if (!client.redirect_uris.includes(redirectUri)) {
+  } else if (!registeredRedirect(client, redirectUri)) {
     throw new OAuthError('invalid_request', 'redirect_uri doesn\'t match one the client registered.');
   }
   const uri = redirectUri || client.redirect_uris[0];
@@ -251,7 +266,7 @@ export async function readPending(root, request) {
   if (!data) return null;
   let client;
   try { client = await resolveClient(root, data.c); } catch { return null; }
-  if (!client.redirect_uris.includes(data.r)) return null;
+  if (!registeredRedirect(client, data.r)) return null;
   const u = new URL(data.r);
   return { client_id: client.client_id, client_name: client.name, client_host: isUrlId(client.client_id) ? new URL(client.client_id).host : null, redirect_host: u.host, redirect_loopback: u.protocol === 'http:', expires_at: new Date(data.exp).toISOString() };
 }
