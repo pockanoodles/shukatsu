@@ -34,6 +34,8 @@ function fakeLine() {
   return { fetch, pushes: () => calls.filter((c) => c.url.endsWith('/push')).map((c) => ({ to: c.body.to, text: c.body.messages[0].text })) };
 }
 
+const answersOf = (root, id) => parse(getPacketRow(root, id).answers);
+
 function setup() {
   const root = makeRoot();
   const cast = people(root);
@@ -47,21 +49,20 @@ function setup() {
     { question: Q, limit: 200, unit: 'chars', text: 'リード振り分けを作り直しました。' },
   ] });
   const p = (u) => sessionPrincipal(u);
-  return { root, ...cast, dad, packet, owner_: p(cast.owner), mom: p(cast.editor), mentor: p(cast.reviewer), dad_: p(dad), agentP: tokenPrincipal(root, token) };
+  const [q1, q2] = answersOf(root, packet).map((a) => `packet:${packet}#${a.id}`);
+  return { root, ...cast, dad, packet, q1, q2, owner_: p(cast.owner), mom: p(cast.editor), mentor: p(cast.reviewer), dad_: p(dad), agentP: tokenPrincipal(root, token) };
 }
-
-const answersOf = (root, id) => parse(getPacketRow(root, id).answers);
 
 test('only the candidate asks, and only someone who can do the job', async () => {
   const s = setup();
-  const subject = `packet:${s.packet}#a2`;
+  const subject = s.q2;
   await assert.rejects(run(s.root, s.mom, 'ask.create', { to: s.reviewer.id, subject }), /permission|not allowed|can't/i);
   await assert.rejects(run(s.root, s.agentP, 'ask.create', { to: s.editor.id, subject }), /agent|not available|app/i);
   // A viewer doesn't see the work, and a reviewer can't suggest wording for the record.
   await assert.rejects(run(s.root, s.owner_, 'ask.create', { to: s.dad.id, subject }), /can see your applications/);
   await assert.rejects(run(s.root, s.owner_, 'ask.create', { to: s.reviewer.id, subject: 'fact:acme.routing/ja' }), /Ask an editor/);
-  await assert.rejects(run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a9` }), /no answer 9/);
-  await assert.rejects(run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: 'packet:1' }), /doesn't match/);
+  await assert.rejects(run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a00000000` }), /no longer on the packet/);
+  await assert.rejects(run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a2` }), /doesn't match/);
 
   const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject, note: '敬語を見てほしい' });
   await assert.rejects(run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject }), /already has this one/);
@@ -81,7 +82,7 @@ test('only the candidate asks, and only someone who can do the job', async () =>
 
 test('an answer the candidate uses replaces that answer on the packet, found by its question', async () => {
   const s = setup();
-  const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a2` });
+  const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: s.q2 });
   await assert.rejects(run(s.root, s.owner_, 'ask.close', { id, outcome: 'used' }), /Only an answered ask/);
   const better = 'チームのリード振り分けを見直し、手作業の時間を大きく減らしました。';
   assert.equal((await run(s.root, s.mom, 'ask.reply', { id, text: better, note: '「作り直した」より具体的に' })).status, 'answered');
@@ -104,26 +105,52 @@ test('an answer the candidate uses replaces that answer on the packet, found by 
   await assert.rejects(run(s.root, s.mom, 'ask.reply', { id, text: 'もう一度' }), /already closed/);
 });
 
-test('a reply never lands on a different question that took the asked one\'s place', async () => {
+test('an asked answer is found by its id, whatever happens to the questions around it', async () => {
   const s = setup();
-  const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a1` });
-  await run(s.root, s.mom, 'ask.reply', { id, text: '御社の事業と社風に強く惹かれました。' });
-  // Question 1 is deleted, so question 2 now sits in its place with its own answer.
-  const [, second] = answersOf(s.root, s.packet);
+  const [first, second] = answersOf(s.root, s.packet);
+  // Asked about answer 2; answer 1 is then deleted, so it moves up a place. The reply still finds it,
+  // and a reply that matches its own text (not answer 1's) reads as "fine".
+  const a = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: s.q2 });
   setAnswers(s.root, { actor: s.owner, id: s.packet, answers: [second] });
-  await assert.rejects(run(s.root, s.owner_, 'ask.close', { id, outcome: 'used' }), /changed on the packet/);
-  assert.equal(answersOf(s.root, s.packet)[0].text, 'リード振り分けを作り直しました。');
-  // A question only renamed, its answer untouched, still takes the reply.
-  setAnswers(s.root, { actor: s.owner, id: s.packet, answers: [{ question: '志望理由', limit: 400, unit: 'chars', text: '御社の事業に惹かれました。' }, second] });
-  await run(s.root, s.owner_, 'ask.close', { id, outcome: 'used' });
-  assert.equal(answersOf(s.root, s.packet)[0].text, '御社の事業と社風に強く惹かれました。');
+  assert.deepEqual(await run(s.root, s.mom, 'ask.reply', { id: a.id, text: second.text }), { status: 'closed', outcome: 'fine' });
+
+  // A question renamed, sent back with its id, is still the same answer.
+  const b = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: s.q2 });
+  await run(s.root, s.mom, 'ask.reply', { id: b.id, text: '振り分けの流れを見直しました。' });
+  setAnswers(s.root, { actor: s.owner, id: s.packet, answers: [{ ...first, id: undefined }, { ...second, question: 'ガクチカ' }] });
+  await run(s.root, s.owner_, 'ask.close', { id: b.id, outcome: 'used' });
+  const now = answersOf(s.root, s.packet);
+  assert.equal(now[1].question, 'ガクチカ');
+  assert.equal(now[1].text, '振り分けの流れを見直しました。');
+  assert.equal(now[0].text, first.text);
+  assert.notEqual(now[0].id, first.id, 'an answer sent without its id is a new answer');
+});
+
+test('two blank answers: deleting the asked one never sends its reply to the other', async () => {
+  const s = setup();
+  setAnswers(s.root, { actor: s.owner, id: s.packet, answers: [{ question: '自己PR', limit: 400, unit: 'chars', text: '' }, { question: '志望動機', limit: 400, unit: 'chars', text: '' }] });
+  const [pr, motive] = answersOf(s.root, s.packet);
+  const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#${pr.id}`, note: '書いてみてほしい' });
+  await run(s.root, s.mom, 'ask.reply', { id, text: '私の強みは、粘り強さです。' });
+  setAnswers(s.root, { actor: s.owner, id: s.packet, answers: [motive] });
+  await assert.rejects(run(s.root, s.owner_, 'ask.close', { id, outcome: 'used' }), /no longer on the packet/);
+  await assert.rejects(run(s.root, s.mom, 'ask.reply', { id, text: 'もう一案' }), /no longer on the packet/);
+  assert.equal(answersOf(s.root, s.packet)[0].text, '');
+});
+
+test('answer ids: a valid id is kept, a missing, malformed or copied one is replaced', async () => {
+  const { withAnswerIds, ANSWER_ID } = await import('../core/store.mjs');
+  const out = withAnswerIds([{ id: 'a0123abcd', text: 'x' }, { id: 'a0123abcd', text: 'copy' }, { id: 'nope', text: 'y' }, { text: 'z' }]);
+  assert.equal(out[0].id, 'a0123abcd');
+  assert.equal(new Set(out.map((a) => a.id)).size, 4);
+  assert.ok(out.every((a) => ANSWER_ID.test(a.id)));
 });
 
 test('an old open ask is still listed after many newer closed ones', async () => {
   const s = setup();
-  const old = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a1` });
+  const old = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: s.q1 });
   for (let i = 0; i < 3; i++) {
-    const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a2` });
+    const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: s.q2 });
     await run(s.root, s.mom, 'ask.reply', { id, fine: true });
   }
   const { listAsks } = await import('../core/asks.mjs');
@@ -134,13 +161,13 @@ test('an old open ask is still listed after many newer closed ones', async () =>
 
 test('"fine as it is" closes the ask at once, and a set-aside answer leaves the packet alone', async () => {
   const s = setup();
-  const a = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a1` });
+  const a = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: s.q1 });
   assert.deepEqual(await run(s.root, s.mom, 'ask.reply', { id: a.id, fine: true, note: 'これで大丈夫' }), { status: 'closed', outcome: 'fine' });
-  const b = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a2` });
+  const b = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: s.q2 });
   await run(s.root, s.mom, 'ask.reply', { id: b.id, text: '全然ちがう答え' });
   await run(s.root, s.owner_, 'ask.close', { id: b.id, outcome: 'not_used', note: '今回は短いほうで出します' });
   assert.equal(answersOf(s.root, s.packet)[1].text, 'リード振り分けを作り直しました。');
-  const c = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a2` });
+  const c = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: s.q2 });
   await run(s.root, s.owner_, 'ask.cancel', { id: c.id });
   await assert.rejects(run(s.root, s.mom, 'ask.reply', { id: c.id, text: 'x' }), /already closed/);
 });
@@ -171,6 +198,19 @@ test('a reply about a fact\'s Japanese is a proposal from that person, and the a
   assert.equal(loadProfile(s.root)._facts.get('acme.routing').fact.ja.text, wording);
 });
 
+test('a closed fact ask keeps the wording that was stamped, even after the fact is reworded again', async () => {
+  const s = setup();
+  const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: 'fact:acme.routing/ja' });
+  const mom = '6名のチームでリードの振り分けを見直し、週1,200件のリードにかかる手作業を1日40分から5分に減らしました。';
+  const r = await run(s.root, s.mom, 'ask.reply', { id, text: mom });
+  await run(s.root, s.owner_, 'review.decide', { key: `proposal:${r.proposal}`, outcome: 'accept', reason: '' });
+  // Before the tick records the close, the candidate rewords it once more.
+  const later = await run(s.root, s.owner_, 'profile.propose', { kind: 'fact.edit', payload: { id: 'acme.routing', part: 'ja', text: '6名チームのリード振り分けを見直し、週1,200件のリードの手作業を1日40分から5分に短縮しました。' } });
+  await run(s.root, s.owner_, 'review.decide', { key: later.review_key, outcome: 'accept', reason: '' });
+  settle(s.root);
+  assert.equal((await run(s.root, s.mom, 'ask.get', { id })).result.text, mom);
+});
+
 test('a Japanese suggestion that changes a figure is flagged in Review', async () => {
   const s = setup();
   const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: 'fact:acme.routing/ja' });
@@ -194,8 +234,8 @@ test('LINE tells the person once, with a link to the ask and nothing about the a
   const raw = Buffer.from(JSON.stringify({ destination: BOT_INFO.userId, events: [{ type: 'message', replyToken: 'r1', source: { type: 'user', userId: 'Umom' }, message: { type: 'text', id: '1', text: code } }] }));
   await line.webhook(s.root, { raw, signature: createHmac('sha256', SECRET).update(raw).digest('base64'), limited: () => false, fetch: fakeLine().fetch });
 
-  const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a2`, note: 'Example Coの敬語' });
-  const unlinked = await run(s.root, s.owner_, 'ask.create', { to: s.reviewer.id, subject: `packet:${s.packet}#a2` });
+  const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: s.q2, note: 'Example Coの敬語' });
+  const unlinked = await run(s.root, s.owner_, 'ask.create', { to: s.reviewer.id, subject: s.q2 });
   const net = fakeLine();
   await line.deliverDue(s.root, { fetch: net.fetch });
   const pushes = net.pushes();

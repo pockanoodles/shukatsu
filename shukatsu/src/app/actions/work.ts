@@ -156,7 +156,7 @@ export async function candidateJaAction(_: ActionResult | null, form: FormData):
   return out(r);
 }
 
-export async function answersAction(packetId: number, answers: { question: string; limit: number | null; unit: string; text: string }[]): Promise<ActionResult> {
+export async function answersAction(packetId: number, answers: { id?: string; question: string; limit: number | null; unit: string; text: string }[]): Promise<ActionResult> {
   const r = await op("packet.edit", { id: packetId, answers }, "common.saved");
   if (r.ok) revalidatePath(packetPath(packetId));
   return out(r);

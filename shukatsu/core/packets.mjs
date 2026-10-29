@@ -25,7 +25,7 @@ import { lintWording } from './validate.mjs';
 import { readManifest, writeManifest } from './manifests.mjs';
 import { addTrackerRow, readTracker, setStatus } from './tracker.mjs';
 import { assertCan, can } from './people.mjs';
-import { db, logActivity, now, recentActivity } from './store.mjs';
+import { db, logActivity, now, recentActivity, withAnswerIds } from './store.mjs';
 import { readText } from '../audit-materials.mjs';
 import { check as charCheck, styleWarnings } from '../char-count.mjs';
 
@@ -290,17 +290,18 @@ export function answerCheck(p, a, lang) {
   return { used: c.withBreaks, unit: 'chars', limit: c.limit, over: c.over, underFilled: c.underFilled, fill: c.fill ?? null, warnings: c.warnings, flags };
 }
 
-/** Replace a packet's written answers (question, limit, unit, text). */
+/** Replace a packet's written answers (question, limit, unit, text). An answer keeps its id when one is passed back; a new one gets its own. */
 export function setAnswers(root, { actor, id, answers }) {
   const pk = getPacketRow(root, id);
   if (!pk) throw new Error('No such packet.');
   assertEditable(actor, pk);
-  const clean = (Array.isArray(answers) ? answers : []).slice(0, 20).map((a) => ({
+  const clean = withAnswerIds((Array.isArray(answers) ? answers : []).slice(0, 20).map((a) => ({
+    id: a.id,
     question: String(a.question || '').trim().slice(0, 500),
     limit: Math.max(0, Math.min(10_000, Number(a.limit) || 0)) || null,
     unit: UNITS.includes(a.unit) ? a.unit : 'chars',
     text: String(a.text || '').replace(/\r/g, '').slice(0, 10_000),
-  })).filter((a) => a.question || a.text);
+  })).filter((a) => a.question || a.text));
   touch(root, id, { answers: json(clean) });
   logActivity(root, { actor, verb: 'packet.answers', subject: `packet:${id}`, detail: { company: pk.company, role: pk.role, n: clean.length } });
   return clean;

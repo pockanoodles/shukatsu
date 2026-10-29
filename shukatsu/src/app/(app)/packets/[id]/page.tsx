@@ -220,10 +220,10 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
             }} />
             {owner && open && pk.answers.length > 0 && (
               <ol className="grid border-t-2 rule">
-                {pk.answers.map((a, i) => (
-                  <li key={i} className="grid gap-2 border-b hair py-3">
+                {pk.answers.map((a, i) => a.id && (
+                  <li key={a.id} className="grid gap-2 border-b hair py-3">
                     <span className="text-[14px]"><span className="num mr-2 text-ink-3">{i + 1}</span>{a.question || "–"}</span>
-                    <AskForm subject={`packet:${pk.id}#a${i + 1}`} people={helpers} asked={askedOf(`packet:${pk.id}#a${i + 1}`)} path={`/packets/${pk.id}#answers-h`} l={al} />
+                    <AskForm subject={`packet:${pk.id}#${a.id}`} people={helpers} asked={askedOf(`packet:${pk.id}#${a.id}`)} path={`/packets/${pk.id}#answers-h`} l={al} />
                   </li>
                 ))}
               </ol>

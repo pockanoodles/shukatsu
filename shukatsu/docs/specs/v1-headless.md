@@ -163,15 +163,16 @@ bounded by its own harness permissions, which should deny running `review.mjs` a
 ### Asks
 
 The review queue carries what helpers bring; an ask runs the other way. The candidate picks
-one item, a written answer on a packet (`packet:{id}#a{n}`) or a fact's Japanese
+one item, a written answer on a packet (`packet:{id}#{answer}`, by the id an answer keeps
+through edits) or a fact's Japanese
 (`fact:{id}/ja`), and one person, and that person gets a LINE nudge with a link to a page
 holding only that item (`/ask/{id}`, phone first). Their reply never writes anything true:
 
 - a fact's Japanese becomes a `fact.edit` proposal from them, decided in the review queue
   with the stamp, and the ask closes when it is decided (`asks.settle` in the minute tick);
 - a written answer waits on the ask until the candidate uses it, which writes it into that
-  answer on the packet (found by its question, so reordering the form doesn't misplace it),
-  or sets it aside;
+  answer on the packet (found by its id, so moving, renaming or deleting other questions
+  can't redirect it), or sets it aside;
 - "fine as it is" closes the ask at once.
 
 The person then sees what came of it, with the candidate's note and the wording that was

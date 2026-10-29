@@ -117,7 +117,8 @@ export function CoverForm({ packet, cover, notes, l }: { packet: number; cover: 
 
 // ---------------------------------------------------------------- written answers
 
-type Answer = { question: string; limit: number | null; unit: "chars" | "words"; text: string };
+// id comes back from the server on save and is sent with every later save, so an answer stays the same one (an ask points at it).
+type Answer = { id?: string; question: string; limit: number | null; unit: "chars" | "words"; text: string };
 type Check = { used: number; unit: string; limit: number | null; over: boolean; underFilled: boolean; warnings: string[]; flags: { figures: string[]; sentence: string }[] };
 
 
@@ -174,6 +175,8 @@ export function AnswersEditor({ packet, initial, checks, lang, editable, l }: { 
           <button type="button" disabled={busy} className="btn btn-sm" onClick={async () => {
             setBusy(true); setMsg(null);
             const r = await answersAction(packet, rows);
+            const saved = (r.data as { answers?: Answer[] } | undefined)?.answers;
+            if (r.ok && saved) setRows(saved);
             setBusy(false); setMsg({ ok: r.ok, text: r.ok ? (r.message || "") : (r.error || "") });
           }}>{busy ? l.working : l.saveAnswers}</button>
           {msg && <span role={msg.ok ? "status" : "alert"} className={`text-[13px] ${msg.ok ? "" : "text-shu"}`}>{msg.text}</span>}

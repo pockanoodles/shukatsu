@@ -11,6 +11,7 @@
  * Built on node:sqlite, so a fresh machine needs no native build step.
  */
 
+import { randomBytes } from 'crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
@@ -312,7 +313,31 @@ const MIGRATIONS = [
    );
    CREATE INDEX asks_of ON asks(asked_of, status);
    CREATE INDEX asks_subject ON asks(subject, status);`,
+  // 8: every written answer gets an id that stays with it through edits, so an
+  // ask about one answer still finds it after questions are added, moved, renamed
+  // or deleted. A function, since the answers are JSON in packets.answers.
+  (d) => {
+    for (const pk of d.prepare('SELECT id, answers FROM packets WHERE answers IS NOT NULL').all()) {
+      const list = JSON.parse(pk.answers);
+      if (!Array.isArray(list)) continue;
+      d.prepare('UPDATE packets SET answers = ? WHERE id = ?').run(JSON.stringify(withAnswerIds(list)), pk.id);
+    }
+  },
 ];
+
+/** An answer's id: "a" and 8 hex digits, unique within its packet. */
+export const ANSWER_ID = /^a[0-9a-f]{8}$/;
+
+/** The answers, each keeping a valid id it has and getting a fresh one otherwise (a copied id counts as missing). */
+export function withAnswerIds(list) {
+  const seen = new Set();
+  return list.map((a) => {
+    let id = ANSWER_ID.test(a?.id) && !seen.has(a.id) ? a.id : null;
+    while (!id || seen.has(id)) id = `a${randomBytes(4).toString('hex')}`;
+    seen.add(id);
+    return { ...a, id };
+  });
+}
 
 const open = new Map();
 export const now = () => new Date().toISOString();
@@ -333,7 +358,8 @@ export function db(root) {
   while (version < MIGRATIONS.length) {
     d.exec('BEGIN');
     try {
-      d.exec(MIGRATIONS[version]);
+      const m = MIGRATIONS[version];
+      if (typeof m === 'function') m(d); else d.exec(m);
       version++;
       d.prepare('UPDATE schema_version SET version = ?').run(version);
       d.exec('COMMIT');

@@ -54,7 +54,7 @@ export type Packet = {
   coverCheck: { sentence: string; figures: string[]; closest: string | null }[];
   missingJa: { id: string; entityLabel: string; text: string; pending: boolean; review: string | null }[];
   headerGaps: string[];
-  answers: { question: string; limit: number | null; unit: "chars" | "words"; text: string; check: { used: number; unit: string; limit: number | null; over: boolean; underFilled: boolean; warnings: string[]; flags: { figures: string[]; sentence: string }[] } }[];
+  answers: { id?: string; question: string; limit: number | null; unit: "chars" | "words"; text: string; check: { used: number; unit: string; limit: number | null; over: boolean; underFilled: boolean; warnings: string[]; flags: { figures: string[]; sentence: string }[] } }[];
 };
 
 export type TrackerRow = { num: number; date: string; company: string; role: string; score: string; status: string; pdf: string; report: string; notes: string; url: string };

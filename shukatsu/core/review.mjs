@@ -404,7 +404,7 @@ function decideProposal(root, actor, id, outcome, edited, reason) {
       }
     },
   });
-  close('accepted', { outcome, commit: r.commit?.sha || null, edited: wording !== pr.payload.text });
+  close('accepted', { outcome, commit: r.commit?.sha || null, edited: wording !== pr.payload.text, text: wording });
   return { ...r, detail: { kind: pr.kind, proposal: id, author: proposer?.name } };
 }
 

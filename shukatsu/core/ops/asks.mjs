@@ -8,7 +8,7 @@ import * as asks from '../asks.mjs';
 import { S } from './schema.mjs';
 
 const ID = S.int(null, { minimum: 1 });
-const SUBJECT = S.str('One written answer, packet:{id}#a{n} (n from 1), or one fact\'s Japanese, fact:{id}/ja.', { pattern: asks.SUBJECT.source, maxLength: 120 });
+const SUBJECT = S.str('One written answer, packet:{id}#{answer id from packet.get}, or one fact\'s Japanese, fact:{id}/ja.', { pattern: asks.SUBJECT.source, maxLength: 120 });
 
 export default [
   {

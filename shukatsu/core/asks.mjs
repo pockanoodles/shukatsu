@@ -6,8 +6,9 @@
  * check the keigo in this answer?"), the person gets a nudge and a page with
  * only that item on it, and their answer comes back. Two kinds of item:
  *
- *   packet:{id}#a{n}   the n-th written answer on a packet (ES, form question)
- *   fact:{id}/ja       a fact's Japanese wording
+ *   packet:{id}#{answer}   one written answer on a packet (ES, form question), by
+ *                          the id it keeps through edits (a + 8 hex digits)
+ *   fact:{id}/ja           a fact's Japanese wording
  *
  * An answer never writes anything true by itself. For a fact, the reply is a
  * fact.edit proposal from that person, so it goes through the review queue and
@@ -32,26 +33,34 @@ import { loadProfile } from './facts.mjs';
 import { getPacketRow, setAnswers } from './packets.mjs';
 import { getProposal, propose, revise } from './proposals.mjs';
 
-export const SUBJECT = /^(packet:(\d+)#a(\d+)|fact:([a-z0-9.\-]+)\/ja)$/;
+export const SUBJECT = /^(packet:(\d+)#(a[0-9a-f]{8})|fact:([a-z0-9.\-]+)\/ja)$/;
 export const OUTCOMES = ['used', 'not_used', 'fine'];
 
 const clean = (s, max) => String(s ?? '').replace(/\r/g, '').trim().slice(0, max);
 
-/** What a subject points at: { kind: 'answer', packet, n } or { kind: 'ja', fact }. */
+/** What a subject points at: { kind: 'answer', packet, answer } or { kind: 'ja', fact }. */
 export function parseSubject(subject) {
   const m = SUBJECT.exec(String(subject || ''));
-  if (!m) throw new Error('An ask is about one written answer (packet:{id}#a{n}) or one fact\'s Japanese (fact:{id}/ja).');
-  return m[2] ? { kind: 'answer', packet: Number(m[2]), n: Number(m[3]) } : { kind: 'ja', fact: m[4] };
+  if (!m) throw new Error('An ask is about one written answer (packet:{id}#{answer id}) or one fact\'s Japanese (fact:{id}/ja).');
+  return m[2] ? { kind: 'answer', packet: Number(m[2]), answer: m[3] } : { kind: 'ja', fact: m[4] };
+}
+
+/** The packet row and where the asked answer is in it now; the answer is found only by its id, never by its place. */
+function answerOf(root, s) {
+  const pk = getPacketRow(root, s.packet);
+  if (!pk) throw new Error('That packet is gone.');
+  const answers = parse(pk.answers) || [];
+  const i = answers.findIndex((a) => a.id === s.answer);
+  if (i < 0) throw new Error('That question is no longer on the packet.');
+  return { pk, answers, i };
 }
 
 /** The item as it stands now, so the person sees it and a later change can be noticed. */
 function snapshot(root, s) {
   if (s.kind === 'answer') {
-    const pk = getPacketRow(root, s.packet);
-    if (!pk) throw new Error('No such packet.');
+    const { pk, answers, i } = answerOf(root, s);
     if (['sent', 'closed'].includes(pk.status)) throw new Error('That packet is closed.');
-    const a = (parse(pk.answers) || [])[s.n - 1];
-    if (!a) throw new Error(`That packet has no answer ${s.n}.`);
+    const a = answers[i];
     return { company: pk.company, role: pk.role, lang: pk.lang, question: a.question, limit: a.limit, unit: a.unit, text: a.text };
   }
   const hit = loadProfile(root)._facts.get(s.fact);
@@ -88,7 +97,8 @@ function view(root, k) {
 function decidedAs(root, s, pr) {
   if (pr.status === 'accepted') {
     const f = loadProfile(root)._facts.get(s.fact)?.fact;
-    return { outcome: 'used', note: pr.decision_note, result: { text: f?.ja?.text ?? pr.payload.text, edited: Boolean(pr.result?.edited) } };
+    // The wording kept is the one stamped, recorded with the decision; the fact's current Japanese only for a decision made before that was kept.
+    return { outcome: 'used', note: pr.decision_note, result: { text: pr.result?.text ?? f?.ja?.text ?? pr.payload.text, edited: Boolean(pr.result?.edited) } };
   }
   if (pr.status === 'rejected') return { outcome: 'not_used', note: pr.decision_note, result: null };
   return null;
@@ -159,15 +169,7 @@ export function closeAsk(root, { actor, id, outcome, note = '' }) {
   tx(root, () => {
     let result = null;
     if (outcome === 'used') {
-      const pk = getPacketRow(root, s.packet);
-      if (!pk) throw new Error('That packet is gone.');
-      const answers = parse(pk.answers) || [];
-      // Found by its question, so an answer moved up or down the form still matches. A renamed question is
-      // recognised by its position only while its answer is still the one that was asked about: a different
-      // question that slid into that place after a deletion has its own answer, and is never overwritten.
-      let i = answers.findIndex((a) => a.question === k.base.question);
-      if (i < 0 && answers[s.n - 1]?.text === k.base.text) i = s.n - 1;
-      if (i < 0) throw new Error('That question changed on the packet since you asked. Copy the reply in by hand.');
+      const { answers, i } = answerOf(root, s);
       setAnswers(root, { actor, id: s.packet, answers: answers.map((a, j) => (j === i ? { ...a, text: k.reply } : a)) });
       result = { text: k.reply, replaced: answers[i].text };
     }

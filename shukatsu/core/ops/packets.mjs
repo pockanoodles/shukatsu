@@ -12,6 +12,7 @@ import { S } from './schema.mjs';
 
 const ID = S.int('The packet id.', { minimum: 1 });
 const ANSWER = S.obj({
+  id: S.str('The answer\'s id from packet.get, so it stays the same answer. Leave out for a new one.', { pattern: '^a[0-9a-f]{8}$' }),
   question: S.str(null, { maxLength: 500, default: '' }),
   limit: S.nullable(S.int(null, { minimum: 0, maximum: 10000 })),
   unit: S.enum(['chars', 'words'], null, { default: 'chars' }),
