@@ -68,7 +68,8 @@ function Item({ c, kids, all, subject, path, me, canComment, canResolve, l, dept
             <span className="label text-ink-3">{c.role} · {c.when}</span>
           </p>
           <p className="whitespace-pre-line text-[14.5px] leading-[1.5]">{c.body}</p>
-          <p className="flex gap-4 pt-0.5">
+          {/* A div, not a p: the resolve form can't sit inside a paragraph, and the browser would close it early. */}
+          <div className="flex gap-4 pt-0.5">
             {canComment && depth < 4 && <button type="button" onClick={() => setReplying((v) => !v)} className="label text-ink-3 hover:text-ink">{l.reply}</button>}
             {!c.resolved && (canResolve || c.author_id === me) && (
               <form action={resolveCommentAction}>
@@ -77,7 +78,7 @@ function Item({ c, kids, all, subject, path, me, canComment, canResolve, l, dept
               </form>
             )}
             {c.resolved && <span className="label text-ink-3">{l.resolved}</span>}
-          </p>
+          </div>
           {replying && <div className="pt-1"><Composer subject={subject} path={path} parent={c.id} l={l} autoFocus onDone={() => setReplying(false)} /></div>}
         </div>
       </div>
