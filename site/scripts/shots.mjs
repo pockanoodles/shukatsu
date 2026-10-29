@@ -188,7 +188,7 @@ export async function seed(root, E) {
   const checked = packets.checkPacket(root, { actor: mom, id: ids.packet });
   if (!checked.ok) fail(`The Japanese packet did not pass its check:\n${checked.problems.join('\n')}`);
   clock.at(21 * HOUR);
-  packets.submitForReview(root, { actor: mom, id: ids.packet });
+  packets.requestReview(root, { actor: mom, id: ids.packet });
   store.addComment(root, { actor: mom, subject: `packet:${ids.packet}`, body: '自己PRは400字の枠に収め、数字は本人が確認した事実だけを使いました。ご確認をお願いします。' });
 
   // Two proposals from Mom wait in the queue, the cafe one first.
