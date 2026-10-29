@@ -54,7 +54,7 @@ export function registerMix(text) {
 export function styleWarnings(text) {
   const warnings = [];
   if (/co-?op|コープ|コーオプ/iu.test(text)) {
-    warnings.push('mentions "co-op": say 6ヶ月の長期インターン（2027年1月〜6月） instead');
+    warnings.push('mentions "co-op": say 長期インターンシップ and give its dates instead');
   }
   if (/[—–]|――/u.test(text)) warnings.push('contains an em/en dash');
   if (/[;；]/u.test(text)) warnings.push('contains a semicolon');

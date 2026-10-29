@@ -99,7 +99,7 @@ export function auditText(text, kind, rules) {
   }
   if (kind.lang === 'ja') {
     const m = /co-?op|コープ|コーオプ/iu.exec(text);
-    if (m) findings.push({ severity: 'warn', kind: 'wording', what: m[0], line: lineOf(text, m.index), reason: '"co-op" does not parse for a Japanese employer; say 6ヶ月の長期インターン（2027年1月〜6月）' });
+    if (m) findings.push({ severity: 'warn', kind: 'wording', what: m[0], line: lineOf(text, m.index), reason: '"co-op" does not parse for a Japanese employer; say 長期インターンシップ and give its dates' });
   }
   for (const rule of rules.required) {
     if (appliesTo(rule, kind) && !rule.re.test(text)) {
