@@ -149,8 +149,11 @@ test('an ask made before answers had ids is pointed at the answer in its place, 
   MIGRATIONS[8](d);
   assert.equal(getAskRow(s.root, kept).subject, `packet:${s.packet}#${second.id}`);
   assert.equal(getAskRow(s.root, gone).status, 'cancelled');
-  // Today's list reads every one of them without tripping on an old subject.
+  // Every list and the withdrawn one itself still read, old subject and all.
   assert.equal((await run(s.root, s.owner_, 'ask.list', { status: 'live' })).asks.length, 1);
+  assert.equal((await run(s.root, s.owner_, 'ask.list', {})).asks.length, 2);
+  assert.equal((await run(s.root, s.owner_, 'ask.list', { status: 'cancelled' })).asks[0].id, gone);
+  assert.equal((await run(s.root, s.mom, 'ask.get', { id: gone })).status, 'cancelled');
 });
 
 test('answer ids: a valid id is kept, a missing, malformed or copied one is replaced', async () => {

@@ -86,10 +86,11 @@ export const getAskRow = (root, id) => hydrate(db(root).prepare(`${ROW} WHERE k.
  * decided reads as closed here before settle() records it.
  */
 function view(root, k) {
-  const s = parseSubject(k.subject);
+  // The kind from the prefix alone, so a row whose subject no longer parses (a withdrawn ask from before answer ids) still reads.
+  const item = k.subject.startsWith('fact:') ? 'ja' : 'answer';
   const pr = k.proposal_id ? getProposal(root, k.proposal_id) : null;
-  const out = { ...k, item: s.kind, proposal: pr ? { id: pr.id, status: pr.status, text: pr.payload.text } : null };
-  const d = pr && k.status === 'answered' ? decidedAs(root, s, pr) : null;
+  const out = { ...k, item, proposal: pr ? { id: pr.id, status: pr.status, text: pr.payload.text } : null };
+  const d = pr && k.status === 'answered' ? decidedAs(root, parseSubject(k.subject), pr) : null;
   return d ? { ...out, status: 'closed', outcome: d.outcome, close_note: d.note, result: d.result, closed_at: pr.decided_at } : out;
 }
 
