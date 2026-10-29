@@ -57,7 +57,8 @@ add a passkey from Settings on each device you use.
 ## 4. Run it as a service
 
 - Linux: `deploy/shukatsu.service` (systemd, with the filesystem locked to the two repos).
-- macOS: `deploy/com.shukatsu.app.plist` (launchd agent).
+- macOS: `deploy/com.shukatsu.app.plist` (launchd agent), and `deploy/com.shukatsu.tunnel.plist`
+  for the Cloudflare Tunnel below.
 
 Both bind `127.0.0.1:3000`. Nothing listens on the network directly; the next step decides
 who can reach it.
@@ -76,6 +77,15 @@ cost is one more app for parents to install.
 hostname you own to the app. Anyone can load the landing page; everything else needs an
 invite. For a second lock, put Cloudflare Access (email one-time codes for the invited
 addresses only) in front. Set `SHUKATSU_URL` and `SHUKATSU_ALLOWED_ORIGINS` to the hostname.
+Use a named tunnel on a hostname you keep, not a quick `trycloudflare.com` address: passkeys
+are bound to the hostname, and invite links, the LINE webhook and `SHUKATSU_URL` all name it,
+so an address that changes on every restart breaks each of them.
+
+**On a laptop.** It works, with two limits. Family can reach the app only while the laptop is
+awake and online (the tunnel and the app come back on wake by themselves). And a laptop short
+of memory pages the app out when it sits idle, so once `SHUKATSU_URL` is a public address
+the daemon renders its own sign-in page every few minutes to stay quick for someone arriving
+from a LINE link.
 
 Then invite people from the People page (or `node shukatsu/people.mjs invite --name Mom --role
 editor --lang ja`) and send each link over LINE or iMessage.

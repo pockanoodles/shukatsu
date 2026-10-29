@@ -148,9 +148,22 @@ export async function start(opts = args(process.argv.slice(2))) {
     setTimeout(tick, 5_000).unref();
   }
 
+  // A machine short of memory pages out a daemon that sat idle for hours, and the
+  // first request after that can take half a minute: long enough for someone who
+  // opened a link from LINE to give up. Once the app has a public address, render
+  // the sign-in page every few minutes so it stays resident. The request goes to
+  // this process over loopback and never leaves the machine.
+  let warm = null;
+  if (!opts.dev && /^https:\/\//.test(base) && !/^https:\/\/(localhost|127\.)/.test(base)) {
+    const host = opts.host === '0.0.0.0' ? '127.0.0.1' : opts.host;
+    warm = setInterval(() => { fetch(`http://${host}:${opts.port}/login`).then((r) => r.arrayBuffer()).catch(() => {}); }, 4 * 60_000);
+    warm.unref();
+  }
+
   const stop = () => {
     log('stopping');
     if (timer) clearInterval(timer);
+    if (warm) clearInterval(warm);
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 5_000).unref();
   };

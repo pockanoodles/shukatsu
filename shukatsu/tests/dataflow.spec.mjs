@@ -31,6 +31,7 @@ const STAYS_HOME = {
   'extension/options.js': "the extension's options page, to the candidate's own shukatsu",
   'connectors/gmail/oauth.mjs': 'Google sign-in, through the guarded fetch connectors/ctx.mjs hands it',
   'connectors/line/index.mjs': "LINE's requests, through the ctx.fetch connectors/ctx.mjs hands it",
+  'shukatsud.mjs': "the daemon keeping itself warm, a loopback request to its own sign-in page",
 };
 
 /** The app's source files, tracked or about to be: what this public repo carries. Tests are left out. */

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- launchd agent for the Cloudflare Tunnel in front of shukatsud on a Mac (see cloudflared.yml).
+       After `cloudflared tunnel create shukatsu` and `cloudflared tunnel route dns shukatsu <hostname>`:
+       cp shukatsu/deploy/cloudflared.yml ~/.cloudflared/shukatsu.yml   (set the hostname and credentials-file)
+       cp shukatsu/deploy/com.shukatsu.tunnel.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.shukatsu.tunnel.plist
+       tail -f ~/Library/Logs/shukatsu-tunnel.log
+     Edit the paths (and the cloudflared path: `which cloudflared`) to match this machine. A laptop
+     that sleeps drops the tunnel and launchd brings it back on wake, so family can reach the app
+     only while the machine is awake. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.shukatsu.tunnel</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/cloudflared</string>
+    <string>tunnel</string>
+    <string>--no-autoupdate</string>
+    <string>--config</string><string>/Users/USER/.cloudflared/shukatsu.yml</string>
+    <string>run</string><string>shukatsu</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/Users/USER/Library/Logs/shukatsu-tunnel.log</string>
+  <key>StandardErrorPath</key><string>/Users/USER/Library/Logs/shukatsu-tunnel.log</string>
+</dict>
+</plist>
