@@ -10,6 +10,9 @@
  * Usage:
  *   node set-status.mjs <report#|company> <state> [--note "..."] [--role "..."] [--force] [--dry-run] [--json]
  *
+ * With --target KEY (an outcomes key from data/targets.yml) the state may be
+ * omitted: the row's status stays and only its Target cell is written.
+ *
  * Row resolution:
  *   - --row N     → exact match on the # column, stated explicitly
  *   - --report N  → match the row whose Report cell links report #N
@@ -108,7 +111,7 @@ import { roleFuzzyMatch } from './role-matcher.mjs';
 import { localToday } from './lib/local-today.mjs';
 import {
   resolveTrackerPath, writeFileAtomic, loadCanonicalStates, resolveCanonicalState,
-  normalizeCompany, cell, CLI_EXIT, makeCliFailWith, acquireTrackerLockForCli, resolveWorkspaceRoot,
+  normalizeCompany, cell, loadOutcomeKeys, CLI_EXIT, makeCliFailWith, acquireTrackerLockForCli, resolveWorkspaceRoot,
 } from './tracker-utils.mjs';
 import { getCareerOpsRoot } from './path-resolver.mjs';
 import { claimActivity, releaseActivity, describeActiveOwner } from './session-activity.mjs';
@@ -137,13 +140,15 @@ const JD_ARCHIVE_TIMEOUT_MS = Math.min(
 // acquireTrackerLockForCli() itself (tracker-utils.mjs), via CLI_EXIT.LOCK_TIMEOUT.
 const { OK: EXIT_OK, USAGE: EXIT_USAGE, NOT_FOUND: EXIT_NOT_FOUND, AMBIGUOUS: EXIT_AMBIGUOUS } = CLI_EXIT;
 
-const USAGE = `Usage: node set-status.mjs <report#|company> <state> [--note "..."] [--role "..."] [--on YYYY-MM-DD] [--force] [--dry-run] [--json]
+const USAGE = `Usage: node set-status.mjs <report#|company> <state> [--note "..."] [--role "..."] [--target KEY] [--on YYYY-MM-DD] [--force] [--dry-run] [--json]
        node set-status.mjs --row N <state> [...]        (explicit tracker row ID)
+       node set-status.mjs --row N --target KEY         (no state: set Target, keep the status)
        node set-status.mjs --report N <state> [...]     (explicit report ID)
        node set-status.mjs --report-link N <state> [...] (strict Report-cell identity)
 
   <report#|company>  Row selector: tracker # (exact) or company name (normalized match)
-  <state>            Canonical state from templates/states.yml (aliases accepted)
+  <state>            Canonical state from templates/states.yml (aliases accepted).
+                     Optional when --target is given: the status is then left as is.
   --row N            Select by tracker # explicitly (unambiguous; skips the mismatch guard)
   --report N         Select the row whose Report cell links report #N
   --report-link N    Select an exact numeric Report link; reject malformed cells
@@ -151,6 +156,9 @@ const USAGE = `Usage: node set-status.mjs <report#|company> <state> [--note "...
   --note "..."       Append to the Notes cell ("; "-separated, idempotent)
   --note=VALUE       Pass a literal note, including text beginning with --
   --replace-note "OLD" Replace whole OLD notes with --note text; fail if neither is present
+  --target KEY       Set the Target cell. KEY is an outcomes key from
+                     data/targets.yml (rejected otherwise). Idempotent; honors --dry-run.
+                     Needs a Target column in the tracker.
   --role "..."       Disambiguate when several rows share the company (fuzzy match)
   --on YYYY-MM-DD    Real event date for the status-log entry (defaults to today —
                      pass it when the transition happened earlier than it's recorded)
@@ -172,7 +180,8 @@ Examples:
   node set-status.mjs --report 12 Interview --note "recruiter screen booked"
   node set-status.mjs "Acme Corp" Rejected --on 2026-08-01
   node set-status.mjs "Acme Corp" Applied --role "Platform Engineer"
-  node set-status.mjs --row 7 Discarded --dry-run`;
+  node set-status.mjs --row 7 Discarded --dry-run
+  node set-status.mjs --row 8 --target summer-27     (backfill a Target, status untouched)`;
 
 /**
  * Render the canonical states from states.yml for `--help`.
@@ -210,8 +219,8 @@ function renderStatesSection() {
 
 const rawArgs = process.argv.slice(2);
 const positional = [];
-const flags = { note: null, replaceNote: null, role: null, on: null, row: null, report: null, reportLink: null, source: null, force: false, dryRun: false, repairStatusLog: false, repairFollowup: false, json: false };
-const VALUE_FLAGS = { '--note': 'note', '--replace-note': 'replaceNote', '--role': 'role', '--on': 'on', '--row': 'row', '--report': 'report', '--report-link': 'reportLink', '--source': 'source' };
+const flags = { note: null, replaceNote: null, role: null, target: null, on: null, row: null, report: null, reportLink: null, source: null, force: false, dryRun: false, repairStatusLog: false, repairFollowup: false, json: false };
+const VALUE_FLAGS = { '--note': 'note', '--replace-note': 'replaceNote', '--role': 'role', '--target': 'target', '--on': 'on', '--row': 'row', '--report': 'report', '--report-link': 'reportLink', '--source': 'source' };
 
 /**
  * Is the caller asking for help, rather than passing "--help" as a VALUE?
@@ -292,13 +301,15 @@ if ([flags.row, flags.report, flags.reportLink].filter(value => value !== null).
 }
 const explicitSelector = flags.row !== null || flags.report !== null || flags.reportLink !== null;
 
+// With --target the state is optional: a bare --target keeps the row's status.
+const minPositional = flags.target !== null ? 0 : 1;
 if (explicitSelector) {
-  if (positional.length !== 1) {
+  if (positional.length < minPositional || positional.length > 1) {
     failUsage(positional.length === 0
       ? `Expected the state after ${flags.row !== null ? '--row' : flags.report !== null ? '--report' : '--report-link'}`
       : `With ${flags.row !== null ? '--row' : flags.report !== null ? '--report' : '--report-link'} the only positional argument is the state, got ${positional.length}`);
   }
-} else if (positional.length !== 2) {
+} else if (positional.length < 1 + minPositional || positional.length > 2) {
   failUsage(positional.length === 0 ? null : `Expected 2 arguments (selector, state), got ${positional.length}`);
 }
 
@@ -319,7 +330,7 @@ if (flags.on !== null) {
 }
 
 const selector = explicitSelector ? null : positional[0];
-const stateInput = explicitSelector ? positional[0] : positional[1];
+const stateInput = (explicitSelector ? positional[0] : positional[1]) ?? null;
 
 // A bare positional number is the ambiguous case the mismatch guard exists for.
 // --row/--report are numeric too but carry an explicit number space, so they
@@ -362,8 +373,10 @@ try {
 } catch (err) {
   failWith(EXIT_USAGE, 'states-error', `Cannot load canonical states from ${STATES_FILE}: ${err.message}`);
 }
-const newStatus = resolveCanonicalState(stateInput, states);
-if (!newStatus) {
+// null here means "keep the row's current status" (--target without a state);
+// it is settled once the row is resolved.
+let newStatus = stateInput === null ? null : resolveCanonicalState(stateInput, states);
+if (stateInput !== null && !newStatus) {
   const valid = states.map(s => s.label).join(' · ');
   failWith(EXIT_USAGE, 'invalid-state', `"${stateInput}" is not a canonical state. Valid states: ${valid}`);
 }
@@ -373,6 +386,15 @@ if (!newStatus) {
 const APPS_FILE = resolveTrackerPath(DATA_ROOT);
 if (!existsSync(APPS_FILE)) {
   failWith(EXIT_NOT_FOUND, 'no-tracker', `No tracker found at ${APPS_FILE}`);
+}
+
+// --target is validated against the workspace's outcomes before the tracker is touched.
+if (flags.target !== null) {
+  const outcomeKeys = loadOutcomeKeys(resolveWorkspaceRoot(APPS_FILE));
+  if (!outcomeKeys.has(flags.target)) {
+    failWith(EXIT_USAGE, 'invalid-target',
+      `"${flags.target}" is not a Target key. Valid keys (outcomes in data/targets.yml): ${[...outcomeKeys].join(' · ') || 'none found'}`);
+  }
 }
 
 /**
@@ -626,6 +648,10 @@ if (flags.role && !flags.force && !roleMatchesTarget) {
   );
 }
 const oldStatus = target.status;
+newStatus ??= oldStatus;
+if (flags.target !== null && colmap.target == null) {
+  failWith(EXIT_USAGE, 'no-target-column', 'Tracker has no Target column — cannot apply --target');
+}
 if (flags.reportLink !== null && !resolveCanonicalState(oldStatus, states)) {
   failWith(EXIT_USAGE, 'invalid-current-state', `Tracker #${target.num} has an unrecognized current status: "${oldStatus}"`);
 }
@@ -665,7 +691,7 @@ if (!flags.dryRun) {
     : `tracker-row:${normalizeCompany(target.company)}|${target.role}`;
   try {
     const claim = claimActivity(activityKey, {
-      label: `set-status → ${newStatus}`,
+      label: `set-status → ${newStatus ?? 'target'}`,
       processBound: true,
     });
     if (claim.claimed) {
@@ -682,6 +708,7 @@ if (!flags.dryRun) {
 
 let statusChanged = false;
 let noteChanged = false;
+let targetChanged = false;
 let statusLogged = false;
 let statusLogRepaired = false;
 let statusLogRepair = null;
@@ -708,6 +735,12 @@ try {
 
   statusChanged = parts[colmap.status].trim() !== newStatus;
   if (statusChanged) replaceCellValue(colmap.status, newStatus);
+
+  if (flags.target !== null) {
+    while (parts.length <= colmap.target) parts.push('');
+    targetChanged = parts[colmap.target].trim() !== flags.target;
+    if (targetChanged) replaceCellValue(colmap.target, flags.target);
+  }
 
   if (note) {
     if (colmap.notes == null) {
@@ -749,7 +782,7 @@ try {
     }
   }
 
-  if ((statusChanged || noteChanged) && !flags.dryRun) {
+  if ((statusChanged || noteChanged || targetChanged) && !flags.dryRun) {
     if (separator === '\t') {
       const closing = rawLine.trimEnd().endsWith('|');
       lines[target.lineIdx] = parts[0] + '|' + parts.slice(1, closing ? -1 : undefined).join('\t')
@@ -867,7 +900,7 @@ try {
   }
 }
 
-const changed = statusChanged || noteChanged;
+const changed = statusChanged || noteChanged || targetChanged;
 
 // ── follow-up seeding (#1430) ────────────────────────────────────
 //
@@ -1053,6 +1086,7 @@ const result = {
   oldStatus,
   newStatus,
   ...(note != null ? { note } : {}),
+  ...(flags.target !== null ? { target: flags.target, targetChanged } : {}),
   ...(replacedNote !== null ? { replacedNote } : {}),
   ...(flags.dryRun ? { dryRun: true } : {}),
   // Fire the #1430 hook on an actual transition INTO Applied or an explicit
@@ -1075,7 +1109,7 @@ if (flags.json) {
   console.log(JSON.stringify(result, null, 2));
 } else {
   const verb = flags.dryRun ? 'would set' : changed ? 'set' : 'already';
-  console.log(`✅ #${target.num} ${target.company} — ${target.role}: ${verb} ${oldStatus} → ${newStatus}${note ? ` (note: ${note})` : ''}`);
+  console.log(`✅ #${target.num} ${target.company} — ${target.role}: ${verb} ${oldStatus} → ${newStatus}${flags.target !== null ? ` (target: ${flags.target})` : ''}${note ? ` (note: ${note})` : ''}`);
   // Only when seeding did NOT happen. The advisory predates the seeding above
   // and asked the user to do by hand what now runs for them; leaving it
   // unconditional would read as a contradiction right under "Follow-up seeded".
