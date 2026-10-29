@@ -17,7 +17,7 @@ export const SEAM = {
     'plugins/_engine.mjs': ['buildCtx'],
     'plugins/_net.mjs': ['resolveAndValidate'],
     'reply-matcher.mjs': ['checkCompanyMatch', 'classifyReply', 'getAppDomains', 'matchCandidates', 'normalizeStr'],
-    'tracker-parse.mjs': ['parseTrackerRow', 'resolveColumns'],
+    'tracker-parse.mjs': ['detectColumns', 'parseTrackerRow', 'resolveColumns'],
     'tracker-utils.mjs': ['acquireTrackerLock', 'cell', 'trackerLockDirFor', 'writeFileAtomic'],
     'url-key.mjs': ['normalizeUrl'],
   },

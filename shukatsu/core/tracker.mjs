@@ -16,7 +16,7 @@ import { spawnSync } from 'child_process';
 import { dirname, join } from 'path';
 import * as yaml from 'js-yaml';
 import { resolveTrackerPath, resolveTrackerPathForWrite } from '../../path-resolver.mjs';
-import { parseTrackerRow, resolveColumns } from '../../tracker-parse.mjs';
+import { detectColumns, parseTrackerRow, resolveColumns } from '../../tracker-parse.mjs';
 import { acquireTrackerLock, cell, trackerLockDirFor, writeFileAtomic } from '../../tracker-utils.mjs';
 import { ENGINE } from './trace.mjs';
 
@@ -68,6 +68,7 @@ export function setStatus(root, num, state, note = '') {
 }
 
 const tsvCell = (v) => String(v ?? '').replace(/[\t\r\n]+/g, ' ').trim();
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // The empty tracker, exactly as AGENTS.md's onboarding (step 4) creates it.
 const TRACKER_HEADER = `# Applications Tracker
@@ -108,16 +109,16 @@ export function addTrackerRow(root, { company, role, status = 'Evaluated', score
   const slug = String(company).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'company';
   const header = ['num', 'date', 'company', 'role', 'status', 'score', 'pdf', 'report', 'notes', 'url'];
   const row = [num, new Date().toISOString().slice(0, 10), company, role, status, score, '❌', '—', notes, url].map(tsvCell);
-  const before = new Map(readTracker(root).rows.map((r) => [r.num, JSON.stringify(r)]));
   const file = `${num}-${slug}.tsv`;
   writeFileSync(join(dir, file), `${header.join('\t')}\n${row.join('\t')}\n`);
   const merged = runEngine('merge-tracker.mjs', [], root);
   runEngine('reserve-report-num.mjs', ['--release', num], root);
-  const after = readTracker(root).rows;
-  const skippedAs = Number((merged.out.match(new RegExp(`Skipping ${file.replace(/\./g, '\\.')}: re-eval of #(\\d+) `)) || [])[1]);
-  const landed = after.find((r) => r.num === Number(num))
-    || after.find((r) => before.has(r.num) && before.get(r.num) !== JSON.stringify(r))
-    || after.find((r) => r.num === skippedAs);
+  // The same run can sync PDF flags and merge other pending additions, so the
+  // row is the one merge-tracker names for this addition, not whichever changed.
+  const named = merged.out.match(new RegExp(`(?:🔄|🔽) Update: #(\\d+) ${esc(row[2])} — ${esc(row[3])} \\(`))
+    || merged.out.match(new RegExp(`Skipping ${esc(file)}: re-eval of #(\\d+) `));
+  const rows = readTracker(root).rows;
+  const landed = rows.find((r) => r.num === Number(num)) || (named && rows.find((r) => r.num === Number(named[1])));
   return { ok: merged.ok && !!landed, num: landed?.num ?? null, out: landed ? merged.out : `the row didn't reach the tracker: ${merged.out.split('\n').slice(-3).join(' ')}` };
 }
 
@@ -154,10 +155,18 @@ function realDate(text) {
   return d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
 }
 
-/** The table's header row and its labels, lowercased (the first cell, before the opening pipe, is ''). */
+/**
+ * The tracker table's header, found the way upstream finds it (the first row
+ * its schema recognizes, so a summary table above it is passed over), with its
+ * labels lowercased (the first cell, before the opening pipe, is '') and the
+ * lines of the table's body.
+ */
 function headerOf(lines) {
-  const h = lines.findIndex((l) => l.trim().startsWith('|'));
-  return { h, labels: h < 0 ? [] : cellsOf(lines[h]).map((c) => c.toLowerCase()) };
+  const h = lines.findIndex((l) => l.trim().startsWith('|') && detectColumns([l]));
+  if (h < 0) return { h, labels: [], colmap: null, end: h };
+  let end = h + 1;
+  while (end < lines.length && lines[end].trim().startsWith('|')) end++;
+  return { h, labels: cellsOf(lines[h]).map((c) => c.toLowerCase()), colmap: detectColumns([lines[h]]), end };
 }
 
 // Split like parseTrackerRow does: parts[0] is the empty cell before the opening pipe.
@@ -195,7 +204,7 @@ export function targetDueCells(root, { target, due } = {}) {
 /**
  * Write row `num`'s Target and/or Due, under the lock merge-tracker.mjs and
  * set-status.mjs take, as one atomic replace. The row is found the way
- * upstream reads it (resolveColumns, so `#` needn't come first); one whose
+ * upstream reads it (detectColumns, so `#` needn't come first); one whose
  * cells don't line up with the header (a stray `|` in a cell) is refused
  * rather than shifted.
  */
@@ -206,11 +215,10 @@ export async function setTargetDue(root, num, values) {
   const lock = await acquireTrackerLock(trackerLockDirFor(path), { tracker: path });
   try {
     const lines = readFileSync(path, 'utf-8').split('\n');
-    const { h, labels } = headerOf(lines);
+    const { h, labels, colmap, end } = headerOf(lines);
     const col = { target: labels.indexOf('target'), due: labels.indexOf('due') };
     for (const k of Object.keys(want)) if (col[k] < 0) throw new Error(`The tracker has no ${LABEL[k]} column.`);
-    const colmap = resolveColumns(lines);
-    const i = lines.findIndex((l, j) => j > h && parseTrackerRow(l, colmap)?.num === num);
+    const i = lines.findIndex((l, j) => j > h && j < end && parseTrackerRow(l, colmap)?.num === num);
     if (i < 0) throw new Error(`The tracker has no row ${num}.`);
     const cells = cellsOf(lines[i]);
     if (cells.length !== labels.length) throw new Error(`Row ${num} has ${cells.length - 1} cells but the header has ${labels.length - 1}; fix the row by hand first.`);

@@ -83,14 +83,16 @@ test('url-key: a posting URL normalizes to its dedup key, and a non-URL to empty
   assert.equal(normalizeUrl('not a url'), '', 'the app falls back to the raw string on empty');
 });
 
-test('tracker-parse: a row reads by column name, with the URL cell\'s href', async () => {
-  const { parseTrackerRow, resolveColumns } = await import(join(ENGINE, 'tracker-parse.mjs'));
+test('tracker-parse: the header is found by its labels, and a row reads by column name, with the URL cell\'s href', async () => {
+  const { detectColumns, parseTrackerRow, resolveColumns } = await import(join(ENGINE, 'tracker-parse.mjs'));
   const lines = [
     '| # | Date | Company | Role | Score | Status | PDF | Report | Notes | URL |',
     '|---|---|---|---|---|---|---|---|---|---|',
     '| 3 | 2026-10-01 | Acme | Analyst | 4.1/5 | Applied | ❌ | — | req 12 | [ashby](https://jobs.ashbyhq.com/acme/1) |',
   ];
   const cols = resolveColumns(lines);
+  assert.equal(detectColumns(['| Metric | Count |']), null, 'a table that is not the tracker is passed over');
+  assert.equal(detectColumns([lines[0]]).num, cols.num);
   const [row] = lines.map((l) => parseTrackerRow(l, cols)).filter(Boolean);
   assert.deepEqual(
     { num: row.num, company: row.company, role: row.role, status: row.status, notes: row.notes, url: row.url },
@@ -224,7 +226,9 @@ test('merge-tracker: a new row gets — in a column it has no field for, and a r
   const dir = join(root, 'batch', 'tracker-additions');
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, '2-globex.tsv'), 'num\tdate\tcompany\trole\tstatus\tscore\tpdf\treport\tnotes\n2\t2026-10-20\tGlobex\tData Analyst\tEvaluated\t4.5/5\t❌\t—\tre-scored\n');
-  assert.ok(runEngine('merge-tracker.mjs', [], root).ok);
+  const merged = runEngine('merge-tracker.mjs', [], root);
+  assert.ok(merged.ok);
+  assert.match(merged.out, /🔄 Update: #2 Globex — Data Analyst \(/, 'the update names the row (addTrackerRow reads it)');
   const row = trackerCells(root, 2);
   assert.equal(row.Score, '4.5/5', 'the row was rebuilt');
   assert.deepEqual([row.Target, row.Due], ['2028', '2026-11-04'], 'Target and Due survive the rebuild');

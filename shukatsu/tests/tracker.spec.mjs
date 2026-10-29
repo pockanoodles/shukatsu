@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -84,6 +84,13 @@ test('the row is found by its # wherever that column sits', async () => {
   assert.equal(tracker(root).split('\n')[4], '| Acme | 1 | 2026-10-01 | Analyst | 4.0/5 | Evaluated | ❌ | — |  | summer-27 | 2026-11-20 |');
 });
 
+test('a summary table above the tracker is passed over', async () => {
+  const root = targetsRoot();
+  writeFileSync(join(root, 'data', 'applications.md'), tracker(root).replace('# Applications Tracker\n', '# Applications Tracker\n\n| Metric | Count |\n|---|---|\n| Applied | 1 |\n'));
+  assert.equal((await setTargetDue(root, 1, { target: 'summer-27' })).target, 'summer-27');
+  assert.match(tracker(root), /\| Applied \| 1 \|/, 'the summary is left alone');
+});
+
 test('a Due on a tracker with no Due column is refused before any row goes in', async () => {
   const root = makeRoot();
   const { owner } = people(root);
@@ -114,6 +121,18 @@ test('adding a company+role already tracked updates that row, and its Target lan
   assert.equal(num, 2, 'the existing row, not the reserved number');
   assert.equal(trackerCells(root, 2).Target, 'summer-27');
   assert.equal(tracker(root).split('\n').filter((l) => l.includes('| Globex |')).length, 1, 'still one Globex row');
+});
+
+test('the Target goes to the row the add reached, even when the same merge changes another row', async () => {
+  const root = targetsRoot();
+  const { owner } = people(root);
+  const dir = join(root, 'batch', 'tracker-additions');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, '1-acme.tsv'), 'num\tdate\tcompany\trole\tstatus\tscore\tpdf\treport\tnotes\n1\t2026-10-20\tAcme\tAnalyst\tEvaluated\t4.4/5\t❌\t—\tre-scored\n');
+  const { num } = await run(root, sessionPrincipal(owner), 'tracker.add', { company: 'Globex', role: 'Data Analyst', target: 'summer-27' });
+  assert.equal(num, 2);
+  assert.equal(trackerCells(root, 1).Score, '4.4/5', 'the other addition did merge in the same run');
+  assert.deepEqual([trackerCells(root, 1).Target, trackerCells(root, 2).Target], ['—', 'summer-27']);
 });
 
 test('target.mjs sets them from the terminal, through the registry', () => {
