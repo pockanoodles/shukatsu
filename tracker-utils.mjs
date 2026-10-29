@@ -209,26 +209,6 @@ export function resolveWorkspaceRoot(trackerPath) {
 }
 
 /**
- * The valid Target keys for a workspace: the keys of `outcomes:` in
- * `<workspace>/data/targets.yml`. The tracker's Target column holds one of
- * these (or `—` for unknown).
- *
- * @param {string} workspaceRoot - Workspace root (see resolveWorkspaceRoot).
- * @returns {Set<string>} Valid keys, always strings; empty when the file is
- *   missing, unreadable, or has no `outcomes:` map.
- */
-export function loadOutcomeKeys(workspaceRoot) {
-  try {
-    const doc = yaml.load(readFileSync(join(workspaceRoot, 'data', 'targets.yml'), 'utf-8'));
-    const outcomes = doc && typeof doc === 'object' ? doc.outcomes : null;
-    if (!outcomes || typeof outcomes !== 'object' || Array.isArray(outcomes)) return new Set();
-    return new Set(Object.keys(outcomes).map(String));
-  } catch {
-    return new Set();
-  }
-}
-
-/**
  * Workspace root for a script started from `rootDir`, derived from the
  * *uncanonicalized* tracker path. Unlike `resolveWorkspaceRoot(resolveTrackerPath(rootDir))`,
  * this does not realpath the tracker first, so a workspace that only symlinks its

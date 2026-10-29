@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
@@ -34,4 +34,29 @@ export function people(root) {
   const reviewerToken = createInvite(root, { actor: owner, role: 'reviewer', name: 'Mentor' });
   const reviewer = acceptInvite(root, reviewerToken, { login: 'mentor', password: 'yet another secret' });
   return { owner, editor, reviewer };
+}
+
+/** A data root whose tracker has Target and Due columns, and the outcomes they name. */
+export function targetsRoot() {
+  const root = makeRoot();
+  mkdirSync(join(root, 'data'), { recursive: true });
+  writeFileSync(join(root, 'data', 'targets.yml'), 'outcomes:\n  summer-27:\n    label: Summer 2027 internship\n  2028:\n    label: Full-time from 2028\n');
+  writeFileSync(join(root, 'data', 'applications.md'), [
+    '# Applications Tracker', '',
+    '| # | Date | Company | Via | Role | Target | Due | Score | Status | PDF | Report | Notes |',
+    '|---|------|---------|-----|------|--------|-----|-------|--------|-----|--------|-------|',
+    '| 1 | 2026-10-01 | Acme | — | Analyst | — | — | 4.0/5 | Evaluated | ❌ | — |  |',
+    '| 2 | 2026-10-02 | Globex | — | Data Analyst | 2028 | 2026-11-04 | 3.8/5 | Applied | ❌ | — | sent |',
+    '',
+  ].join('\n'));
+  return root;
+}
+
+/** Row `num` of the tracker as { label: cell }. */
+export function trackerCells(root, num) {
+  const lines = read(root, 'data/applications.md').split('\n');
+  const split = (l) => l.trim().slice(1, -1).split('|').map((c) => c.trim());
+  const labels = split(lines.find((l) => /^\|\s*#\s*\|/.test(l)));
+  const row = lines.map(split).find((c) => Number(c[0]) === num);
+  return row ? Object.fromEntries(labels.map((l, i) => [l, row[i]])) : null;
 }

@@ -4,18 +4,20 @@
  *
  *   status change  set-status.mjs --row N (locked, validated, atomic, logged)
  *   new row        batch/tracker-additions/*.tsv + merge-tracker.mjs
+ *   Target, Due    setTargetDue, under the same lock (upstream has no field for them)
  *   inbox item     data/pipeline.md, appended under "## Pending"
  *
  * The tracker is never edited by hand here: those CLIs hold the lock and the
  * states contract (templates/states.yml), and the status log depends on them.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { dirname, join } from 'path';
 import * as yaml from 'js-yaml';
 import { resolveTrackerPath, resolveTrackerPathForWrite } from '../../path-resolver.mjs';
 import { parseTrackerRow, resolveColumns } from '../../tracker-parse.mjs';
+import { acquireTrackerLock, cell, trackerLockDirFor, writeFileAtomic } from '../../tracker-utils.mjs';
 import { ENGINE } from './trace.mjs';
 
 export function readTracker(root) {
@@ -109,6 +111,99 @@ export function addTrackerRow(root, { company, role, status = 'Evaluated', score
   runEngine('reserve-report-num.mjs', ['--release', num], root);
   const landed = readTracker(root).rows.some((r) => r.num === Number(num));
   return { ok: merged.ok && landed, num: landed ? Number(num) : null, out: landed ? merged.out : `the row didn't reach the tracker: ${merged.out.split('\n').slice(-3).join(' ')}` };
+}
+
+// ---------------------------------------------------------------- target and due
+
+/**
+ * Target and Due are this tracker's own columns. Upstream's alias table has no
+ * field for them, so merge-tracker writes `—` into both on a new row and keeps
+ * whatever an existing row holds when it rebuilds it. They are filled here,
+ * after the row exists:
+ *
+ *   Target  a key of `outcomes:` in data/targets.yml: what the application is for
+ *   Due     its deadline, YYYY-MM-DD, optionally followed by a short note
+ *
+ * `—` clears either one.
+ */
+const CLEARED = new Set(['—', '-']);
+
+/** The outcome keys in data/targets.yml; none when the file is missing or empty. */
+export function outcomeKeys(root) {
+  const file = join(root, 'data', 'targets.yml');
+  if (!existsSync(file)) return [];
+  const text = readFileSync(file, 'utf-8');
+  // js-yaml 5 throws on a document with nothing in it; an empty file has no outcomes.
+  if (!text.split('\n').some((l) => l.trim() && !l.trim().startsWith('#'))) return [];
+  const outcomes = yaml.load(text)?.outcomes;
+  return outcomes && typeof outcomes === 'object' && !Array.isArray(outcomes) ? Object.keys(outcomes) : [];
+}
+
+function realDate(text) {
+  const m = text.match(/^(\d{4})-(\d{2})-(\d{2})(?=\s|$)/);
+  if (!m) return false;
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  return d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
+}
+
+/**
+ * The cells to write for `{ target, due }`, checked. Undefined leaves a cell as
+ * it is. Throws before anything is touched, so a caller can check first and
+ * only then add the row.
+ */
+export function targetDueCells(root, { target, due } = {}) {
+  const want = {};
+  if (target !== undefined) {
+    const t = cell(target);
+    const keys = outcomeKeys(root);
+    if (CLEARED.has(t)) want.target = '—';
+    else if (keys.includes(t)) want.target = t;
+    else throw new Error(`"${t}" is not a Target. Targets are the outcomes in data/targets.yml: ${keys.join(', ') || 'none yet'}.`);
+  }
+  if (due !== undefined) {
+    const d = cell(due);
+    if (CLEARED.has(d)) want.due = '—';
+    else if (realDate(d)) want.due = d;
+    else throw new Error(`"${d}" is not a Due date. Write it as YYYY-MM-DD, optionally followed by a short note.`);
+  }
+  if (!Object.keys(want).length) throw new Error('Give a Target, a Due date, or both.');
+  return want;
+}
+
+const cellsOf = (line) => (/^\|.*\|\s*$/.test(line) ? line.trim().slice(1, -1).split('|').map((c) => c.trim()) : null);
+
+/**
+ * Write row `num`'s Target and/or Due, under the lock merge-tracker.mjs and
+ * set-status.mjs take, as one atomic replace. A row whose cells don't line up
+ * with the header (a stray `|` in a cell) is refused rather than shifted.
+ */
+export async function setTargetDue(root, num, values) {
+  const want = targetDueCells(root, values);
+  const path = resolveTrackerPath(root);
+  if (!existsSync(path)) throw new Error('There is no tracker yet.');
+  const lock = await acquireTrackerLock(trackerLockDirFor(path), { tracker: path });
+  try {
+    const lines = readFileSync(path, 'utf-8').split('\n');
+    const h = lines.findIndex((l) => /^\|\s*#\s*\|/.test(l));
+    const labels = h < 0 ? [] : cellsOf(lines[h]).map((c) => c.toLowerCase());
+    const col = { target: labels.indexOf('target'), due: labels.indexOf('due') };
+    for (const k of Object.keys(want)) if (col[k] < 0) throw new Error(`The tracker has no ${k === 'target' ? 'Target' : 'Due'} column.`);
+    const i = h < 0 ? -1 : lines.findIndex((l, j) => j > h + 1 && Number(cellsOf(l)?.[0]) === num);
+    if (i < 0) throw new Error(`The tracker has no row ${num}.`);
+    const cells = cellsOf(lines[i]);
+    if (cells.length !== labels.length) throw new Error(`Row ${num} has ${cells.length} cells but the header has ${labels.length}; fix the row by hand first.`);
+    let changed = false;
+    for (const [k, v] of Object.entries(want)) {
+      if (cells[col[k]] !== v) { cells[col[k]] = v; changed = true; }
+    }
+    if (changed) {
+      lines[i] = `| ${cells.join(' | ')} |`;
+      writeFileAtomic(path, lines.join('\n'), { mode: statSync(path).mode & 0o777 });
+    }
+    return { num, target: col.target < 0 ? null : cells[col.target], due: col.due < 0 ? null : cells[col.due], changed };
+  } finally {
+    lock.release();
+  }
 }
 
 // ---------------------------------------------------------------- pipeline inbox

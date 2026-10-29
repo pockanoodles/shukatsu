@@ -1,7 +1,7 @@
 /**
  * The seam: everything the app takes from the career-ops engine.
  *
- * The app imports nine engine modules and runs six engine CLIs. A career-ops
+ * The app imports ten engine modules and runs six engine CLIs. A career-ops
  * release that changes one of them should fail here, by name, before it breaks
  * a page. SEAM (core/seam.mjs) is the declaration. The first test derives the
  * real list from the app's source and fails when the two disagree, so a new
@@ -12,7 +12,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { dirname, join, relative, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -20,7 +20,7 @@ import { addTrackerRow, canonicalStates, runEngine, setStatus, statusLog } from 
 import { SEAM, seamClosure } from '../core/seam.mjs';
 import { runGate } from '../core/trace.mjs';
 import { upstreamValidate } from '../core/validate.mjs';
-import { makeRoot } from './helpers.mjs';
+import { makeRoot, targetsRoot, trackerCells } from './helpers.mjs';
 
 const APP = dirname(dirname(fileURLToPath(import.meta.url)));
 const ENGINE = dirname(APP);
@@ -185,4 +185,47 @@ test('engine CLIs: the profile validates, and the fact gate blocks a forbidden p
 test('states.yml: the canonical states the tracker ops accept', () => {
   const ids = canonicalStates().map((s) => s.id);
   for (const s of ['evaluated', 'applied', 'interview', 'offer', 'rejected']) assert.ok(ids.map((i) => i.toLowerCase()).includes(s), `${s} is no longer a canonical state`);
+});
+
+test('tracker-utils: the lock the app takes for Target and Due is the one set-status waits on', async () => {
+  const { acquireTrackerLock, trackerLockDirFor } = await import(join(ENGINE, 'tracker-utils.mjs'));
+  const { resolveTrackerPath } = await import(join(ENGINE, 'path-resolver.mjs'));
+  const root = targetsRoot();
+  const path = resolveTrackerPath(root);
+  const lock = await acquireTrackerLock(trackerLockDirFor(path), { tracker: path });
+  try {
+    const r = spawnSync(process.execPath, [join(ENGINE, 'set-status.mjs'), '--row', '1', 'Discarded'], {
+      cwd: ENGINE, encoding: 'utf-8', env: { ...process.env, CAREER_OPS_DATA_DIR: root, CAREER_OPS_TRACKER_LOCK_TIMEOUT_MS: '300' },
+    });
+    assert.equal(r.status, 4, `set-status should time out on the held lock: ${r.stderr}`);
+  } finally {
+    lock.release();
+  }
+  assert.ok(setStatus(root, 1, 'Discarded').ok, 'and goes through once it is released');
+});
+
+test('tracker-utils: writeFileAtomic replaces a file and keeps the mode it is given; cell makes a value table-safe', async () => {
+  const { cell, writeFileAtomic } = await import(join(ENGINE, 'tracker-utils.mjs'));
+  const file = join(makeRoot(), 'table.md');
+  writeFileSync(file, 'old');
+  chmodSync(file, 0o600);
+  writeFileAtomic(file, 'new', { mode: 0o600 });
+  assert.equal(readFileSync(file, 'utf-8'), 'new');
+  assert.equal(statSync(file).mode & 0o777, 0o600);
+  assert.equal(cell(' 2026-11-20 | 19:00\nET '), '2026-11-20 / 19:00 ET');
+});
+
+test('merge-tracker: a new row gets — in a column it has no field for, and a rebuilt row keeps what that column held', () => {
+  const root = targetsRoot();
+  const added = addTrackerRow(root, { company: 'Initech', role: 'Analyst' });
+  assert.ok(added.ok, added.out);
+  assert.deepEqual([trackerCells(root, added.num).Target, trackerCells(root, added.num).Due], ['—', '—']);
+  // A re-evaluation of row 2 with a higher score rebuilds that row.
+  const dir = join(root, 'batch', 'tracker-additions');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, '2-globex.tsv'), 'num\tdate\tcompany\trole\tstatus\tscore\tpdf\treport\tnotes\n2\t2026-10-20\tGlobex\tData Analyst\tEvaluated\t4.5/5\t❌\t—\tre-scored\n');
+  assert.ok(runEngine('merge-tracker.mjs', [], root).ok);
+  const row = trackerCells(root, 2);
+  assert.equal(row.Score, '4.5/5', 'the row was rebuilt');
+  assert.deepEqual([row.Target, row.Due], ['2028', '2026-11-04'], 'Target and Due survive the rebuild');
 });

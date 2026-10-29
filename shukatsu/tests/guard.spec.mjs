@@ -14,7 +14,7 @@ const APP = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 // Engine functions that write. Calling one of these from outside core/ is going around the registry.
 const WRITERS = [
-  'decide', 'reopen', 'propose', 'withdraw', 'revise', 'addComment', 'resolveComment', 'setStatus', 'addTrackerRow', 'appendPipeline',
+  'decide', 'reopen', 'propose', 'withdraw', 'revise', 'addComment', 'resolveComment', 'setStatus', 'addTrackerRow', 'setTargetDue', 'appendPipeline',
   'createPacket', 'setBullet', 'changeSelection', 'checkPacket', 'setCover', 'setAnswers', 'requestReview', 'withdrawReview', 'markReady',
   'markSent', 'closePacket', 'setCandidateJa', 'updateUser', 'disableUser', 'enableUser', 'revokeInvite', 'setPassword', 'removePasskey',
   'endSessionByHash', 'logActivity', 'issueToken', 'revokeToken', 'createAgent', 'disableAgent', 'createEvent', 'updateEvent', 'cancelEvent',
@@ -52,7 +52,7 @@ test('nothing in the app writes around the operations registry', () => {
 });
 
 test('the writing CLIs go through the registry too', () => {
-  for (const cli of ['review.mjs', 'people.mjs']) {
+  for (const cli of ['review.mjs', 'people.mjs', 'target.mjs']) {
     const text = readFileSync(join(APP, cli), 'utf-8');
     assert.match(text, /callOp\(/, `${cli} should call operations through core/client.mjs`);
     const direct = text.split('\n').filter((l) => CALL.test(l) && !/createInvite\(root, \{ actor: null, role: 'owner'/.test(l));

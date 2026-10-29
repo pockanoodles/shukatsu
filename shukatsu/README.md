@@ -136,6 +136,7 @@ questions:            # a recurring question, in its exact wording
 | `node shukatsu/master.mjs validate \| pending \| render \| select \| finalize \| trace \| sent \| used` | The master record (see its header) |
 | `node shukatsu/review.mjs [show\|accept\|narrative\|unsure\|reject\|reopen\|decided] <key>` | The review queue from the terminal |
 | `node shukatsu/people.mjs init \| invite \| reset \| list \| disable` | Who can use this install |
+| `node shukatsu/target.mjs <row#> [--target KEY] [--due YYYY-MM-DD]` | Fill a row's Target (an outcome in `data/targets.yml`) and Due, which merge-tracker leaves as `—` |
 | `node shukatsu/digest.mjs [--lang ja] [--days 14]` | The weekly digest as text for LINE or email |
 | `node shukatsu/bullet-lint.mjs`, `audit-materials.mjs`, `char-count.mjs` | The writing gates |
 

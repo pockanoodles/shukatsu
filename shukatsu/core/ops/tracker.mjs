@@ -10,7 +10,7 @@
 
 import { spawnSync } from 'child_process';
 import { join } from 'path';
-import { addTrackerRow, canonicalStates, readTracker, setStatus, statusLog } from '../tracker.mjs';
+import { addTrackerRow, canonicalStates, readTracker, setStatus, setTargetDue, statusLog, targetDueCells } from '../tracker.mjs';
 import { ENGINE } from '../trace.mjs';
 import { S } from './schema.mjs';
 
@@ -19,6 +19,10 @@ const STATES = canonicalStates().map((s) => s.label);
 /** The permission a move to this state needs: a stamp for the candidate's own act, tracker.write for the rest. */
 const OWN_ACT = new Set(['Applied', 'Hired']);
 const toState = (state) => (OWN_ACT.has(state) ? 'tracker.decide' : 'tracker.write');
+
+// Target and Due: blank leaves the cell as it is, — clears it.
+const TARGET = S.str('An outcome key from data/targets.yml (e.g. summer-27), or — to clear.', { maxLength: 40, default: '' });
+const DUE = S.str('The deadline, YYYY-MM-DD, optionally followed by a short note; — to clear.', { maxLength: 80, default: '' });
 
 const ROW = S.obj({
   num: S.int(), date: S.nullable(S.str()), company: S.str(), role: S.str(), score: S.nullable(S.str()), status: S.str(),
@@ -95,13 +99,35 @@ export default [
       status: S.enum(STATES, null, { default: 'Evaluated' }),
       url: S.str(null, { maxLength: 2000, default: '' }),
       notes: S.str(null, { maxLength: 300, default: '' }),
+      target: TARGET,
+      due: DUE,
     }, ['company', 'role']),
     output: S.obj({ num: S.int() }, ['num']),
     activity: (input, out) => ({ verb: 'tracker.added', subject: `app:${out.num}`, detail: { company: input.company, role: input.role } }),
-    run: ({ root, input }) => {
-      const r = addTrackerRow(root, { ...input, score: 'N/A' });
+    run: async ({ root, input }) => {
+      const { target, due, ...row } = input;
+      const cells = target || due ? { target: target || undefined, due: due || undefined } : null;
+      // Checked before the row goes in, so a bad Target never leaves a row without one.
+      if (cells) targetDueCells(root, cells);
+      const r = addTrackerRow(root, { ...row, score: 'N/A' });
       if (!r.ok) throw new Error(r.out);
+      if (cells) await setTargetDue(root, r.num, cells);
       return { num: r.num };
     },
+  },
+  {
+    name: 'tracker.setTargetDue',
+    kind: 'command',
+    summary: 'Set an application\'s Target (which outcome in data/targets.yml it is for) and/or its Due date (the deadline). These are this tracker\'s own columns: merge-tracker.mjs leaves them as — on a new row, so fill them here once the row exists. — clears one. From the app and the terminal (shukatsu/target.mjs); an agent sets both when it adds the row.',
+    permission: 'tracker.write',
+    agent: false,
+    input: S.obj({
+      num: S.tracker(),
+      target: TARGET,
+      due: DUE,
+    }, ['num']),
+    output: S.obj({ num: S.int(), target: S.nullable(S.str()), due: S.nullable(S.str()), changed: S.bool() }, ['num', 'target', 'due', 'changed']),
+    activity: (input) => ({ verb: 'tracker.target', subject: `app:${input.num}`, detail: { target: input.target || null, due: input.due || null } }),
+    run: ({ root, input }) => setTargetDue(root, input.num, { target: input.target || undefined, due: input.due || undefined }),
   },
 ];

@@ -18,6 +18,7 @@ export const SEAM = {
     'plugins/_net.mjs': ['resolveAndValidate'],
     'reply-matcher.mjs': ['checkCompanyMatch', 'classifyReply', 'getAppDomains', 'matchCandidates', 'normalizeStr'],
     'tracker-parse.mjs': ['parseTrackerRow', 'resolveColumns'],
+    'tracker-utils.mjs': ['acquireTrackerLock', 'cell', 'trackerLockDirFor', 'writeFileAtomic'],
     'url-key.mjs': ['normalizeUrl'],
   },
   // Engine files the app runs or reads by path, through runEngine, runGate or join(ENGINE, ...).

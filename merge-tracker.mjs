@@ -39,7 +39,7 @@ import { atsVendorOf } from './ats-vendor.mjs';
 // for the same reason normalizeCompany lives in tracker-utils: a second private
 // list is how company identity drifts between scripts (#2445, #3665).
 import { LEGAL_SUFFIXES, GENERIC_DESCRIPTORS } from './invite-match.mjs';
-import { resolveTrackerPath, resolveWorkspaceRoot, resolvePdfIndexPath, trackerLockDirFor, acquireTrackerLock, writeFileAtomic, normalizeCompany, cell, loadCanonicalStates, loadOutcomeKeys, findDeadReportLink, rebuildRow } from './tracker-utils.mjs';
+import { resolveTrackerPath, resolveWorkspaceRoot, resolvePdfIndexPath, trackerLockDirFor, acquireTrackerLock, writeFileAtomic, normalizeCompany, cell, loadCanonicalStates, findDeadReportLink, rebuildRow } from './tracker-utils.mjs';
 // Canonical posting-URL key. Kept in its own module so scan.mjs / scan-history
 // can adopt the same key later without the definitions drifting.
 import { normalizeUrl, isAggregatorUrl, aggregatorPostingId } from './url-key.mjs';
@@ -885,8 +885,6 @@ export async function mergeTracker(options = {}) {
     put('company', cell(o.company));
     put('via', cell(o.via) || '—');
     put('role', cell(o.role));
-    put('target', cell(o.target) || '—');
-    put('due', cell(o.due) || '—');
     put('location', cell(o.location) || '—');
     put('score', o.score);
     put('status', o.status);
@@ -921,8 +919,6 @@ export async function mergeTracker(options = {}) {
     const labels = ['#', 'Date', 'Company'];
     if (COLMAP.via != null) labels.push('Via');
     labels.push('Role');
-    if (COLMAP.target != null) labels.push('Target');
-    if (COLMAP.due != null) labels.push('Due');
     if (COLMAP.location != null) labels.push('Location');
     labels.push('Score', 'Status', 'PDF', 'Report', 'Notes');
     return {
@@ -954,8 +950,6 @@ export async function mergeTracker(options = {}) {
       via: COLMAP.via != null ? parts[COLMAP.via] : '',
       role: parts[COLMAP.role],
       location: COLMAP.location != null ? parts[COLMAP.location] : '',
-      target: COLMAP.target != null ? (parts[COLMAP.target] ?? '') : '',
-      due: COLMAP.due != null ? (parts[COLMAP.due] ?? '') : '',
       score: parts[COLMAP.score],
       status: parts[COLMAP.status],
       // Null-safe: a header without dedicated PDF/Report columns leaves those
@@ -1062,26 +1056,6 @@ export async function mergeTracker(options = {}) {
     if (!/^0*[1-9]\d*$/.test(t)) return null;
     const n = Number(t);
     return Number.isSafeInteger(n) ? n : null;
-  }
-
-  // Valid Target keys come from `outcomes:` in <workspace>/data/targets.yml.
-  // Loaded lazily, once per run; an unreadable file means no key is valid.
-  let outcomeKeys = null;
-  /**
-   * Validate an addition's Target cell against the workspace's outcome keys.
-   *
-   * @param {string} value - Target cell from the addition ('' when absent).
-   * @param {string} filename - Source filename used in warning messages.
-   * @returns {string} The key, or '' (rendered as —) when absent or unknown.
-   */
-  function validTarget(value, filename) {
-    const key = String(value ?? '').trim();
-    if (!key) return '';
-    outcomeKeys ??= loadOutcomeKeys(resolveWorkspaceRoot(APPS_FILE));
-    if (outcomeKeys.has(key)) return key;
-    const known = [...outcomeKeys].join(', ') || 'none — data/targets.yml has no outcomes';
-    console.warn(`⚠️  ${filename}: unknown Target "${key}" (valid: ${known}) — writing —`);
-    return '';
   }
 
   /**
@@ -1213,8 +1187,6 @@ export async function mergeTracker(options = {}) {
       via: optional('via').replace(/^via=/i, '').trim(),
       location: optional('location'),
       url: optional('url'),
-      target: validTarget(optional('target'), filename),
-      due: optional('due'),
     };
   }
 
@@ -2178,9 +2150,6 @@ export async function mergeTracker(options = {}) {
           role: (reportNumMatched || dupReason === 'url') ? addition.role : duplicate.role,
           via: addition.via || duplicate.via || '—',
           location: addition.location || duplicate.location || '—',
-          // A Target/Due the addition states wins; otherwise the row keeps its own.
-          target: addition.target || duplicate.target || '—',
-          due: addition.due || duplicate.due || '—',
           score: addition.score, status: duplicate.status, pdf,
           report: addition.report,
           notes: mergeNotes(duplicate.notes, addition, oldScore, newScore, supersededNote),
@@ -2243,8 +2212,6 @@ export async function mergeTracker(options = {}) {
           num: entryNum, date: addition.date, company: addition.company, role: addition.role,
           via: addition.via || '—',
           location: addition.location || '—',
-          target: addition.target || '—',
-          due: addition.due || '—',
           score: addition.score, status: addition.status, pdf,
           report: addition.report, notes: addition.notes,
           // Write the key on the way in. Backfill is the one-time EXPAND phase for

@@ -94,7 +94,7 @@ from the operation and can't drift from it.
 | Record | `record.get`, `record.search`, `record.trace` | `profile.propose` |
 | Review | `review.list`, `review.get`, `proposal.mine` | `review.decide` (stamp), `review.reopen` (stamp), `proposal.update`, `comment.add` |
 | Postings | `pipeline.list`, `posting.get` | `posting.add`, `posting.capture`, `evaluation.file` |
-| Tracker | `tracker.list`, `company.history` | `tracker.setStatus`, `tracker.add` (each a stamp when the row goes to Applied or Hired) |
+| Tracker | `tracker.list`, `company.history` | `tracker.setStatus`, `tracker.add` (each a stamp when the row goes to Applied or Hired), `tracker.setTargetDue` (app and terminal) |
 | Packets | `packet.list`, `packet.get` | `packet.create`, `packet.select`, `packet.edit`, `packet.check`, `packet.requestReview`, `packet.close`, `packet.ready` (stamp), `packet.markSent` (stamp), `candidate.setJa` (stamp) |
 | Campaigns | `campaign.list`, `campaign.get` | `campaign.create`, `campaign.update`, `campaign.link`, `campaign.schedule` |
 | Schedule | `calendar.upcoming`, `calendar.conflicts` | `event.create`, `event.update` |
