@@ -228,4 +228,7 @@ test('merge-tracker: a new row gets — in a column it has no field for, and a r
   const row = trackerCells(root, 2);
   assert.equal(row.Score, '4.5/5', 'the row was rebuilt');
   assert.deepEqual([row.Target, row.Due], ['2028', '2026-11-04'], 'Target and Due survive the rebuild');
+  // An unscored add of a row already scored is skipped, and the skip names the row (addTrackerRow reads it).
+  writeFileSync(join(dir, '9-globex.tsv'), 'num\tdate\tcompany\trole\tstatus\tscore\tpdf\treport\tnotes\n9\t2026-10-21\tGlobex\tData Analyst\tEvaluated\tN/A\t❌\t—\t\n');
+  assert.match(runEngine('merge-tracker.mjs', [], root).out, /Skipping 9-globex\.tsv: re-eval of #2 /);
 });

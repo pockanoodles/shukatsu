@@ -94,7 +94,9 @@ export function ensureTracker(root) {
  * batch/tracker-additions/, then merge-tracker.mjs. `num` comes from
  * reserve-report-num.mjs so it can never collide with a parallel evaluator.
  * Success means the row is in the tracker afterwards, not that the merge
- * exited 0.
+ * exited 0. A company+role already tracked keeps its own number, whether the
+ * merge updates it or skips it (an unscored add never overwrites a score), so
+ * that is the number returned.
  */
 export function addTrackerRow(root, { company, role, status = 'Evaluated', score = 'N/A', notes = '', url = '' }) {
   ensureTracker(root);
@@ -106,11 +108,17 @@ export function addTrackerRow(root, { company, role, status = 'Evaluated', score
   const slug = String(company).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'company';
   const header = ['num', 'date', 'company', 'role', 'status', 'score', 'pdf', 'report', 'notes', 'url'];
   const row = [num, new Date().toISOString().slice(0, 10), company, role, status, score, '❌', '—', notes, url].map(tsvCell);
-  writeFileSync(join(dir, `${num}-${slug}.tsv`), `${header.join('\t')}\n${row.join('\t')}\n`);
+  const before = new Map(readTracker(root).rows.map((r) => [r.num, JSON.stringify(r)]));
+  const file = `${num}-${slug}.tsv`;
+  writeFileSync(join(dir, file), `${header.join('\t')}\n${row.join('\t')}\n`);
   const merged = runEngine('merge-tracker.mjs', [], root);
   runEngine('reserve-report-num.mjs', ['--release', num], root);
-  const landed = readTracker(root).rows.some((r) => r.num === Number(num));
-  return { ok: merged.ok && landed, num: landed ? Number(num) : null, out: landed ? merged.out : `the row didn't reach the tracker: ${merged.out.split('\n').slice(-3).join(' ')}` };
+  const after = readTracker(root).rows;
+  const skippedAs = Number((merged.out.match(new RegExp(`Skipping ${file.replace(/\./g, '\\.')}: re-eval of #(\\d+) `)) || [])[1]);
+  const landed = after.find((r) => r.num === Number(num))
+    || after.find((r) => before.has(r.num) && before.get(r.num) !== JSON.stringify(r))
+    || after.find((r) => r.num === skippedAs);
+  return { ok: merged.ok && !!landed, num: landed?.num ?? null, out: landed ? merged.out : `the row didn't reach the tracker: ${merged.out.split('\n').slice(-3).join(' ')}` };
 }
 
 // ---------------------------------------------------------------- target and due
@@ -146,10 +154,21 @@ function realDate(text) {
   return d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
 }
 
+/** The table's header row and its labels, lowercased (the first cell, before the opening pipe, is ''). */
+function headerOf(lines) {
+  const h = lines.findIndex((l) => l.trim().startsWith('|'));
+  return { h, labels: h < 0 ? [] : cellsOf(lines[h]).map((c) => c.toLowerCase()) };
+}
+
+// Split like parseTrackerRow does: parts[0] is the empty cell before the opening pipe.
+const cellsOf = (line) => line.trimEnd().replace(/\|$/, '').split('|').map((c) => c.trim());
+const LABEL = { target: 'Target', due: 'Due' };
+
 /**
- * The cells to write for `{ target, due }`, checked. Undefined leaves a cell as
- * it is. Throws before anything is touched, so a caller can check first and
- * only then add the row.
+ * The cells to write for `{ target, due }`, checked against data/targets.yml
+ * and the tracker's columns (the stock layout ensureTracker makes when there
+ * is none yet has neither). Undefined leaves a cell as it is. Throws before
+ * anything is touched, so a caller can check first and only then add the row.
  */
 export function targetDueCells(root, { target, due } = {}) {
   const want = {};
@@ -167,15 +186,18 @@ export function targetDueCells(root, { target, due } = {}) {
     else throw new Error(`"${d}" is not a Due date. Write it as YYYY-MM-DD, optionally followed by a short note.`);
   }
   if (!Object.keys(want).length) throw new Error('Give a Target, a Due date, or both.');
+  const path = resolveTrackerPath(root);
+  const { labels } = headerOf((existsSync(path) ? readFileSync(path, 'utf-8') : TRACKER_HEADER).split('\n'));
+  for (const k of Object.keys(want)) if (!labels.includes(k)) throw new Error(`The tracker has no ${LABEL[k]} column.`);
   return want;
 }
 
-const cellsOf = (line) => (/^\|.*\|\s*$/.test(line) ? line.trim().slice(1, -1).split('|').map((c) => c.trim()) : null);
-
 /**
  * Write row `num`'s Target and/or Due, under the lock merge-tracker.mjs and
- * set-status.mjs take, as one atomic replace. A row whose cells don't line up
- * with the header (a stray `|` in a cell) is refused rather than shifted.
+ * set-status.mjs take, as one atomic replace. The row is found the way
+ * upstream reads it (resolveColumns, so `#` needn't come first); one whose
+ * cells don't line up with the header (a stray `|` in a cell) is refused
+ * rather than shifted.
  */
 export async function setTargetDue(root, num, values) {
   const want = targetDueCells(root, values);
@@ -184,20 +206,20 @@ export async function setTargetDue(root, num, values) {
   const lock = await acquireTrackerLock(trackerLockDirFor(path), { tracker: path });
   try {
     const lines = readFileSync(path, 'utf-8').split('\n');
-    const h = lines.findIndex((l) => /^\|\s*#\s*\|/.test(l));
-    const labels = h < 0 ? [] : cellsOf(lines[h]).map((c) => c.toLowerCase());
+    const { h, labels } = headerOf(lines);
     const col = { target: labels.indexOf('target'), due: labels.indexOf('due') };
-    for (const k of Object.keys(want)) if (col[k] < 0) throw new Error(`The tracker has no ${k === 'target' ? 'Target' : 'Due'} column.`);
-    const i = h < 0 ? -1 : lines.findIndex((l, j) => j > h + 1 && Number(cellsOf(l)?.[0]) === num);
+    for (const k of Object.keys(want)) if (col[k] < 0) throw new Error(`The tracker has no ${LABEL[k]} column.`);
+    const colmap = resolveColumns(lines);
+    const i = lines.findIndex((l, j) => j > h && parseTrackerRow(l, colmap)?.num === num);
     if (i < 0) throw new Error(`The tracker has no row ${num}.`);
     const cells = cellsOf(lines[i]);
-    if (cells.length !== labels.length) throw new Error(`Row ${num} has ${cells.length} cells but the header has ${labels.length}; fix the row by hand first.`);
+    if (cells.length !== labels.length) throw new Error(`Row ${num} has ${cells.length - 1} cells but the header has ${labels.length - 1}; fix the row by hand first.`);
     let changed = false;
     for (const [k, v] of Object.entries(want)) {
       if (cells[col[k]] !== v) { cells[col[k]] = v; changed = true; }
     }
     if (changed) {
-      lines[i] = `| ${cells.join(' | ')} |`;
+      lines[i] = `| ${cells.slice(1).join(' | ')} |`;
       writeFileAtomic(path, lines.join('\n'), { mode: statSync(path).mode & 0o777 });
     }
     return { num, target: col.target < 0 ? null : cells[col.target], due: col.due < 0 ? null : cells[col.due], changed };

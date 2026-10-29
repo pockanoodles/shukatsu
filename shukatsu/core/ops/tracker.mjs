@@ -107,7 +107,7 @@ export default [
     run: async ({ root, input }) => {
       const { target, due, ...row } = input;
       const cells = target || due ? { target: target || undefined, due: due || undefined } : null;
-      // Checked before the row goes in, so a bad Target never leaves a row without one.
+      // Checked before the row goes in (values and columns), so a refusal never leaves a row behind.
       if (cells) targetDueCells(root, cells);
       const r = addTrackerRow(root, { ...row, score: 'N/A' });
       if (!r.ok) throw new Error(r.out);

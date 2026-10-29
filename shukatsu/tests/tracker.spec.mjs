@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, writeFileSync } from 'fs';
+import { existsSync, rmSync, writeFileSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { setTargetDue } from '../core/tracker.mjs';
 import { run, sessionPrincipal, tokenPrincipal } from '../core/ops/index.mjs';
 import { createAgent, issueToken } from '../core/people.mjs';
-import { people, read, targetsRoot, trackerCells } from './helpers.mjs';
+import { makeRoot, people, read, targetsRoot, trackerCells } from './helpers.mjs';
 
 /**
  * Target and Due: the tracker columns the fork fills itself, since upstream's
@@ -77,6 +77,20 @@ test('a tracker without the column, a missing row, and a row that does not line 
   assert.equal(tracker(root), plain);
 });
 
+test('the row is found by its # wherever that column sits', async () => {
+  const root = targetsRoot();
+  writeFileSync(join(root, 'data', 'applications.md'), '# Applications Tracker\n\n| Company | # | Date | Role | Score | Status | PDF | Report | Notes | Target | Due |\n|---|---|---|---|---|---|---|---|---|---|---|\n| Acme | 1 | 2026-10-01 | Analyst | 4.0/5 | Evaluated | ❌ | — |  | — | — |\n');
+  await setTargetDue(root, 1, { target: 'summer-27', due: '2026-11-20' });
+  assert.equal(tracker(root).split('\n')[4], '| Acme | 1 | 2026-10-01 | Analyst | 4.0/5 | Evaluated | ❌ | — |  | summer-27 | 2026-11-20 |');
+});
+
+test('a Due on a tracker with no Due column is refused before any row goes in', async () => {
+  const root = makeRoot();
+  const { owner } = people(root);
+  await refuses(run(root, sessionPrincipal(owner), 'tracker.add', { company: 'Initech', role: 'Analyst', due: '2026-12-01' }), /no Due column/);
+  assert.equal(existsSync(join(root, 'data', 'applications.md')), false, 'not even the empty tracker');
+});
+
 test('an agent can add a row with its Target and Due, and a bad Target adds no row', async () => {
   const root = targetsRoot();
   const { owner } = people(root);
@@ -91,6 +105,15 @@ test('an agent can add a row with its Target and Due, and a bad Target adds no r
   await assert.rejects(run(root, agentP, 'tracker.setTargetDue', { num: 1, target: '2028' }), 'filling one in later is the candidate\'s, from the app or the terminal');
   const later = await run(root, sessionPrincipal(owner), 'tracker.setTargetDue', { num: 1, target: '2028' });
   assert.deepEqual([later.target, later.changed], ['2028', true]);
+});
+
+test('adding a company+role already tracked updates that row, and its Target lands there', async () => {
+  const root = targetsRoot();
+  const { owner } = people(root);
+  const { num } = await run(root, sessionPrincipal(owner), 'tracker.add', { company: 'Globex', role: 'Data Analyst', target: 'summer-27' });
+  assert.equal(num, 2, 'the existing row, not the reserved number');
+  assert.equal(trackerCells(root, 2).Target, 'summer-27');
+  assert.equal(tracker(root).split('\n').filter((l) => l.includes('| Globex |')).length, 1, 'still one Globex row');
 });
 
 test('target.mjs sets them from the terminal, through the registry', () => {
