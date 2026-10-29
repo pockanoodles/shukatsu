@@ -11,6 +11,7 @@ import { Findings, Flash, Seal, Stamp } from "@/components/marks";
 import { Comments } from "@/components/comments";
 import { checkPacketAction, packetStepAction, selectionAction } from "@/app/actions/work";
 import { AnswersEditor, BulletEditor, CoverForm } from "../forms";
+import { AskForm, type Askable } from "@/components/ask";
 
 export const metadata: Metadata = { title: "Packet" };
 
@@ -32,7 +33,7 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
   const { t } = translator(user.lang);
   const { id: raw } = await params;
   const sp = await searchParams;
-  const { root, packets, llm } = await engine();
+  const { root, packets, llm, people, asks } = await engine();
   const pk: Packet | null = packets.getPacket(root, Number(raw), user);
   if (!pk) notFound();
   const owner = user.role === "owner";
@@ -47,11 +48,19 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
     suggestions: t("packets.suggestions"), use: t("packets.use"), dropped: t("packets.suggestDropped"), cancel: t("common.cancel"),
     chars: t("common.chars"), pass: t("review.rules.pass"), figures: t("record.figuresChanged"), working: t("common.loading"),
   };
+  // Who the candidate can ask to look at an answer, and at a fact's Japanese (an editor, since that reply is a proposal).
+  const open = !["sent", "closed"].includes(pk.status);
+  const askable = (kind: string): Askable[] => (owner && open ? people.listUsers(root).filter((u: unknown) => asks.canBeAsked(u, kind)).map((u: Askable) => ({ id: u.id, name: u.name })) : []);
+  const helpers = askable("answer");
+  const editors = askable("ja");
+  const askedOf = (subject: string): string[] => asks.asksAbout(root, subject).map((k: { asked_of_name: string }) => k.asked_of_name);
+  const al = { ask: t("asks.ask"), who: t("asks.who"), note: t("asks.note"), notePlaceholder: t("asks.notePlaceholder"), send: t("asks.send"), asked: t("asks.asked"), nobody: t("asks.nobody") };
   const done = sp.done ? ({ sent: t("packets.sentDone"), ready: t("packets.markReady"), requestReview: t("packets.requestReview"), withdraw: t("packets.withdraw"), close: t("packets.closePacket") } as Record<string, string>)[sp.done] : null;
   return (
     <div>
       {sp.error && <Flash tone="shu">{sp.error}</Flash>}
       {done && <Flash>{done}</Flash>}
+      {sp.asked && <Flash>{t("asks.sent")}</Flash>}
       {pk.status === "changes_requested" && pk.changesNote && (
         <div className="border-b-2 border-shu bg-shu-soft px-4 py-4 sm:px-10">
           <span className="label text-shu">{t("packets.changesNote")}</span>
@@ -95,6 +104,7 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
                     <span className="min-w-0"><span className="code mr-2 text-[11.5px] text-ink-3">{m.id}</span><span className="text-[14px]">{m.text}</span></span>
                     {m.review ? <Link href={`/review?item=${encodeURIComponent(m.review)}`} className="btn btn-ghost btn-sm self-center">{t("packets.missingJaReview")}</Link>
                       : <Link href={`/record#${m.id}`} className="btn btn-ghost btn-sm self-center">{t("packets.missingJaPropose")}</Link>}
+                    {owner && open && <div className="sm:col-span-2"><AskForm subject={`fact:${m.id}/ja`} people={editors} asked={askedOf(`fact:${m.id}/ja`)} path={`/packets/${pk.id}`} l={{ ...al, nobody: t("asks.nobodyJa") }} /></div>}
                   </li>
                 ))}
               </ul>
@@ -208,6 +218,16 @@ export default async function PacketPage({ params, searchParams }: { params: Pro
               removeAnswer: t("packets.removeAnswer"), saveAnswers: t("packets.saveAnswers"), addAnswer: t("packets.addAnswer"), used: t("packets.used"),
               over: t("packets.over"), underFilled: t("packets.underFilled"), figureFlag: t("packets.figureFlag"), working: t("common.loading"),
             }} />
+            {owner && open && pk.answers.length > 0 && (
+              <ol className="grid border-t-2 rule">
+                {pk.answers.map((a, i) => (
+                  <li key={i} className="grid gap-2 border-b hair py-3">
+                    <span className="text-[14px]"><span className="num mr-2 text-ink-3">{i + 1}</span>{a.question || "–"}</span>
+                    <AskForm subject={`packet:${pk.id}#a${i + 1}`} people={helpers} asked={askedOf(`packet:${pk.id}#a${i + 1}`)} path={`/packets/${pk.id}#answers-h`} l={al} />
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
 
           <section aria-label={t("packets.cover")} className="grid gap-4 border-b-2 rule px-4 py-6 sm:px-8">

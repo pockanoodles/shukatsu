@@ -19,6 +19,7 @@ const WRITERS = [
   'markSent', 'closePacket', 'setCandidateJa', 'updateUser', 'disableUser', 'enableUser', 'revokeInvite', 'setPassword', 'removePasskey',
   'endSessionByHash', 'logActivity', 'issueToken', 'revokeToken', 'createAgent', 'disableAgent', 'createEvent', 'updateEvent', 'cancelEvent',
   'markDone', 'createCampaign', 'updateCampaign', 'linkRows', 'submitEvaluation', 'capture', 'editProfile', 'suggestRewordings',
+  'createAsk', 'replyAsk', 'closeAsk', 'cancelAsk', 'settle', 'markNudged',
 ];
 const CALL = new RegExp(`\\.(${WRITERS.join('|')})\\(`);
 const SQL_WRITE = /\.prepare\(\s*[`'"]\s*(INSERT|UPDATE|DELETE)/i;

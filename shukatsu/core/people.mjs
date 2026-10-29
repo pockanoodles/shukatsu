@@ -64,6 +64,8 @@ const MATRIX = {
   'answers.manage': ['owner'],
   // Linking your own chat account for the digest. People only: an agent has no phone to link.
   'notify.self': ['owner', 'editor', 'reviewer', 'viewer'],
+  // Asking one person to look at one item (core/asks.mjs), and using or setting aside what they send back.
+  'ask.create': ['owner'],
   // Stamps: owner only, and never an agent whatever this table says (see can()).
   'review.decide': ['owner'],
   'packet.send': ['owner'],

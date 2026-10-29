@@ -8,11 +8,13 @@ import oauthEn from "./oauth.en";
 import oauthJa from "./oauth.ja";
 import answersEn from "./answers.en";
 import answersJa from "./answers.ja";
+import asksEn from "./asks.en";
+import asksJa from "./asks.ja";
 
 export type Lang = "en" | "ja";
 // The original dictionary plus one per area of the headless system, each owning its own top-level keys.
-const en = { ...base, ...sysEn, ...connectorsEn, ...oauthEn, ...answersEn } as Dict & typeof sysEn;
-const ja = { ...baseJa, ...sysJa, ...connectorsJa, ...oauthJa, ...answersJa };
+const en = { ...base, ...sysEn, ...connectorsEn, ...oauthEn, ...answersEn, ...asksEn } as Dict & typeof sysEn;
+const ja = { ...baseJa, ...sysJa, ...connectorsJa, ...oauthJa, ...answersJa, ...asksJa };
 export const DICTS: Record<Lang, unknown> = { en, ja };
 
 type Vars = Record<string, string | number | null | undefined>;

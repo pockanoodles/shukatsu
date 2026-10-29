@@ -262,6 +262,8 @@ const en = {
       "proposal.created.fact.new": "{actor} suggested a new fact ({subject})", "proposal.created.fact.edit": "{actor} suggested rewording {subject}",
       "proposal.created.fact.retire": "{actor} suggested retiring {subject}", "proposal.created.entity.new": "{actor} suggested a new role ({subject})",
       "review.reopened": "{actor} put {subject} back in review", "proposal.created": "{actor} suggested a change ({subject})",
+      "ask.created": "{actor} asked someone to look at {subject}", "ask.answered": "{actor} answered an ask about {subject}",
+      "ask.closed": "{actor} closed an ask about {subject}", "ask.cancelled": "{actor} withdrew an ask about {subject}",
       "proposal.withdrawn": "{actor} withdrew {subject}", "proposal.revised": "{actor} revised {subject}",
       "comment.added": "{actor} commented on {subject}", "packet.created": "{actor} started a packet ({subject})",
       "packet.reviewRequested": "{actor} sent {subject} for review", "packet.ready": "{actor} marked {subject} ready",

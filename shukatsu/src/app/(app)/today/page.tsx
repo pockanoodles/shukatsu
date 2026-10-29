@@ -15,12 +15,32 @@ export const metadata: Metadata = { title: "Today" };
 
 const ACTIVE = new Set(["applied", "responded", "interview", "offer"]);
 
+type LiveAsk = { id: number; item: "answer" | "ja"; status: string; asked_by_name: string; asked_of_name: string; created_at: string; base: { question?: string; heading?: string | null; en?: string } };
+
+/** Asks still in play, as links to their page: what was asked of a helper, or what the candidate asked and who answered. */
+function Asks({ list, owner, t, lang }: { list: LiveAsk[]; owner: boolean; t: (k: string, v?: Record<string, string | number>) => string; lang: "en" | "ja" }) {
+  return (
+    <ul className="grid">
+      {list.map((k) => (
+        <li key={k.id}>
+          <Link href={`/ask/${k.id}`} className="grid gap-1 border-t hair py-3 hover:bg-paper-2">
+            <span className="clamp-2 text-[15.5px]">{k.item === "answer" ? k.base.question : k.base.heading || k.base.en}</span>
+            <span className={`label ${k.status === "answered" && owner ? "text-shu" : "text-ink-2"}`}>
+              {owner ? `${k.asked_of_name} · ${t(`asks.state.${k.status}`)}` : `${t("asks.from", { name: k.asked_by_name })} · ${relative(k.created_at, lang)}`} →
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default async function TodayPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const user = await requireUser();
   const { t } = translator(user.lang);
   const upcoming = allowed(user, "calendar.read") ? (await read<{ events: CalEvent[] }>("calendar.upcoming", { days: 21 })).events.slice(0, 6) : [];
   const sp = await searchParams;
-  const { root, packets, proposals, review, store, tracker } = await engine();
+  const { root, packets, proposals, review, store, tracker, asks } = await engine();
   const owner = user.role === "owner";
   const sum = allowed(user, "view.review") ? review.summary(root) : null;
   const pks: { status: string }[] = packets.listPackets(root);
@@ -33,6 +53,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   type Mine = { id: number; kind: string; status: string; created_at: string; decision_note: string | null; payload: { text?: string; url?: string; label?: string } };
   const mine: Mine[] = owner || !allowed(user, "propose.profile") && !allowed(user, "suggest.posting") ? [] : proposals.proposalsBy(root, user.id).slice(0, 8);
   const mineLabels: Record<string, string> = review.labelsFor(root, mine.map((p) => `proposal:${p.id}`));
+  // Answered first: for the candidate that is what needs them, for a helper it is already done.
+  const liveAsks: LiveAsk[] = sees ? (asks.listAsks(root, user) as LiveAsk[]).filter((k) => k.status === "open" || k.status === "answered")
+    .sort((a, b) => (owner ? Number(b.status === "answered") - Number(a.status === "answered") : Number(a.status === "answered") - Number(b.status === "answered"))) : [];
 
   return (
     <div>
@@ -45,6 +68,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             <p className="mt-4 text-[17px] text-ink-2">{t("today.hello", { name: user.name.split(" ")[0] })}</p>
           </div>
           {owner && sum ? (
+            <div className="grid gap-4">
             <Link href="/review" className="group grid gap-4 border-2 rule p-5 hover:bg-paper-2">
               <span className="label text-ink-2">{t("today.waitingTitle")}</span>
               <span className="flex items-end justify-between gap-4">
@@ -53,8 +77,21 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
               </span>
               <span className="label text-ink">{t("today.review")} →</span>
             </Link>
+            {liveAsks.length > 0 && (
+              <div className="grid gap-1">
+                <span className="label text-ink-2">{t("asks.today.owner")}{liveAsks.some((k) => k.status === "answered") && <span className="ml-2 text-shu">{t("asks.today.ownerAnswered", { n: liveAsks.filter((k) => k.status === "answered").length })}</span>}</span>
+                <Asks list={liveAsks} owner t={t} lang={user.lang} />
+              </div>
+            )}
+            </div>
           ) : (
             <div className="grid gap-3">
+              {liveAsks.length > 0 && (
+                <div className="grid gap-1 border-2 border-shu p-4">
+                  <span className="label text-shu">{t("asks.today.mine")} · {liveAsks.filter((k) => k.status === "open").length}</span>
+                  <Asks list={liveAsks} owner={false} t={t} lang={user.lang} />
+                </div>
+              )}
               <span className="label text-ink-2">{t("today.helperTitle")}</span>
               {allowed(user, "suggest.posting") && <Link href="/applications#suggest" className="grid gap-1 border-2 rule p-4 hover:bg-paper-2"><span className="heading text-[18px]">{t("today.helperSuggest")} →</span></Link>}
               {allowed(user, "packet.create") && <Link href="/packets/new" className="grid gap-1 border-2 rule p-4 hover:bg-paper-2"><span className="heading text-[18px]">{t("today.helperPacket")} →</span></Link>}

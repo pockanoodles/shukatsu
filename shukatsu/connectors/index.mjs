@@ -21,6 +21,7 @@
  */
 
 import { readFileSync } from 'fs';
+import { settle } from '../core/asks.mjs';
 import { can } from '../core/people.mjs';
 import {
   addAccount, getAccount, getCursor, getSecret, hasRecord, listAccounts, markAttempt, pruneRecords,
@@ -159,6 +160,8 @@ export async function syncDue(root, { fetch = null, nowMs = Date.now() } = {}) {
   } catch (e) {
     console.error(`shukatsu: connector sync failed: ${e?.message || e}`);
   }
+  // Asks whose suggested wording the candidate decided close now, so a delivery below can tell the person.
+  try { settle(root); } catch (e) { console.error(`shukatsu: settling asks failed: ${e?.message || e}`); }
   for (const [id, m] of Object.entries(MODULES)) {
     if (!m.deliverDue) continue;
     try { await m.deliverDue(root, { fetch, nowMs }); } catch (e) { console.error(`shukatsu: ${id} delivery failed: ${e?.message || e}`); }

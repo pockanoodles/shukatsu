@@ -124,6 +124,8 @@ function proposalItem(root, p, pr) {
     const warnings = [];
     if (stale) warnings.push({ code: 'stale', current });
     if (pr.payload.part !== 'ja' && hit && !sameNumbers(pr.payload.text, hit.fact.text)) warnings.push({ code: 'numbers-changed', diff: numberDiff(hit.fact.text, pr.payload.text) });
+    // Japanese wording is held to the English fact's figures, the same check a Japanese draft gets.
+    if (pr.payload.part === 'ja' && hit && !sameJaNumbers(hit.fact.text, pr.payload.text)) warnings.push({ code: 'ja-numbers', diff: jaNumberDiff(hit.fact.text, pr.payload.text) });
     return {
       ...base, kind: 'proposal.fact.edit', entity: entityView(entity), fact: hit ? factView(hit.fact) : null, part: pr.payload.part,
       before: pr.base?.text ?? current, current, after: pr.payload.text, hasNumbers: hasNumbers(pr.payload.text),
@@ -183,6 +185,11 @@ function labelOf(root, p, subject) {
     if (/^packet:\d+$/.test(key)) {
       const pk = db(root).prepare('SELECT company, role FROM packets WHERE id = ?').get(Number(key.slice(7)));
       return pk ? `${pk.company} · ${pk.role}` : null;
+    }
+    if (/^ask:\d+$/.test(key)) {
+      const row = db(root).prepare('SELECT base FROM asks WHERE id = ?').get(Number(key.slice(4)));
+      const base = row ? JSON.parse(row.base) : null;
+      return base ? clip(base.question || base.en || '') || null : null;
     }
     if (/^proposal:\d+$/.test(key)) {
       const pr = getProposal(root, Number(key.slice(9)));

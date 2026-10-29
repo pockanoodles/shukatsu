@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { answersAction, bulletAction, coverAction, createPacketAction, lintAction, suggestAction } from "@/app/actions/work";
+import { countChars, countWords } from "@/lib/count";
 import { Submit, WordingField } from "@/components/client";
 
 type L = Record<string, string>;
@@ -119,10 +120,6 @@ export function CoverForm({ packet, cover, notes, l }: { packet: number; cover: 
 type Answer = { question: string; limit: number | null; unit: "chars" | "words"; text: string };
 type Check = { used: number; unit: string; limit: number | null; over: boolean; underFilled: boolean; warnings: string[]; flags: { figures: string[]; sentence: string }[] };
 
-// The same count the server and the forms use: graphemes, line breaks included.
-const segmenter = typeof Intl !== "undefined" && "Segmenter" in Intl ? new Intl.Segmenter("ja", { granularity: "grapheme" }) : null;
-const countChars = (s: string) => { const t = s.replace(/\s+$/u, ""); if (!segmenter) return [...t].length; let n = 0; for (const _ of segmenter.segment(t)) n++; return n; };
-const countWords = (s: string) => (s.trim().match(/\S+/g) || []).length;
 
 /**
  * The form's questions and answers, counted live as you type. Saving re-runs

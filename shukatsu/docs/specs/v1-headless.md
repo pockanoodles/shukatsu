@@ -100,6 +100,7 @@ from the operation and can't drift from it.
 | Schedule | `calendar.upcoming`, `calendar.conflicts` | `event.create`, `event.update` |
 | Inbox | `inbox.list`, `inbox.get`, `connector.list` | `signal.update`, `connector.sync`, and the stamps `connector.add`, `connector.update`, `connector.remove`, `connector.purge` |
 | People | `digest.week`, `activity.list` | `people.*`, `invite.revoke`, `agent.*`, `token.*` (all stamps), plus app-only account, passkey, and session operations |
+| Asks | `ask.list`, `ask.get` | app-only: `ask.create`, `ask.close`, `ask.cancel` (the candidate), `ask.reply` (the person asked) |
 
 The agent surface stays near 45 operations on purpose, because an agent chooses tools worse
 as the list grows. Related changes are one operation with fields (`packet.edit` takes
@@ -158,6 +159,28 @@ MCP, the API). An agent that also has shell access to the machine as the owner's
 read the owner's terminal token or open the database itself, so a local agent's shell is
 bounded by its own harness permissions, which should deny running `review.mjs` and reading
 `.shukatsu/`.
+
+### Asks
+
+The review queue carries what helpers bring; an ask runs the other way. The candidate picks
+one item, a written answer on a packet (`packet:{id}#a{n}`) or a fact's Japanese
+(`fact:{id}/ja`), and one person, and that person gets a LINE nudge with a link to a page
+holding only that item (`/ask/{id}`, phone first). Their reply never writes anything true:
+
+- a fact's Japanese becomes a `fact.edit` proposal from them, decided in the review queue
+  with the stamp, and the ask closes when it is decided (`asks.settle` in the minute tick);
+- a written answer waits on the ask until the candidate uses it, which writes it into that
+  answer on the packet (found by its question, so reordering the form doesn't misplace it),
+  or sets it aside;
+- "fine as it is" closes the ask at once.
+
+The person then sees what came of it, with the candidate's note and the wording that was
+kept, and a second nudge says so. Only an editor can be asked about a fact, since the reply is
+a proposal; a reviewer can be asked about an answer; a viewer can't be asked. Asking and
+answering are people's acts, so `ask.create`, `ask.reply`, `ask.close`, and `ask.cancel` stay
+off MCP, and an agent can read asks but never message a parent or answer for one. Nothing in
+the app sends the nudge: actions write the ask, and the LINE connector's minute tick sends
+what `pendingNudges` returns, once, with a fixed line and a link and no content.
 
 An agent's tracker writes go through `set-status.mjs` with the source `set-status`, which
 keeps `data/status-log.tsv` inside upstream's closed source set, while the activity log in

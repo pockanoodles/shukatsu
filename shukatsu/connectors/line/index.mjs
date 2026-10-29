@@ -9,9 +9,11 @@
  *   sync          once a day, asks LINE who the account is (/v2/bot/info). It
  *                 copies nothing: it proves the token still works and learns
  *                 the account's @id for the add-friend link.
- *   deliverDue    once a minute (from syncDue); at the owner's chosen weekday
- *                 and hour in the chosen zone, pushes the digest to everyone
- *                 linked who still has access, once per week.
+ *   deliverDue    once a minute (from syncDue). Tells a person about an ask
+ *                 made to them, or one the candidate closed (core/asks.mjs);
+ *                 and at the owner's chosen weekday and hour in the chosen
+ *                 zone, pushes the digest to everyone linked who still has
+ *                 access, once per week.
  *   sendDigest    the same push now (notify.send).
  *   webhook       /connectors/line/webhook. LINE posts follows, unfollows, and
  *                 messages here, signed with the channel secret. A six-digit
@@ -25,6 +27,9 @@
  *   full             the digest text itself (companies, roles, status moves,
  *                    who helped), as digest.week renders it.
  *
+ * An ask is always a nudge, whatever the mode: one fixed line saying what
+ * happened (something to look at, or what came of it) and a link to that ask.
+ *
  * Messages from an Official Account aren't end-to-end encrypted, so whatever
  * is pushed is stored by LINE's operator (LY Corporation). See DATAFLOW.md.
  *
@@ -35,6 +40,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { readFileSync } from 'fs';
 import { digest, digestNudge, digestText } from '../../core/digest.mjs';
+import { markNudged, pendingNudges } from '../../core/asks.mjs';
 import { codeIn, forgetAddress, recipients, redeem } from '../../core/notify.mjs';
 import { systemAgent } from '../../core/people.mjs';
 import { logActivity } from '../../core/store.mjs';
@@ -116,11 +122,11 @@ export function addFriendUrl(root) {
 
 // ---------------------------------------------------------------- the digest
 
-/** The app's address for a link in a chat message, or null when it is only reachable on this machine. */
-function appUrl() {
+/** The address of a page of the app for a link in a chat message, or null when it is only reachable on this machine. */
+function appUrl(path = '/digest') {
   try {
     const u = new URL(process.env.SHUKATSU_URL || '');
-    return u.protocol === 'https:' && !/^(localhost|127\.|\[::1\])/.test(u.hostname) ? `${u.origin}/digest` : null;
+    return u.protocol === 'https:' && !/^(localhost|127\.|\[::1\])/.test(u.hostname) ? `${u.origin}${path}` : null;
   } catch {
     return null;
   }
@@ -152,12 +158,18 @@ export async function sendDigest(root, { userId = null, fetch = null, nowMs = Da
   return { mode, sent, failed: to.length - sent, error };
 }
 
-/**
- * Called every minute. Sends once per week, at or after the chosen hour on
- * the chosen weekday in the chosen zone; a daemon that was down for the whole
- * day skips that week rather than sending a stale digest late.
- */
+/** Called every minute: ask nudges first, then the digest when it is due. Returns the digest's result, or null. */
 export async function deliverDue(root, { fetch = null, nowMs = Date.now() } = {}) {
+  try { await deliverAsks(root, { fetch }); } catch (e) { console.error(`shukatsu: LINE ask nudges failed: ${e?.message || e}`); }
+  return deliverDigest(root, { fetch, nowMs });
+}
+
+/**
+ * Sends once per week, at or after the chosen hour on the chosen weekday in
+ * the chosen zone; a daemon that was down for the whole day skips that week
+ * rather than sending a stale digest late.
+ */
+async function deliverDigest(root, { fetch = null, nowMs = Date.now() } = {}) {
   const account = active(root);
   if (!account) return null;
   const { weekday = 0, hour = 9, timezone = 'Asia/Tokyo' } = account.settings;
@@ -170,6 +182,48 @@ export async function deliverDue(root, { fetch = null, nowMs = Date.now() } = {}
   setCursor(root, account.id, { date, sent: out.sent, failed: out.failed }, 'digest');
   if (out.sent || out.failed) logActivity(root, { actor: systemAgent(root), verb: 'notify.sent', subject: 'channel:line', detail: { mode: out.mode, sent: out.sent, failed: out.failed, scheduled: true } });
   return out;
+}
+
+// ---------------------------------------------------------------- asks
+
+const ASKED = {
+  created: { ja: '見てほしいものが1件届いています。', en: 'Something is waiting for you to look at.' },
+  used: { ja: '見てもらった件が採用されました。', en: 'What you looked at was used.' },
+  not_used: { ja: '見てもらった件は、今回は見送りになりました。メモはアプリにあります。', en: 'What you looked at wasn\'t used this time. There is a note in the app.' },
+};
+
+/** One ask nudge: what happened and a link to the ask, never what it is about. */
+export function askNudge(k, lang = 'en') {
+  const l = lang === 'ja' ? 'ja' : 'en';
+  const said = ASKED[k.event === 'closed' ? k.outcome : 'created'][l];
+  const url = appUrl(`/ask/${k.id}`);
+  return url ? `${said}\n${url}` : `${said}${l === 'ja' ? 'アプリで確認できます。' : ' See it in the app.'}`;
+}
+
+/**
+ * Tell each person about an ask made to them or closed for them, once. A
+ * person with no LINE linked is marked and skipped (the ask still waits on
+ * their Today page). A network failure ends the round unmarked, so a laptop
+ * that just woke without Wi-Fi tries again next minute; a refusal from LINE
+ * is marked failed and not retried.
+ */
+export async function deliverAsks(root, { fetch = null } = {}) {
+  const account = active(root);
+  if (!account) return null;
+  const due = pendingNudges(root);
+  if (!due.length) return { sent: 0, failed: 0 };
+  const ctx = makeConnectorCtx(root, manifest, account, { fetch });
+  let sent = 0;
+  let failed = 0;
+  let error = null;
+  for (const k of due) {
+    const [p] = recipients(root, 'line', { userId: k.asked_of });
+    if (!p) { markNudged(root, k.id, k.event, 'unlinked'); continue; }
+    const r = await push(ctx, account, p.address, askNudge(k, p.lang), 'line.ask');
+    if (r.error) { failed++; error = refused(r.status) || r.error; markNudged(root, k.id, k.event, 'failed'); } else { sent++; markNudged(root, k.id, k.event, 'sent'); }
+  }
+  if (error) markAttempt(root, account.id, { ok: false, error });
+  return { sent, failed };
 }
 
 // ---------------------------------------------------------------- webhook

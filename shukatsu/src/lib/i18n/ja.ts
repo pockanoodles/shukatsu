@@ -254,6 +254,8 @@ const ja: Dict = {
       "proposal.created.fact.new": "{actor}が新しい実績を提案（{subject}）", "proposal.created.fact.edit": "{actor}が{subject}の言い換えを提案",
       "proposal.created.fact.retire": "{actor}が{subject}の引退を提案", "proposal.created.entity.new": "{actor}が新しい経歴を提案（{subject}）",
       "review.reopened": "{actor}が{subject}を確認キューに戻しました", "proposal.created": "{actor}が変更を提案（{subject}）",
+      "ask.created": "{actor}が{subject}を見てもらうよう頼みました", "ask.answered": "{actor}が{subject}について返事をしました",
+      "ask.closed": "{actor}が{subject}の依頼を完了しました", "ask.cancelled": "{actor}が{subject}の依頼を取り下げました",
       "proposal.withdrawn": "{actor}が{subject}を取り下げ", "proposal.revised": "{actor}が{subject}を修正",
       "comment.added": "{actor}が{subject}にコメント", "packet.created": "{actor}が書類を作成（{subject}）",
       "packet.reviewRequested": "{actor}が{subject}の確認を依頼", "packet.ready": "{actor}が{subject}を送信準備完了に",

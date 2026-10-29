@@ -47,6 +47,10 @@ The public product page, kaitosoeno.com/shukatsu, is built from `../site` (its o
   propose changes; reviewers comment and suggest postings; viewers follow along. There is no
   public sign-up: the owner is created from the command line, everyone else by invite link,
   with passwords (scrypt) and passkeys.
+- **Asks.** The candidate can also ask one person to look at one item: a written answer, or a
+  fact's Japanese. They get a LINE nudge and a page with only that item. A reply about a fact
+  is a proposal in the review queue; a reply about an answer waits until the candidate uses it
+  in the packet or sets it aside; either way the person sees what came of it.
 
 ## Run it
 

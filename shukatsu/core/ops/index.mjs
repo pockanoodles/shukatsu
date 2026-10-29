@@ -43,8 +43,9 @@ import people from './people.mjs';
 import connectors from './connectors.mjs';
 import notify from './notify.mjs';
 import applications from './applications.mjs';
+import asks from './asks.mjs';
 
-const AREAS = [record, review, postings, tracker, packets, campaigns, schedule, inbox, people, connectors, notify, applications];
+const AREAS = [record, review, postings, tracker, packets, campaigns, schedule, inbox, people, connectors, notify, applications, asks];
 
 export const OPS = new Map();
 for (const op of AREAS.flat()) {

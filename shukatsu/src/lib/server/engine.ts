@@ -24,7 +24,7 @@ export const ENGINE_DIR = process.env.SHUKATSU_ENGINE ? resolve(process.env.SHUK
 
 const load = (rel: string): Promise<any> => import(/* turbopackIgnore: true */ /* webpackIgnore: true */ pathToFileURL(join(ENGINE_DIR, rel)).href);
 
-const CORE = ["review", "proposals", "people", "packets", "passkeys", "tracker", "store", "facts", "manifests", "digest", "llm", "git", "validate", "profile-edit", "candidate"] as const;
+const CORE = ["review", "proposals", "people", "packets", "passkeys", "tracker", "store", "facts", "manifests", "digest", "llm", "git", "validate", "profile-edit", "candidate", "asks"] as const;
 
 export type Engine = {
   root: string;
@@ -33,7 +33,7 @@ export type Engine = {
   /** The outside services shukatsu knows by name (shukatsu/platforms/). */
   platforms: any;
   review: any; proposals: any; people: any; packets: any; passkeys: any; tracker: any; store: any; facts: any;
-  manifests: any; digest: any; llm: any; gitlog: any; validate: any; profileEdit: any; candidate: any;
+  manifests: any; digest: any; llm: any; gitlog: any; validate: any; profileEdit: any; candidate: any; asks: any;
 };
 
 let loading: Promise<Engine> | null = null;
@@ -51,7 +51,7 @@ async function boot(): Promise<Engine> {
   return {
     root, ops, platforms, review: by.review, proposals: by.proposals, people: by.people, packets: by.packets, passkeys: by.passkeys,
     tracker: by.tracker, store: by.store, facts: by.facts, manifests: by.manifests, digest: by.digest, llm: by.llm,
-    gitlog: by.git, validate: by.validate, profileEdit: by["profile-edit"], candidate: by.candidate,
+    gitlog: by.git, validate: by.validate, profileEdit: by["profile-edit"], candidate: by.candidate, asks: by.asks,
   };
 }
 

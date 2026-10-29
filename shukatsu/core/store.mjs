@@ -286,6 +286,32 @@ const MIGRATIONS = [
   // packet.submit is packet.requestReview. Their activity verbs follow.
   `UPDATE activity SET verb = 'evaluation.filed' WHERE verb = 'evaluation.submitted';
    UPDATE activity SET verb = 'packet.reviewRequested' WHERE verb = 'packet.submitted';`,
+  // 7: asks, the candidate asking one person to look at one item (core/asks.mjs).
+  // base is the item as it was when asked; result is what was kept when it closed.
+  `CREATE TABLE asks (
+     id INTEGER PRIMARY KEY,
+     subject TEXT NOT NULL,
+     asked_by INTEGER NOT NULL REFERENCES users(id),
+     asked_of INTEGER NOT NULL REFERENCES users(id),
+     note TEXT,
+     base TEXT NOT NULL,
+     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'answered', 'closed', 'cancelled')),
+     reply TEXT,
+     reply_note TEXT,
+     proposal_id INTEGER REFERENCES proposals(id),
+     outcome TEXT CHECK (outcome IN ('used', 'not_used', 'fine')),
+     close_note TEXT,
+     result TEXT,
+     created_at TEXT NOT NULL,
+     updated_at TEXT NOT NULL,
+     answered_at TEXT,
+     closed_at TEXT,
+     nudged_at TEXT,
+     closed_nudged_at TEXT,
+     nudge TEXT
+   );
+   CREATE INDEX asks_of ON asks(asked_of, status);
+   CREATE INDEX asks_subject ON asks(subject, status);`,
 ];
 
 const open = new Map();
