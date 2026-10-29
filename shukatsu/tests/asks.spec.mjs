@@ -138,6 +138,21 @@ test('two blank answers: deleting the asked one never sends its reply to the oth
   assert.equal(answersOf(s.root, s.packet)[0].text, '');
 });
 
+test('an ask made before answers had ids is pointed at the answer in its place, or withdrawn', async () => {
+  const s = setup();
+  const { db, MIGRATIONS } = await import('../core/store.mjs');
+  const d = db(s.root);
+  const [, second] = answersOf(s.root, s.packet);
+  const legacy = (subject) => Number(d.prepare(`INSERT INTO asks (subject, asked_by, asked_of, base, created_at, updated_at) VALUES (?, ?, ?, '{"text":""}', 'now', 'now')`).run(subject, s.owner.id, s.editor.id).lastInsertRowid);
+  const kept = legacy(`packet:${s.packet}#a2`);
+  const gone = legacy(`packet:${s.packet}#a7`);
+  MIGRATIONS[8](d);
+  assert.equal(getAskRow(s.root, kept).subject, `packet:${s.packet}#${second.id}`);
+  assert.equal(getAskRow(s.root, gone).status, 'cancelled');
+  // Today's list reads every one of them without tripping on an old subject.
+  assert.equal((await run(s.root, s.owner_, 'ask.list', { status: 'live' })).asks.length, 1);
+});
+
 test('answer ids: a valid id is kept, a missing, malformed or copied one is replaced', async () => {
   const { withAnswerIds, ANSWER_ID } = await import('../core/store.mjs');
   const out = withAnswerIds([{ id: 'a0123abcd', text: 'x' }, { id: 'a0123abcd', text: 'copy' }, { id: 'nope', text: 'y' }, { text: 'z' }]);

@@ -131,6 +131,8 @@ export function AnswersEditor({ packet, initial, checks, lang, editable, l }: { 
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const set = (i: number, patch: Partial<Answer>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  // Locked while a save is out: the saved rows (with the ids the server gave new answers) replace these when it returns.
+  const open = editable && !busy;
   return (
     <div className="grid gap-5">
       {rows.length === 0 && <p className="text-[14px] text-ink-3">–</p>}
@@ -144,14 +146,14 @@ export function AnswersEditor({ packet, initial, checks, lang, editable, l }: { 
           <div key={i} className="grid gap-2 border-t hair pt-4">
             <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_110px_120px]">
               <label className="grid gap-1"><span className="label text-ink-3">{l.question}</span>
-                <input value={r.question} disabled={!editable} onChange={(e) => set(i, { question: e.target.value })} className="field" maxLength={500} /></label>
+                <input value={r.question} disabled={!open} onChange={(e) => set(i, { question: e.target.value })} className="field" maxLength={500} /></label>
               <label className="grid gap-1"><span className="label text-ink-3">{l.limit}</span>
-                <input type="number" min={0} value={r.limit ?? ""} disabled={!editable} onChange={(e) => set(i, { limit: e.target.value ? Number(e.target.value) : null })} className="field num" /></label>
+                <input type="number" min={0} value={r.limit ?? ""} disabled={!open} onChange={(e) => set(i, { limit: e.target.value ? Number(e.target.value) : null })} className="field num" /></label>
               <label className="grid gap-1"><span className="label text-ink-3">{l.unit}</span>
-                <select value={r.unit} disabled={!editable} onChange={(e) => set(i, { unit: e.target.value as Answer["unit"] })} className="field"><option value="chars">{l.chars}</option><option value="words">{l.words}</option></select></label>
+                <select value={r.unit} disabled={!open} onChange={(e) => set(i, { unit: e.target.value as Answer["unit"] })} className="field"><option value="chars">{l.chars}</option><option value="words">{l.words}</option></select></label>
             </div>
             <label className="grid gap-1"><span className="label text-ink-3">{l.answer}</span>
-              <textarea value={r.text} disabled={!editable} onChange={(e) => set(i, { text: e.target.value })} rows={6} className="field leading-[1.7]" lang={lang} /></label>
+              <textarea value={r.text} disabled={!open} onChange={(e) => set(i, { text: e.target.value })} rows={6} className="field leading-[1.7]" lang={lang} /></label>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               {r.limit ? (
                 <span className="flex items-center gap-2">
@@ -161,7 +163,7 @@ export function AnswersEditor({ packet, initial, checks, lang, editable, l }: { 
               ) : <span className="label num text-ink-2">{used} {r.unit === "words" ? l.words : l.chars}</span>}
               {over && <span className="text-[13px] text-shu">{l.over.replace("{n}", String(used - (r.limit || 0)))}</span>}
               {under && <span className="text-[13px] text-ink-2">{l.underFilled}</span>}
-              {editable && <button type="button" className="label ml-auto text-ink-3 underline underline-offset-4 hover:text-ink" onClick={() => setRows(rows.filter((_, j) => j !== i))}>{l.removeAnswer}</button>}
+              {open && <button type="button" className="label ml-auto text-ink-3 underline underline-offset-4 hover:text-ink" onClick={() => setRows(rows.filter((_, j) => j !== i))}>{l.removeAnswer}</button>}
             </div>
             {server && [...server.warnings.map((w) => w), ...server.flags.map((f) => l.figureFlag.replace("{figs}", f.figures.join(", ")))].map((w, k) => (
               <p key={k} className="border-l-4 border-shu pl-3 text-[13px] text-shu">{w}</p>
@@ -171,7 +173,7 @@ export function AnswersEditor({ packet, initial, checks, lang, editable, l }: { 
       })}
       {editable && (
         <div className="flex flex-wrap items-center gap-3">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRows([...rows, { question: "", limit: lang === "ja" ? 400 : null, unit: "chars", text: "" }])}>{l.addAnswer}</button>
+          <button type="button" disabled={!open} className="btn btn-ghost btn-sm" onClick={() => setRows([...rows, { question: "", limit: lang === "ja" ? 400 : null, unit: "chars", text: "" }])}>{l.addAnswer}</button>
           <button type="button" disabled={busy} className="btn btn-sm" onClick={async () => {
             setBusy(true); setMsg(null);
             const r = await answersAction(packet, rows);

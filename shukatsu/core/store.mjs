@@ -17,7 +17,7 @@ import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { stateDir } from './lock.mjs';
 
-const MIGRATIONS = [
+export const MIGRATIONS = [
   `CREATE TABLE users (
      id INTEGER PRIMARY KEY,
      login TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -321,6 +321,19 @@ const MIGRATIONS = [
       const list = JSON.parse(pk.answers);
       if (!Array.isArray(list)) continue;
       d.prepare('UPDATE packets SET answers = ? WHERE id = ?').run(JSON.stringify(withAnswerIds(list)), pk.id);
+    }
+  },
+  // 9: an ask made before answers had ids names its answer by place on the form
+  // (packet:3#a2). Point it at the answer now in that place, which migration 8
+  // left where it was; one whose place is empty can't be answered, so it is withdrawn.
+  (d) => {
+    for (const k of d.prepare("SELECT id, subject FROM asks WHERE subject GLOB 'packet:*#a*'").all()) {
+      const m = /^packet:(\d+)#a(\d{1,3})$/.exec(k.subject);
+      if (!m) continue;
+      const pk = d.prepare('SELECT answers FROM packets WHERE id = ?').get(Number(m[1]));
+      const a = pk?.answers ? JSON.parse(pk.answers)[Number(m[2]) - 1] : null;
+      if (a?.id) d.prepare('UPDATE asks SET subject = ? WHERE id = ?').run(`packet:${m[1]}#${a.id}`, k.id);
+      else d.prepare("UPDATE asks SET status = 'cancelled', closed_at = COALESCE(closed_at, datetime('now')) WHERE id = ? AND status IN ('open', 'answered')").run(k.id);
     }
   },
 ];
