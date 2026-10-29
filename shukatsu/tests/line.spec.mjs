@@ -86,6 +86,13 @@ async function link(s, principal, userId) {
 
 // ---------------------------------------------------------------- settings
 
+test('a person\'s Settings shows LINE before the candidate has connected it', async () => {
+  const s = await setup({ connect: false });
+  const st = await run(s.root, s.editorP, 'notify.status', {});
+  assert.equal(st.line.connected, false);
+  assert.equal(st.line.mode ?? null, null);
+});
+
 test('LINE needs a real channel secret and a token, and defaults to a Sunday 9:00 Tokyo nudge', () => {
   assert.throws(() => line.prepare({ channel_access_token: TOKEN }), /channel secret and the channel access token/);
   assert.throws(() => line.prepare({ channel_secret: 'not-a-secret', channel_access_token: TOKEN }), /32 letters and digits/);

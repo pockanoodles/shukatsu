@@ -110,7 +110,8 @@ export const S = {
   date: (d, extra = {}) => ({ type: 'string', format: 'date', ...(d ? { description: d } : {}), ...extra }),
   url: (d, extra = {}) => ({ type: 'string', format: 'uri', maxLength: 2000, ...(d ? { description: d } : {}), ...extra }),
   arr: (items, d, extra = {}) => ({ type: 'array', items, ...(d ? { description: d } : {}), ...extra }),
-  nullable: (schema) => ({ ...schema, type: [...(Array.isArray(schema.type) ? schema.type : [schema.type]), 'null'] }),
+  // An enum lists its values, so null joins them too; without it a nullable enum refuses null after all (JSON Schema reads enum the same way).
+  nullable: (schema) => ({ ...schema, type: [...(Array.isArray(schema.type) ? schema.type : [schema.type]), 'null'], ...(schema.enum ? { enum: [...schema.enum, null] } : {}) }),
   /** An object; `required` lists the keys that must be present. Unknown keys are refused. */
   obj: (properties = {}, required = [], extra = {}) => ({ type: 'object', properties, required, additionalProperties: false, ...extra }),
   /** An object whose shape isn't pinned (handler output with nested engine data). */
