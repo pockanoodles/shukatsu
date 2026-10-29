@@ -189,6 +189,21 @@ test('states.yml: the canonical states the tracker ops accept', () => {
   for (const s of ['evaluated', 'applied', 'interview', 'offer', 'rejected']) assert.ok(ids.map((i) => i.toLowerCase()).includes(s), `${s} is no longer a canonical state`);
 });
 
+test('merge-tracker: CAREER_OPS_ADDITIONS merges only that folder and archives into its merged/', () => {
+  const root = targetsRoot();
+  const tsv = (n, company) => `num\tdate\tcompany\trole\tstatus\tscore\tpdf\treport\tnotes\n${n}\t2026-10-20\t${company}\tAnalyst\tEvaluated\tN/A\t❌\t—\t\n`;
+  const pending = join(root, 'batch', 'tracker-additions');
+  const stage = join(pending, '.app-test');
+  mkdirSync(stage, { recursive: true });
+  writeFileSync(join(pending, '8-hooli.tsv'), tsv(8, 'Hooli'));
+  writeFileSync(join(stage, '9-initech.tsv'), tsv(9, 'Initech'));
+  assert.ok(runEngine('merge-tracker.mjs', [], root, { CAREER_OPS_ADDITIONS: stage }).ok);
+  assert.ok(trackerCells(root, 9), 'the staged addition merged');
+  assert.equal(trackerCells(root, 8), null, 'the pending one did not');
+  assert.ok(existsSync(join(stage, 'merged', '9-initech.tsv')));
+  assert.ok(existsSync(join(pending, '8-hooli.tsv')));
+});
+
 test('tracker-utils: the lock the app takes for Target and Due is the one set-status waits on', async () => {
   const { acquireTrackerLock, trackerLockDirFor } = await import(join(ENGINE, 'tracker-utils.mjs'));
   const { resolveTrackerPath } = await import(join(ENGINE, 'path-resolver.mjs'));

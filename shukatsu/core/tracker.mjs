@@ -11,7 +11,7 @@
  * states contract (templates/states.yml), and the status log depends on them.
  */
 
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { dirname, join } from 'path';
 import * as yaml from 'js-yaml';
@@ -54,9 +54,9 @@ export function statusLog(root) {
 }
 
 /** Run an upstream CLI against this data root (its own lock, validation, and log). */
-export function runEngine(script, args, root) {
+export function runEngine(script, args, root, env = {}) {
   const r = spawnSync(process.execPath, [join(ENGINE, script), ...args], {
-    cwd: ENGINE, encoding: 'utf-8', env: { ...process.env, CAREER_OPS_DATA_DIR: root },
+    cwd: ENGINE, encoding: 'utf-8', env: { ...process.env, CAREER_OPS_DATA_DIR: root, ...env },
   });
   return { ok: r.status === 0, out: (r.stdout + r.stderr).trim() };
 }
@@ -91,13 +91,19 @@ export function ensureTracker(root) {
 }
 
 /**
- * Add a tracker row the canonical way: one headed TSV in
- * batch/tracker-additions/, then merge-tracker.mjs. `num` comes from
- * reserve-report-num.mjs so it can never collide with a parallel evaluator.
- * Success means the row is in the tracker afterwards, not that the merge
- * exited 0. A company+role already tracked keeps its own number, whether the
- * merge updates it or skips it (an unscored add never overwrites a score), so
- * that is the number returned.
+ * Add a tracker row the canonical way: one headed TSV, merged by
+ * merge-tracker.mjs and archived in batch/tracker-additions/merged/. `num`
+ * comes from reserve-report-num.mjs so it can never collide with a parallel
+ * evaluator. Success means the row is in the tracker afterwards, not that the
+ * merge exited 0. A company+role already tracked keeps its own number, whether
+ * the merge updates it or skips it (an unscored add never overwrites a score),
+ * so that is the number returned.
+ *
+ * The TSV is merged on its own, from a staging folder (CAREER_OPS_ADDITIONS),
+ * so merge-tracker's Update or Skipping line for it is the only one: another
+ * pending addition, or a second row with the same company and role, can't be
+ * taken for this one. One merge-tracker refuses goes back to the pending
+ * folder, where it would have stayed anyway.
  */
 export function addTrackerRow(root, { company, role, status = 'Evaluated', score = 'N/A', notes = '', url = '' }) {
   ensureTracker(root);
@@ -110,13 +116,24 @@ export function addTrackerRow(root, { company, role, status = 'Evaluated', score
   const header = ['num', 'date', 'company', 'role', 'status', 'score', 'pdf', 'report', 'notes', 'url'];
   const row = [num, new Date().toISOString().slice(0, 10), company, role, status, score, '❌', '—', notes, url].map(tsvCell);
   const file = `${num}-${slug}.tsv`;
-  writeFileSync(join(dir, file), `${header.join('\t')}\n${row.join('\t')}\n`);
-  const merged = runEngine('merge-tracker.mjs', [], root);
-  runEngine('reserve-report-num.mjs', ['--release', num], root);
-  // The same run can sync PDF flags and merge other pending additions, so the
-  // row is the one merge-tracker names for this addition, not whichever changed.
-  const named = merged.out.match(new RegExp(`(?:🔄|🔽) Update: #(\\d+) ${esc(row[2])} — ${esc(row[3])} \\(`))
-    || merged.out.match(new RegExp(`Skipping ${esc(file)}: re-eval of #(\\d+) `));
+  const stage = mkdtempSync(join(dir, '.app-'));
+  let merged;
+  try {
+    writeFileSync(join(stage, file), `${header.join('\t')}\n${row.join('\t')}\n`);
+    merged = runEngine('merge-tracker.mjs', [], root, { CAREER_OPS_ADDITIONS: stage });
+    const archived = join(stage, 'merged', file);
+    if (existsSync(archived)) {
+      mkdirSync(join(dir, 'merged'), { recursive: true });
+      renameSync(archived, join(dir, 'merged', file));
+    } else if (existsSync(join(stage, file))) {
+      renameSync(join(stage, file), join(dir, file));
+    }
+  } finally {
+    rmSync(stage, { recursive: true, force: true });
+    runEngine('reserve-report-num.mjs', ['--release', num], root);
+  }
+  // PDF-flag sync lines also say #N, so read only this addition's own lines.
+  const named = merged.out.match(/(?:🔄|🔽) Update: #(\d+) /) || merged.out.match(new RegExp(`Skipping ${esc(file)}: re-eval of #(\\d+) `));
   const rows = readTracker(root).rows;
   const landed = rows.find((r) => r.num === Number(num)) || (named && rows.find((r) => r.num === Number(named[1])));
   return { ok: merged.ok && !!landed, num: landed?.num ?? null, out: landed ? merged.out : `the row didn't reach the tracker: ${merged.out.split('\n').slice(-3).join(' ')}` };
@@ -158,15 +175,11 @@ function realDate(text) {
 /**
  * The tracker table's header, found the way upstream finds it (the first row
  * its schema recognizes, so a summary table above it is passed over), with its
- * labels lowercased (the first cell, before the opening pipe, is '') and the
- * lines of the table's body.
+ * labels lowercased (the first cell, before the opening pipe, is '').
  */
 function headerOf(lines) {
   const h = lines.findIndex((l) => l.trim().startsWith('|') && detectColumns([l]));
-  if (h < 0) return { h, labels: [], colmap: null, end: h };
-  let end = h + 1;
-  while (end < lines.length && lines[end].trim().startsWith('|')) end++;
-  return { h, labels: cellsOf(lines[h]).map((c) => c.toLowerCase()), colmap: detectColumns([lines[h]]), end };
+  return { h, labels: h < 0 ? [] : cellsOf(lines[h]).map((c) => c.toLowerCase()), colmap: h < 0 ? null : detectColumns([lines[h]]) };
 }
 
 // Split like parseTrackerRow does: parts[0] is the empty cell before the opening pipe.
@@ -215,10 +228,12 @@ export async function setTargetDue(root, num, values) {
   const lock = await acquireTrackerLock(trackerLockDirFor(path), { tracker: path });
   try {
     const lines = readFileSync(path, 'utf-8').split('\n');
-    const { h, labels, colmap, end } = headerOf(lines);
+    const { h, labels, colmap } = headerOf(lines);
     const col = { target: labels.indexOf('target'), due: labels.indexOf('due') };
     for (const k of Object.keys(want)) if (col[k] < 0) throw new Error(`The tracker has no ${LABEL[k]} column.`);
-    const i = lines.findIndex((l, j) => j > h && j < end && parseTrackerRow(l, colmap)?.num === num);
+    // Any row below the header that reads at the tracker's width: a narrower table
+    // fails parseTrackerRow's width guard, a second tracker table with these columns doesn't.
+    const i = lines.findIndex((l, j) => j > h && parseTrackerRow(l, colmap)?.num === num);
     if (i < 0) throw new Error(`The tracker has no row ${num}.`);
     const cells = cellsOf(lines[i]);
     if (cells.length !== labels.length) throw new Error(`Row ${num} has ${cells.length - 1} cells but the header has ${labels.length - 1}; fix the row by hand first.`);

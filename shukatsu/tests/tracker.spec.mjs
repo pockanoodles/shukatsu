@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -123,16 +123,28 @@ test('adding a company+role already tracked updates that row, and its Target lan
   assert.equal(tracker(root).split('\n').filter((l) => l.includes('| Globex |')).length, 1, 'still one Globex row');
 });
 
-test('the Target goes to the row the add reached, even when the same merge changes another row', async () => {
+test('the Target goes to the row this add reached, not one another pending addition reaches', async () => {
   const root = targetsRoot();
   const { owner } = people(root);
+  // A second Acme — Analyst row (another posting) and a pending re-score of it.
+  writeFileSync(join(root, 'data', 'applications.md'), tracker(root).replace(/\n$/, '\n| 3 | 2026-10-03 | Acme | — | Analyst | — | — | 3.5/5 | Evaluated | ❌ | — | req 77 |\n'));
   const dir = join(root, 'batch', 'tracker-additions');
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, '1-acme.tsv'), 'num\tdate\tcompany\trole\tstatus\tscore\tpdf\treport\tnotes\n1\t2026-10-20\tAcme\tAnalyst\tEvaluated\t4.4/5\t❌\t—\tre-scored\n');
-  const { num } = await run(root, sessionPrincipal(owner), 'tracker.add', { company: 'Globex', role: 'Data Analyst', target: 'summer-27' });
-  assert.equal(num, 2);
-  assert.equal(trackerCells(root, 1).Score, '4.4/5', 'the other addition did merge in the same run');
-  assert.deepEqual([trackerCells(root, 1).Target, trackerCells(root, 2).Target], ['—', 'summer-27']);
+  writeFileSync(join(dir, '3-acme.tsv'), 'num\tdate\tcompany\trole\tstatus\tscore\tpdf\treport\tnotes\n3\t2026-10-20\tAcme\tAnalyst\tEvaluated\t4.4/5\t❌\t—\treq 77\n');
+  const { num } = await run(root, sessionPrincipal(owner), 'tracker.add', { company: 'Acme', role: 'Analyst', target: 'summer-27' });
+  assert.equal(num, 1, 'merge-tracker matched the first Acme — Analyst row');
+  assert.deepEqual([trackerCells(root, 1).Target, trackerCells(root, 3).Target], ['summer-27', '—']);
+  assert.equal(trackerCells(root, 3).Score, '3.5/5', 'the other addition is left for its own merge');
+  assert.ok(existsSync(join(dir, '3-acme.tsv')));
+  assert.ok(readdirSync(join(dir, 'merged')).some((f) => f !== '3-acme.tsv' && f.endsWith('-acme.tsv')), 'this one is archived with the rest');
+  assert.deepEqual(readdirSync(dir).filter((f) => f.startsWith('.app-')), [], 'and its staging folder is gone');
+});
+
+test('a row in a second table with the tracker\'s columns can be set too', async () => {
+  const root = targetsRoot();
+  const t = tracker(root);
+  writeFileSync(join(root, 'data', 'applications.md'), `${t}\n## Archive\n\n${t.split('\n').slice(2, 4).join('\n')}\n| 7 | 2026-09-01 | Initech | — | Analyst | — | — | 3.0/5 | Discarded | ❌ | — |  |\n`);
+  assert.equal((await setTargetDue(root, 7, { target: '2028' })).target, '2028');
 });
 
 test('target.mjs sets them from the terminal, through the registry', () => {
