@@ -104,6 +104,34 @@ test('an answer the candidate uses replaces that answer on the packet, found by 
   await assert.rejects(run(s.root, s.mom, 'ask.reply', { id, text: 'もう一度' }), /already closed/);
 });
 
+test('a reply never lands on a different question that took the asked one\'s place', async () => {
+  const s = setup();
+  const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a1` });
+  await run(s.root, s.mom, 'ask.reply', { id, text: '御社の事業と社風に強く惹かれました。' });
+  // Question 1 is deleted, so question 2 now sits in its place with its own answer.
+  const [, second] = answersOf(s.root, s.packet);
+  setAnswers(s.root, { actor: s.owner, id: s.packet, answers: [second] });
+  await assert.rejects(run(s.root, s.owner_, 'ask.close', { id, outcome: 'used' }), /changed on the packet/);
+  assert.equal(answersOf(s.root, s.packet)[0].text, 'リード振り分けを作り直しました。');
+  // A question only renamed, its answer untouched, still takes the reply.
+  setAnswers(s.root, { actor: s.owner, id: s.packet, answers: [{ question: '志望理由', limit: 400, unit: 'chars', text: '御社の事業に惹かれました。' }, second] });
+  await run(s.root, s.owner_, 'ask.close', { id, outcome: 'used' });
+  assert.equal(answersOf(s.root, s.packet)[0].text, '御社の事業と社風に強く惹かれました。');
+});
+
+test('an old open ask is still listed after many newer closed ones', async () => {
+  const s = setup();
+  const old = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a1` });
+  for (let i = 0; i < 3; i++) {
+    const { id } = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a2` });
+    await run(s.root, s.mom, 'ask.reply', { id, fine: true });
+  }
+  const { listAsks } = await import('../core/asks.mjs');
+  assert.deepEqual(listAsks(s.root, s.editor, { status: 'live', limit: 2 }).map((k) => k.id), [old.id]);
+  assert.equal(listAsks(s.root, s.editor, { limit: 2 }).some((k) => k.id === old.id), false);
+  assert.deepEqual((await run(s.root, s.mom, 'ask.list', { status: 'open' })).asks.map((k) => k.id), [old.id]);
+});
+
 test('"fine as it is" closes the ask at once, and a set-aside answer leaves the packet alone', async () => {
   const s = setup();
   const a = await run(s.root, s.owner_, 'ask.create', { to: s.editor.id, subject: `packet:${s.packet}#a1` });

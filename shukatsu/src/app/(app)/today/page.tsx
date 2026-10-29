@@ -54,7 +54,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const mine: Mine[] = owner || !allowed(user, "propose.profile") && !allowed(user, "suggest.posting") ? [] : proposals.proposalsBy(root, user.id).slice(0, 8);
   const mineLabels: Record<string, string> = review.labelsFor(root, mine.map((p) => `proposal:${p.id}`));
   // Answered first: for the candidate that is what needs them, for a helper it is already done.
-  const liveAsks: LiveAsk[] = sees ? (asks.listAsks(root, user) as LiveAsk[]).filter((k) => k.status === "open" || k.status === "answered")
+  const liveAsks: LiveAsk[] = sees ? (asks.listAsks(root, user, { status: "live" }) as LiveAsk[])
     .sort((a, b) => (owner ? Number(b.status === "answered") - Number(a.status === "answered") : Number(a.status === "answered") - Number(b.status === "answered"))) : [];
 
   return (

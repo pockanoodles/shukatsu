@@ -94,12 +94,24 @@ function decidedAs(root, s, pr) {
   return null;
 }
 
-/** Every ask, newest first: all of them for the candidate (and agents), only their own for anyone else. */
+// The stored states a shown state can come from: an answered fact ask reads as closed once its proposal is decided.
+const STORED = { open: ['open'], answered: ['answered'], closed: ['closed', 'answered'], cancelled: ['cancelled'], live: ['open', 'answered'] };
+
+/**
+ * Asks, newest first: all of them for the candidate (and agents), only their
+ * own for anyone else. `status` is a state, or 'live' for open and answered;
+ * it filters before the limit, so an old open ask is never pushed out by
+ * newer closed ones.
+ */
 export function listAsks(root, viewer, { status = null, limit = 100 } = {}) {
   const mine = viewer.role !== 'owner' && viewer.kind !== 'agent';
-  const rows = db(root).prepare(`${ROW} ${mine ? 'WHERE k.asked_of = ?' : ''} ORDER BY k.created_at DESC LIMIT ?`).all(...(mine ? [viewer.id] : []), limit);
+  const stored = status ? STORED[status] : null;
+  if (status && !stored) throw new Error(`Unknown ask state "${status}".`);
+  const where = [mine ? 'k.asked_of = ?' : null, stored ? `k.status IN (${stored.map(() => '?').join(', ')})` : null].filter(Boolean);
+  const rows = db(root).prepare(`${ROW} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY k.created_at DESC LIMIT ?`)
+    .all(...(mine ? [viewer.id] : []), ...(stored || []), limit);
   const all = rows.map((r) => view(root, hydrate(r)));
-  return status ? all.filter((k) => k.status === status) : all;
+  return status ? all.filter((k) => (status === 'live' ? k.status === 'open' || k.status === 'answered' : k.status === status)) : all;
 }
 
 export function getAsk(root, id, viewer) {
@@ -150,10 +162,12 @@ export function closeAsk(root, { actor, id, outcome, note = '' }) {
       const pk = getPacketRow(root, s.packet);
       if (!pk) throw new Error('That packet is gone.');
       const answers = parse(pk.answers) || [];
-      // Found by its question, so an answer moved up or down the form still matches; by position only if its question was renamed.
+      // Found by its question, so an answer moved up or down the form still matches. A renamed question is
+      // recognised by its position only while its answer is still the one that was asked about: a different
+      // question that slid into that place after a deletion has its own answer, and is never overwritten.
       let i = answers.findIndex((a) => a.question === k.base.question);
-      if (i < 0 && answers[s.n - 1]) i = s.n - 1;
-      if (i < 0) throw new Error('That question is no longer on the packet.');
+      if (i < 0 && answers[s.n - 1]?.text === k.base.text) i = s.n - 1;
+      if (i < 0) throw new Error('That question changed on the packet since you asked. Copy the reply in by hand.');
       setAnswers(root, { actor, id: s.packet, answers: answers.map((a, j) => (j === i ? { ...a, text: k.reply } : a)) });
       result = { text: k.reply, replaced: answers[i].text };
     }

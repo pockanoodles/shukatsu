@@ -16,7 +16,7 @@ export default [
     kind: 'query',
     summary: 'Asks, newest first: every ask for the candidate, only the ones addressed to you for anyone else.',
     permission: 'view.review',
-    input: S.obj({ status: S.enum(['open', 'answered', 'closed', 'cancelled'], 'Only asks in this state.') }),
+    input: S.obj({ status: S.enum(['open', 'answered', 'closed', 'cancelled', 'live'], 'Only asks in this state; live is open and answered.') }),
     output: S.obj({ asks: S.arr(S.any()) }, ['asks']),
     run: ({ root, actor, input }) => ({ asks: asks.listAsks(root, actor, { status: input.status ?? null }) }),
   },
