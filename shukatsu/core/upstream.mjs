@@ -69,9 +69,10 @@ const blob = (engine, ref, file) => {
 
 /**
  * Upstream's files the fork has changed since `base`, net: `edited` differ at
- * HEAD from upstream's last content the fork took (the newest
- * `update-system.mjs apply` copy of the file, else `base`), so an edit later
- * reverted doesn't count. `copied` are files only those copies touched.
+ * HEAD from both `base` and the newest `update-system.mjs apply` copy of the
+ * file, so an edit later reverted doesn't count, and neither does a file a
+ * merge since the copy brought back to upstream's content. `copied` are files
+ * only those copies touched.
  */
 export function forkHistory(engine, base) {
   const owned = forkPaths(engine);
@@ -88,7 +89,10 @@ export function forkHistory(engine, base) {
       else if (!lastCopy.has(f)) lastCopy.set(f, sha);
     }
   }
-  const edited = [...touched].filter((f) => blob(engine, 'HEAD', f) !== blob(engine, lastCopy.get(f) || base, f)).sort();
+  const edited = [...touched].filter((f) => {
+    const ours = blob(engine, 'HEAD', f);
+    return ours !== blob(engine, base, f) && (!lastCopy.has(f) || ours !== blob(engine, lastCopy.get(f), f));
+  }).sort();
   const copied = [...lastCopy.keys()].filter((f) => !edited.includes(f)).sort();
   return { edited, copied };
 }
@@ -192,6 +196,7 @@ export function merge(engine, tag) {
   const base = git(engine, ['merge-base', 'HEAD', tag]).out;
   const { edited } = forkHistory(engine, base);
   const fork = new Set(edited);
+  const owned = forkPaths(engine);
   const branch = `update/${tag.replace(/^career-ops-/, '')}`;
   git(engine, ['switch', '-q', '-c', branch]);
   git(engine, ['merge', '--no-ff', '--no-commit', tag], { ok: true });
@@ -208,6 +213,17 @@ export function merge(engine, tag) {
     }
     resolved.push(file);
   }
+  // A file the fork never edited can still merge cleanly into a blend nobody
+  // wrote: an update-system.mjs copy left the fork's side off the merge base, so
+  // git keeps copied lines upstream has since removed. Every such file is set to
+  // the tag's content, whether or not git called it a conflict.
+  for (const file of lines(git(engine, ['diff', '--cached', '--name-only', tag]).out)) {
+    if (owned(file) || fork.has(file) || resolved.includes(file)) continue;
+    if (blob(engine, tag, file) === null) git(engine, ['rm', '-q', '--cached', '--', file]);
+    else git(engine, ['checkout', tag, '--', file]);
+    resolved.push(file);
+  }
+  resolved.sort();
   return { branch, tag, resolved, left };
 }
 
@@ -217,7 +233,7 @@ export function mergeText(m) {
   out.push(m.left.length ? `Left for you (files the fork edits too):\n${m.left.map((f) => `  ${f}`).join('\n')}` : 'Nothing left to resolve by hand.');
   out.push('', 'Then:',
     '  1. resolve anything listed above and `git add` it',
-    '  2. `npm ci`, and `npm ci` in shukatsu/ if its lockfile changed',
+    '  2. `npm install` (upstream ships no root lockfile), and `npm ci` in shukatsu/ if its lockfile changed',
     '  3. `npm test` in shukatsu/ passes, and `CAREER_OPS_DATA_DIR=$PWD node test-all.mjs` shows no failure main lacks',
     '  4. give DATAFLOW.md a row for any egress the review flagged',
     `  5. \`git commit --no-edit\`, then \`git switch main && git merge --ff-only ${m.branch}\``);
