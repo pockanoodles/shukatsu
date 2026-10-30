@@ -62,6 +62,15 @@ import { flagValue, hasFlag } from './lib/cli-flags.mjs';
 import { collectMjsFiles, isNestedCheckout, isUnderNestedCheckout } from './lib/mjs-files.mjs';
 import { SCRATCH_PREFIX, isScratchDir, markScratchOwner, sweepScratchDirs } from './lib/scratch-dirs.mjs';
 
+// A `.career-ops-data` marker aims the data root at the user's real data, and
+// every script, child and dynamic import below resolves it the same way, so an
+// unpinned run writes there (the live archive test's PDF, assessment rows).
+// The suite asserts against ROOT, so it pins ROOT unless the caller chose a
+// root. Set before anything resolves it: none of the static imports above do.
+if (!process.env.CAREER_OPS_ROOT?.trim() && !process.env.CAREER_OPS_DATA_DIR?.trim()) {
+  process.env.CAREER_OPS_DATA_DIR = ROOT;
+}
+
 /**
  * Read a repo-relative text file as UTF-8.
  *
@@ -582,6 +591,10 @@ try {
     '.career-ops-web',
     '.playwright-mcp',
     '.agents',
+    // The data-root marker (AGENTS.md "Path Resolution"). Copied, it aims every
+    // script run from the throwaway tree at the user's REAL data root, so a
+    // check that writes (assessment-log.mjs add, the tracker) lands there.
+    '.career-ops-data',
     'cdp-diff.patch',
     'cdp-diff-focused.patch',
     'test_diff.patch',
@@ -589,6 +602,13 @@ try {
     basename(scriptTmp),
   ];
   copyDirSync(ROOT, scriptTmp, excludeDirs);
+
+  // The env pins the data root too, since it outranks the marker: a suite run
+  // as `CAREER_OPS_DATA_DIR=$PWD node test-all.mjs` would otherwise hand that
+  // path to every child below, and they would write outside the scratch.
+  const scriptEnv = { ...process.env, CAREER_OPS_ROOT: scriptTmp };
+  delete scriptEnv.CAREER_OPS_DATA_DIR;
+  delete scriptEnv.CAREER_OPS_TRACKER;
 
   mkdirSync(join(scriptTmp, 'data'), { recursive: true });
   mkdirSync(join(scriptTmp, 'reports'), { recursive: true });
@@ -647,6 +667,7 @@ try {
     // a hung CI job. Absent means absent, so run()'s own default stands.
     const result = run(NODE, [join(scriptTmp, scriptFile), ...args], {
       cwd: scriptTmp,
+      env: scriptEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
       ...(declared ? { timeout: timeoutMs } : {}),
     });
@@ -692,6 +713,7 @@ try {
   {
     const assessmentCli = (...argv) => spawnSync(NODE, [join(scriptTmp, 'assessment-log.mjs'), ...argv], {
       cwd: scriptTmp,
+      env: scriptEnv,
       encoding: 'utf-8',
       timeout: 30000,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -746,6 +768,7 @@ try {
   {
     const replyWatchCli = (...argv) => spawnSync(NODE, [join(scriptTmp, 'reply-watch.mjs'), ...argv], {
       cwd: scriptTmp,
+      env: scriptEnv,
       encoding: 'utf-8',
       timeout: 30000,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -9395,7 +9418,9 @@ try {
         cwd: e2eTmp,
         encoding: 'utf-8',
         timeout: 30000,
-        env: { ...process.env, CAREER_OPS_PROFILE: '' },
+        // The fixture is the data root; an inherited one (the suite pins ROOT) would
+        // send followup-cadence to the real tracker instead.
+        env: { ...process.env, CAREER_OPS_ROOT: e2eTmp, CAREER_OPS_PROFILE: '' },
       });
       const e2e = JSON.parse(e2eOut.trim());
       const byNum = new Map((e2e.entries || []).map(entry => [entry.num, entry]));
