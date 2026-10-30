@@ -12,14 +12,14 @@
  * phone, and LinkedIn address; the employers and projects in their record; and
  * every company in their tracker and targets. Upstream's files are left
  * alone, since they ship company names of their own; what is checked is
- * config/local-paths.txt (the fork's paths) and the two READMEs the fork
- * writes. Fixtures and examples use made-up people and companies (Acme,
+ * config/local-paths.txt (the fork's paths) and the fork's two READMEs in
+ * .github/. Fixtures and examples use made-up people and companies (Acme,
  * Globex) instead.
  *
  * {DATA_ROOT}/config/leak-check.yml lists the phrases let through, and where,
  * so that list stays private too:
  *   allow:
- *     - { phrase: "Sam Candidate", in: [README.md, site/], why: "the maker's credit" }
+ *     - { phrase: "Sam Candidate", in: [.github/README.md, site/], why: "the maker's credit" }
  *     - { phrase: Apple, in: ["*"], why: "Apple Calendar, not an employer" }
  *
  * Install as a hook once per clone:
@@ -109,10 +109,13 @@ export function termsFrom(root) {
   return terms;
 }
 
-/** The fork's own files: config/local-paths.txt, plus the READMEs it writes over upstream's. */
+/**
+ * The fork's own files: config/local-paths.txt, plus the READMEs in .github/,
+ * which that file can't declare because upstream counts all of .github/ as its own.
+ */
 function forkPaths() {
   const listed = readFileSync(join(REPO, 'config', 'local-paths.txt'), 'utf-8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
-  return [...listed, 'README.md', 'README.ja.md'];
+  return [...listed, '.github/README.md', '.github/README.ja.md'];
 }
 
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

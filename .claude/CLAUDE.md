@@ -12,7 +12,7 @@ This repo is Shukatsu, a fork of career-ops. The root `AGENTS.md` and `CLAUDE.md
 
 ## Keeping the fork small
 
-- New fork work goes in `shukatsu/`, `site/`, `modes/shukatsu/` or `modes/shinsotsu/`, never in upstream's files. A new fork-owned path outside those goes in `config/local-paths.txt`.
+- New fork work goes in `shukatsu/`, `site/`, `modes/shukatsu/` or `modes/shinsotsu/`, never in upstream's files. A new fork-owned path outside those goes in `config/local-paths.txt`, except inside a folder upstream ships as a whole (`.github/`), which its validator refuses there. The fork's READMEs live in `.github/` (2026-10-29) so GitHub shows them over upstream's root `README.md`, and `shukatsu/leak-check.mjs` names them itself.
 - A fix to upstream's code is made here, then checked against `upstream/main` and upstream's issues, since the fork runs releases behind and the fix may already be there (2026-10-29: the test-data-root leak was fixed upstream in #5137, already in 1.37). If it isn't, draft it for upstream: a bug fix goes straight to a PR off `upstream/main` (their CONTRIBUTING allows it), and a feature or architecture change goes to an issue first. Opening either is outward-facing, so ask Kaito first. The review marks the edit `adopted` once a release carries it, and then the fork's version can go.
 - When `shukatsu/` starts importing or running another engine file, declare it in `shukatsu/core/seam.mjs` and give it a behaviour test in `shukatsu/tests/seam.spec.mjs`. The first test there fails until you do.
 

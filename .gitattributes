@@ -38,7 +38,3 @@ cops       text eol=lf
 *.ico   binary
 *.woff2 binary
 *.pdf   binary
-
-# Fork: Shukatsu's own front page. A merge keeps these (needs `git config merge.ours.driver true`, see README.md).
-README.md merge=ours
-README.ja.md merge=ours
