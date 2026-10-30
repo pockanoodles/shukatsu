@@ -32,7 +32,7 @@ import { spawnSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import * as yaml from 'js-yaml';
+import { loadYaml } from '../lib/yaml-document.mjs';
 import { getCareerOpsRoot } from '../path-resolver.mjs';
 import { isMainModule } from '../lib/is-main-module.mjs';
 import { printUsage } from './core/usage.mjs';
@@ -49,7 +49,7 @@ const git = (...args) => {
 const load = (root, rel) => {
   const path = join(root, rel);
   if (!existsSync(path)) return null;
-  try { return yaml.load(readFileSync(path, 'utf-8')); } catch { return null; }
+  try { return loadYaml(readFileSync(path, 'utf-8')); } catch { return null; }
 };
 
 /** "Globex Securities" also as "Globex": a company is often written without its suffix. */

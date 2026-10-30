@@ -29,7 +29,7 @@
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import * as yaml from 'js-yaml';
+import { loadYaml } from '../../lib/yaml-document.mjs';
 import { checkCompanyMatch, classifyReply, matchCandidates, normalizeStr } from '../../reply-matcher.mjs';
 import { analyzeInvite } from '../../invite-match.mjs';
 import { db } from '../core/store.mjs';
@@ -199,7 +199,7 @@ const companyKey = (name) => {
  * Japanese names a company in Japanese; the tracker names it in English.
  */
 export function companyAliases(root, rows) {
-  const companies = yaml.load(readFileSync(join(root, 'data', 'targets.yml'), 'utf-8'))?.companies || [];
+  const companies = loadYaml(readFileSync(join(root, 'data', 'targets.yml'), 'utf-8'))?.companies || [];
   const out = new Map();
   for (const row of rows) {
     const entry = companies.find((c) => companyKey(c.name) === companyKey(row.company));

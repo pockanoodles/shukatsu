@@ -19,6 +19,7 @@
 import { existsSync, mkdirSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import * as yaml from 'js-yaml';
+import { loadYaml } from '../../lib/yaml-document.mjs';
 import { commitPaths } from '../core/git.mjs';
 import { writeAtomic } from '../core/lock.mjs';
 import { getSetting, now, setSetting } from '../core/store.mjs';
@@ -51,7 +52,7 @@ export function readAnswers(root) {
   const path = answersPath(root);
   if (!existsSync(path)) return empty();
   let doc;
-  try { doc = yaml.load(readFileSync(path, 'utf-8')) || {}; } catch (e) { throw new Error(`data/form-answers.yml isn't valid YAML: ${e.message}`); }
+  try { doc = loadYaml(readFileSync(path, 'utf-8')) || {}; } catch (e) { throw new Error(`data/form-answers.yml isn't valid YAML: ${e.message}`); }
   const answers = doc.answers && typeof doc.answers === 'object' ? doc.answers : {};
   const questions = (Array.isArray(doc.questions) ? doc.questions : []).filter((x) => x && x.q && x.a != null).map((x) => ({ q: String(x.q), a: String(x.a) }));
   return { answers, questions };

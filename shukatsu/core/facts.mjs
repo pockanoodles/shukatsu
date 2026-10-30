@@ -18,7 +18,7 @@
 
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
-import * as yaml from 'js-yaml';
+import { loadYaml } from '../../lib/yaml-document.mjs';
 
 export const PROVENANCE = new Set(['V', 'M', 'U', 'T', 'E', 'C', '?']);
 export const FACT_STATUS = new Set(['active', 'retired', 'rejected', 'cannot-confirm']);
@@ -33,7 +33,7 @@ export const profilePath = (root) => join(root, 'data', 'career-profile.yml');
 export function loadProfile(root, text = null) {
   const path = profilePath(root);
   if (text == null && !existsSync(path)) throw new Error(`No master profile at ${path}`);
-  const p = yaml.load(text ?? readFileSync(path, 'utf-8'));
+  const p = loadYaml(text ?? readFileSync(path, 'utf-8'));
   p._path = path;
   p._entities = [];
   p._facts = new Map();

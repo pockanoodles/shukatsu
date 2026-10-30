@@ -16,7 +16,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSy
 import { tmpdir } from 'os';
 import { spawnSync } from 'child_process';
 import { dirname, join, relative, resolve } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { addTrackerRow, canonicalStates, runEngine, setStatus, statusLog } from '../core/tracker.mjs';
 import { SEAM, seamClosure } from '../core/seam.mjs';
 import { runGate } from '../core/trace.mjs';
@@ -101,6 +101,21 @@ test('walk-tree: listTree lists files below a folder, skips what it is told to, 
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('yaml-document: an empty or comment-only file reads as null, and real YAML as its value', async () => {
+  const { loadYaml } = await import(join(ENGINE, 'lib/yaml-document.mjs'));
+  assert.equal(loadYaml(''), null);
+  assert.equal(loadYaml('# nothing set yet\n'), null, 'js-yaml 5 throws here, so the app reads every config through loadYaml');
+  assert.deepEqual(loadYaml('companies:\n  - Acme\n'), { companies: ['Acme'] });
+  assert.throws(() => loadYaml('a: [unclosed'), 'a broken file still fails loudly');
+});
+
+test('path-resolver: the profile is config/profile.yml under the root the app passes, whatever the environment says', () => {
+  const script = `import { getProfilePath } from ${JSON.stringify(pathToFileURL(join(ENGINE, 'path-resolver.mjs')).href)}; process.stdout.write(getProfilePath('/data'));`;
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf-8', env: { ...process.env, CAREER_OPS_PROFILE: '/elsewhere/me.yml' } });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, '/data/config/profile.yml');
 });
 
 test('url-key: a posting URL normalizes to its dedup key, and a non-URL to empty', async () => {

@@ -14,7 +14,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'fs';
 import { spawnSync } from 'child_process';
 import { dirname, join } from 'path';
-import * as yaml from 'js-yaml';
+import { loadYaml } from '../../lib/yaml-document.mjs';
 import { resolveTrackerPath, resolveTrackerPathForWrite } from '../../path-resolver.mjs';
 import { detectColumns, parseTrackerRow, resolveColumns } from '../../tracker-parse.mjs';
 import { acquireTrackerLock, cell, trackerLockDirFor, writeFileAtomic } from '../../tracker-utils.mjs';
@@ -35,7 +35,7 @@ export function trackerRows(root) {
 }
 
 export function canonicalStates() {
-  const doc = yaml.load(readFileSync(join(ENGINE, 'templates', 'states.yml'), 'utf-8'));
+  const doc = loadYaml(readFileSync(join(ENGINE, 'templates', 'states.yml'), 'utf-8'));
   return doc.states.map((s) => ({ id: s.id, label: s.label, terminal: Boolean(s.terminal), description: s.description }));
 }
 
@@ -161,7 +161,7 @@ export function outcomeKeys(root) {
   const text = readFileSync(file, 'utf-8');
   // js-yaml 5 throws on a document with nothing in it; an empty file has no outcomes.
   if (!text.split('\n').some((l) => l.trim() && !l.trim().startsWith('#'))) return [];
-  const outcomes = yaml.load(text)?.outcomes;
+  const outcomes = loadYaml(text)?.outcomes;
   return outcomes && typeof outcomes === 'object' && !Array.isArray(outcomes) ? Object.keys(outcomes) : [];
 }
 

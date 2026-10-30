@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { getProfilePath } from '../../path-resolver.mjs';
 
 const { allowed, matcher, termsFrom } = await import('../leak-check.mjs');
 const { makeRoot } = await import('./helpers.mjs');
@@ -9,7 +10,7 @@ const { makeRoot } = await import('./helpers.mjs');
 function root() {
   const r = makeRoot();
   mkdirSync(join(r, 'config'), { recursive: true });
-  writeFileSync(join(r, 'config', 'profile.yml'), 'candidate:\n  full_name: Test Candidate\n  email: test@example.com\n  phone: "+1 617 555 0142"\n  linkedin: https://www.linkedin.com/in/test-candidate-0a1b2c\n');
+  writeFileSync(getProfilePath(r), 'candidate:\n  full_name: Test Candidate\n  email: test@example.com\n  phone: "+1 617 555 0142"\n  linkedin: https://www.linkedin.com/in/test-candidate-0a1b2c\n');
   writeFileSync(join(r, 'data', 'targets.yml'), 'companies:\n  - { name: Globex Securities, ja: [グローベックス証券], tier: A }\n  - { name: Initech, tier: B }\n');
   writeFileSync(join(r, 'data', 'applications.md'), '# Applications Tracker\n\n| # | Date | Company | Role | Status |\n|---|---|---|---|---|\n| 1 | 2026-10-14 | Umbrella Corp | Analyst | Applied |\n');
   return r;

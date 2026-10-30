@@ -23,7 +23,7 @@
 
 import { existsSync, readFileSync } from 'fs';
 import { join, relative } from 'path';
-import * as yaml from 'js-yaml';
+import { loadYaml } from '../lib/yaml-document.mjs';
 import { getCareerOpsRoot } from '../path-resolver.mjs';
 import { isMainModule } from '../lib/is-main-module.mjs';
 
@@ -75,7 +75,7 @@ const DEFAULTS = {
 
 export function loadRules(root) {
   const path = join(root, 'config', 'bullet-rules.yml');
-  const user = existsSync(path) ? (yaml.load(readFileSync(path, 'utf-8')) || {}) : {};
+  const user = existsSync(path) ? (loadYaml(readFileSync(path, 'utf-8')) || {}) : {};
   return {
     length: { ...DEFAULTS.length, ...(user.length || {}) },
     punctuation: { ...DEFAULTS.punctuation, ...(user.punctuation || {}) },

@@ -25,7 +25,7 @@
 import { existsSync, readFileSync, statSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { basename, extname, isAbsolute, join, relative } from 'path';
-import * as yaml from 'js-yaml';
+import { loadYaml } from '../lib/yaml-document.mjs';
 import { getCareerOpsRoot } from '../path-resolver.mjs';
 import { isMainModule } from '../lib/is-main-module.mjs';
 import { listTree } from '../lib/walk-tree.mjs';
@@ -36,7 +36,7 @@ const READABLE = new Set(['.md', '.txt', '.html', '.docx']);
 export function loadRules(root) {
   const auditPath = join(root, 'config', 'materials-audit.yml');
   if (!existsSync(auditPath)) throw new Error(`missing ${auditPath}`);
-  const rules = yaml.load(readFileSync(auditPath, 'utf-8')) || {};
+  const rules = loadYaml(readFileSync(auditPath, 'utf-8')) || {};
   const factsPath = join(root, 'config', 'cv-facts.json');
   const facts = existsSync(factsPath) ? JSON.parse(readFileSync(factsPath, 'utf-8')) : {};
   return {

@@ -32,7 +32,8 @@
 
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
-import * as yaml from 'js-yaml';
+import { loadYaml } from '../../lib/yaml-document.mjs';
+import { getProfilePath } from '../../path-resolver.mjs';
 import { loadProfile } from '../core/facts.mjs';
 import { norm } from './fields.mjs';
 import '../extension/match.js';
@@ -44,7 +45,7 @@ export const answersPath = (root) => join(root, 'data', 'form-answers.yml');
 
 const readYaml = (path) => {
   if (!existsSync(path)) return {};
-  try { return yaml.load(readFileSync(path, 'utf-8')) || {}; } catch (e) { throw new Error(`${path} isn't valid YAML: ${e.message}`); }
+  try { return loadYaml(readFileSync(path, 'utf-8')) || {}; } catch (e) { throw new Error(`${path} isn't valid YAML: ${e.message}`); }
 };
 
 const asText = (v) => (typeof v === 'boolean' ? (v ? 'Yes' : 'No') : v == null ? '' : String(v).trim());
@@ -88,7 +89,7 @@ export function loadBank(root) {
   let p = {};
   try { p = loadProfile(root); } catch { /* no master profile yet: config and stated answers still count */ }
   const c = p.candidate || {};
-  const cfg = readYaml(join(root, 'config', 'profile.yml')).candidate || {};
+  const cfg = readYaml(getProfilePath(root)).candidate || {};
   const full = asText(c.name || cfg.full_name);
   put('name.full', full, c.name ? 'profile' : 'config');
   const words = full.split(/\s+/).filter(Boolean);
