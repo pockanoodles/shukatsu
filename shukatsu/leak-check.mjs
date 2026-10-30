@@ -22,8 +22,9 @@
  *     - { phrase: "Sam Candidate", in: [.github/README.md, site/], why: "the maker's credit" }
  *     - { phrase: Apple, in: ["*"], why: "Apple Calendar, not an employer" }
  *
- * Install as a hook once per clone:
- *   printf '#!/bin/sh\nexec node shukatsu/leak-check.mjs --staged\n' > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+ * Install as a hook once per clone. Worktrees share it, and one cut from
+ * upstream for a pull request has no shukatsu/ and so no fork file to check:
+ *   printf '#!/bin/sh\n[ -f shukatsu/leak-check.mjs ] || exit 0\nexec node shukatsu/leak-check.mjs --staged\n' > "$(git rev-parse --git-common-dir)/hooks/pre-commit" && chmod +x "$(git rev-parse --git-common-dir)/hooks/pre-commit"
  *
  * Exits 1 when something matches, naming the file, the line, and the word.
  */

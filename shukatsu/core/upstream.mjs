@@ -34,7 +34,7 @@ const SAME_ORIGIN = /\bfetch\s*\(\s*[`'"]\//;
 function git(engine, args, { ok = false } = {}) {
   const r = spawnSync('git', args, { cwd: engine, encoding: 'utf-8', maxBuffer: 256 * 1024 * 1024 });
   if (!ok && r.status !== 0) throw new Error(`git ${args.join(' ')}: ${(r.stderr || r.stdout).trim()}`);
-  return { status: r.status, out: (r.stdout || '').trimEnd() };
+  return { status: r.status, out: (r.stdout || '').trimEnd(), err: (r.stderr || '').trim() };
 }
 
 const lines = (s) => s.split('\n').filter(Boolean);
@@ -72,7 +72,7 @@ const blob = (engine, ref, file) => {
  * HEAD from both `base` and the newest `update-system.mjs apply` copy of the
  * file, so an edit later reverted doesn't count, and neither does a file a
  * merge since the copy brought back to upstream's content. `copied` are files
- * only those copies touched.
+ * only those copies touched, and `lastCopy` maps each copied file to its newest copy.
  */
 export function forkHistory(engine, base) {
   const owned = forkPaths(engine);
@@ -94,7 +94,7 @@ export function forkHistory(engine, base) {
     return ours !== blob(engine, base, f) && (!lastCopy.has(f) || ours !== blob(engine, lastCopy.get(f), f));
   }).sort();
   const copied = [...lastCopy.keys()].filter((f) => !edited.includes(f)).sort();
-  return { edited, copied };
+  return { edited, copied, lastCopy };
 }
 
 /** Network calls and hosts a release adds to shipped code, from its added lines. */
@@ -194,12 +194,17 @@ export function merge(engine, tag) {
   if (git(engine, ['status', '--porcelain', '--untracked-files=no']).out) throw new Error('the working tree has uncommitted changes; commit or stash them first');
   if (git(engine, ['config', '--get', 'merge.ours.driver'], { ok: true }).status !== 0) git(engine, ['config', 'merge.ours.driver', 'true']);
   const base = git(engine, ['merge-base', 'HEAD', tag]).out;
-  const { edited } = forkHistory(engine, base);
+  const { edited, lastCopy } = forkHistory(engine, base);
   const fork = new Set(edited);
   const owned = forkPaths(engine);
   const branch = `update/${tag.replace(/^career-ops-/, '')}`;
   git(engine, ['switch', '-q', '-c', branch]);
-  git(engine, ['merge', '--no-ff', '--no-commit', tag], { ok: true });
+  const started = git(engine, ['merge', '--no-ff', '--no-commit', tag], { ok: true });
+  // A merge git refused (an untracked file in the way, say) leaves no MERGE_HEAD.
+  // Normalizing after one would copy the release in over HEAD, which is what this replaces.
+  if (git(engine, ['rev-parse', '-q', '--verify', 'MERGE_HEAD'], { ok: true }).status !== 0) {
+    throw new Error(`git did not start merging ${tag}, so nothing was changed: ${started.err || started.out}`);
+  }
   const resolved = [];
   const left = [];
   for (const file of lines(git(engine, ['diff', '--name-only', '--diff-filter=U']).out)) {
@@ -215,11 +220,17 @@ export function merge(engine, tag) {
   }
   // A file the fork never edited can still merge cleanly into a blend nobody
   // wrote: an update-system.mjs copy left the fork's side off the merge base, so
-  // git keeps copied lines upstream has since removed. Every such file is set to
-  // the tag's content, whether or not git called it a conflict.
+  // git keeps copied lines upstream has since removed. Such a file is set to the
+  // tag's content whether or not git called it a conflict. Whether the fork edited
+  // it is judged by content, not by which commits touched it: the fork's side must
+  // be upstream's own (the merge base) or a copy, so a change made in an earlier
+  // merge commit, which forkHistory doesn't see, is left to git.
   for (const file of lines(git(engine, ['diff', '--cached', '--name-only', tag]).out)) {
     if (owned(file) || fork.has(file) || resolved.includes(file)) continue;
-    if (blob(engine, tag, file) === null) git(engine, ['rm', '-q', '--cached', '--', file]);
+    const ours = blob(engine, 'HEAD', file);
+    const upstreams = ours !== null && (ours === blob(engine, base, file) || (lastCopy.has(file) && ours === blob(engine, lastCopy.get(file), file)));
+    if (!upstreams) continue;
+    if (blob(engine, tag, file) === null) git(engine, ['rm', '-q', '-f', '--', file]);
     else git(engine, ['checkout', tag, '--', file]);
     resolved.push(file);
   }
