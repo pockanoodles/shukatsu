@@ -129,6 +129,7 @@ This repository includes the career-ops engine, and its commands run only when y
 | Posting checks (`check-liveness.mjs`, `fetch-jd.mjs`, `browser-extract.mjs`) | The posting's own address, sometimes through a Playwright browser on your machine | Only when you run them |
 | Model scripts (`gemini-eval.mjs`, `openai-eval.mjs`, `openrouter-runner.mjs`, `ollama-eval.mjs`) | Google, an OpenAI-compatible endpoint you set, OpenRouter, or Ollama on your own machine | Only when you run one with its key set. These send posting and profile text, so read the provider's terms first |
 | `update-system.mjs` | GitHub, to read career-ops' releases and fetch its code | Only when you run an update check |
+| `install-latex-engine.mjs`, then `generate-latex.mjs` | GitHub, to download the Tectonic LaTeX engine (one pinned, checksummed binary). Tectonic then fetches the TeX packages a CV uses from its own package host the first time, and nothing of yours goes with them | Only when you choose the LaTeX resume path and agree to the install |
 | Optional plugins (`plugins/`: Apify, Notion, Gmail, H1B sponsor lookup) | That service's own API | Only when you install and configure one |
 | `hired-share.mjs` | Nothing. It opens a prefilled GitHub issue in your browser and you submit it yourself | Only when you choose to share a story |
 
