@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'fs';
+import { readFileSync } from 'fs';
 import { join, relative } from 'path';
 import { fileURLToPath } from 'url';
+import { listTree } from '../../lib/walk-tree.mjs';
 
 /**
  * The one-door rule, checked: no server action, page, route, or CLI changes
@@ -27,15 +28,10 @@ const SQL_WRITE = /\.prepare\(\s*[`'"]\s*(INSERT|UPDATE|DELETE)/i;
 // Sign-in: sessions, invites accepted, passkey ceremonies, login attempts.
 const SIGN_IN = { 'src/app/actions/auth.ts': ['signIn', 'acceptInvite', 'createSession', 'endSession', 'finishRegistration', 'finishAuthentication'] };
 
-function files(dir, out = []) {
-  for (const name of readdirSync(dir)) {
-    if (name === 'node_modules' || name.startsWith('.')) continue;
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) files(p, out);
-    else if (/\.(ts|tsx|mjs)$/.test(name)) out.push(p);
-  }
-  return out;
-}
+const files = (dir) => listTree(dir, {
+  match: /\.(ts|tsx|mjs)$/,
+  skip: (entry) => entry.name === 'node_modules' || entry.name.startsWith('.'),
+});
 
 test('nothing in the app writes around the operations registry', () => {
   const offenders = [];

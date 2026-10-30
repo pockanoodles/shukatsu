@@ -42,6 +42,7 @@ import { join, relative, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { getCareerOpsRoot } from '../path-resolver.mjs';
 import { isMainModule } from '../lib/is-main-module.mjs';
+import { printUsage } from './core/usage.mjs';
 import { readText } from './audit-materials.mjs';
 import { isLive, isPending, loadProfile, numbers, quantities, sameNumbers, similarity, slug, today } from './core/facts.mjs';
 import { render, withBanner } from './core/render.mjs';
@@ -264,6 +265,8 @@ function selfTest() {
   return process.exitCode || 0;
 }
 
-if (isMainModule(import.meta.url)) {
+if (isMainModule(import.meta.url) && ['--help', '-h'].some((f) => process.argv.includes(f))) {
+  printUsage(import.meta.url);
+} else if (isMainModule(import.meta.url)) {
   try { process.exitCode = cli(process.argv.slice(2)); } catch (e) { console.error(e.message); process.exitCode = 1; }
 }

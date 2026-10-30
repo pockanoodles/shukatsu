@@ -8,7 +8,7 @@
 
 ## The rules
 
-**Checked by `bullet-lint.mjs`** (rules are configurable in `{DATA_ROOT}/config/bullet-rules.yml`):
+**Checked by `shukatsu/bullet-lint.mjs`** (rules are configurable in `{DATA_ROOT}/config/bullet-rules.yml`):
 1. **Strong verb first, in the right tense.** Past tense for ended roles. No duty
    openers (Responsible for, Helped, Worked on, Assisted, Used, Leveraged).
 2. **Two lines at most** (`max_chars`, 230 by default for US letter at 10pt).

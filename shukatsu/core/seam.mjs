@@ -13,6 +13,7 @@ export const SEAM = {
     'check-jd-archive.mjs': ['hasEmbeddedJdArchive'],
     'invite-match.mjs': ['analyzeInvite'],
     'lib/is-main-module.mjs': ['isMainModule'],
+    'lib/walk-tree.mjs': ['listTree'],
     'path-resolver.mjs': ['getCareerOpsRoot', 'resolveTrackerPath', 'resolveTrackerPathForWrite'],
     'plugins/_engine.mjs': ['buildCtx'],
     'plugins/_net.mjs': ['resolveAndValidate'],

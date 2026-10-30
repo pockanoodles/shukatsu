@@ -51,7 +51,7 @@ English-language roles at Japanese companies outside these cases use the default
 
 - Default to **です・ます調** for ES and CFN free-text. Use **だ・である調** only when the
   form or company template clearly expects it. Never mix the two in one answer, and
-  `char-count.mjs` flags a mix.
+  `shukatsu/char-count.mjs` flags a mix.
 - **結論ファースト**: the first sentence answers the question. Then the episode
   (状況 → 課題 → 行動 → 結果), then what it means for this company.
 - Numbers stay exactly as the sources state them (article-digest.md wins over cv.md).

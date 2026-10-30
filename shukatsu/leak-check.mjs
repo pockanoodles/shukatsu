@@ -35,6 +35,7 @@ import { fileURLToPath } from 'url';
 import * as yaml from 'js-yaml';
 import { getCareerOpsRoot } from '../path-resolver.mjs';
 import { isMainModule } from '../lib/is-main-module.mjs';
+import { printUsage } from './core/usage.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const mode = process.argv.includes('--staged') ? 'staged' : process.argv.includes('--history') ? 'history' : 'tree';
@@ -165,7 +166,9 @@ function* linesToCheck(paths) {
   }
 }
 
-if (isMainModule(import.meta.url)) {
+if (isMainModule(import.meta.url) && ['--help', '-h'].some((f) => process.argv.includes(f))) {
+  printUsage(import.meta.url);
+} else if (isMainModule(import.meta.url)) {
   const root = getCareerOpsRoot();
   if (root === REPO || !existsSync(join(root, 'data'))) {
     console.error('leak-check: no private data root is set up here, so there is nothing to check against.');

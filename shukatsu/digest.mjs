@@ -12,9 +12,12 @@
 
 import { getCareerOpsRoot } from '../path-resolver.mjs';
 import { isMainModule } from '../lib/is-main-module.mjs';
+import { printUsage } from './core/usage.mjs';
 import { digest, digestText } from './core/digest.mjs';
 
-if (isMainModule(import.meta.url)) {
+if (isMainModule(import.meta.url) && ['--help', '-h'].some((f) => process.argv.includes(f))) {
+  printUsage(import.meta.url);
+} else if (isMainModule(import.meta.url)) {
   const argv = process.argv.slice(2);
   const opt = (k) => { const i = argv.indexOf(`--${k}`); return i === -1 ? null : argv[i + 1]; };
   try {

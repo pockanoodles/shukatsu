@@ -22,12 +22,14 @@
  * Exit code: 0 clean, 1 at least one error, 2 config problem.
  */
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
+import { existsSync, readFileSync, statSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { basename, extname, isAbsolute, join, relative } from 'path';
 import * as yaml from 'js-yaml';
 import { getCareerOpsRoot } from '../path-resolver.mjs';
 import { isMainModule } from '../lib/is-main-module.mjs';
+import { listTree } from '../lib/walk-tree.mjs';
+import { printUsage } from './core/usage.mjs';
 
 const READABLE = new Set(['.md', '.txt', '.html', '.docx']);
 
@@ -109,16 +111,14 @@ export function auditText(text, kind, rules) {
   return findings;
 }
 
-function walk(path, out = []) {
-  if (!existsSync(path)) return out;
-  const st = statSync(path);
-  if (st.isFile()) {
-    const name = basename(path);
-    if (READABLE.has(extname(name).toLowerCase()) && !name.startsWith('~$') && !name.startsWith('.')) out.push(path);
-    return out;
-  }
-  for (const entry of readdirSync(path)) walk(join(path, entry), out);
-  return out;
+// Links are followed, as statSync did before, since a materials folder may link to documents kept elsewhere.
+function walk(path) {
+  if (!existsSync(path)) return [];
+  const readable = (p) => {
+    const name = basename(p);
+    return READABLE.has(extname(name).toLowerCase()) && !name.startsWith('~$') && !name.startsWith('.');
+  };
+  return (statSync(path).isFile() ? [path] : listTree(path, { links: 'follow' })).filter(readable);
 }
 
 export function audit(root, targets) {
@@ -164,7 +164,9 @@ function report(results, root) {
   return errors;
 }
 
-if (isMainModule(import.meta.url)) {
+if (isMainModule(import.meta.url) && ['--help', '-h'].some((f) => process.argv.includes(f))) {
+  printUsage(import.meta.url);
+} else if (isMainModule(import.meta.url)) {
   const args = process.argv.slice(2);
   const root = getCareerOpsRoot();
   let results;

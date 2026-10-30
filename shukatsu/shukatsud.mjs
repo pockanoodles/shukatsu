@@ -28,6 +28,8 @@ import { existsSync, readFileSync, writeFileSync, chmodSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { getCareerOpsRoot } from '../path-resolver.mjs';
+import { isMainModule } from '../lib/is-main-module.mjs';
+import { printUsage } from './core/usage.mjs';
 import { createInvite, hasOwner, owner as ownerOf, issueToken, tokenUser } from './core/people.mjs';
 import { db } from './core/store.mjs';
 import { loadProfile } from './core/facts.mjs';
@@ -172,6 +174,8 @@ export async function start(opts = args(process.argv.slice(2))) {
   return server;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (isMainModule(import.meta.url) && ['--help', '-h'].some((f) => process.argv.includes(f))) {
+  printUsage(import.meta.url);
+} else if (isMainModule(import.meta.url)) {
   start().catch((e) => { console.error(`shukatsud: ${e.message}`); process.exit(1); });
 }

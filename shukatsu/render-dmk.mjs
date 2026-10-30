@@ -22,6 +22,7 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import { isMainModule } from '../lib/is-main-module.mjs';
+import { printUsage } from './core/usage.mjs';
 
 // Section order on the page; anything not listed follows in draft order.
 const ORDER = ['education', 'skills', 'certifications', 'work experience', 'experience', 'projects', 'leadership', 'volunteering'];
@@ -150,7 +151,9 @@ ${body}
 `;
 }
 
-if (isMainModule(import.meta.url)) {
+if (isMainModule(import.meta.url) && ['--help', '-h'].some((f) => process.argv.includes(f))) {
+  printUsage(import.meta.url);
+} else if (isMainModule(import.meta.url)) {
   const args = process.argv.slice(2);
   const fi = args.indexOf('--format');
   const format = fi >= 0 ? args.splice(fi, 2)[1] : 'letter';

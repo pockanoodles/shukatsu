@@ -22,6 +22,7 @@
 
 import { readFileSync } from 'fs';
 import { isMainModule } from '../lib/is-main-module.mjs';
+import { printUsage } from './core/usage.mjs';
 
 const segmenter = new Intl.Segmenter('ja', { granularity: 'grapheme' });
 
@@ -111,7 +112,9 @@ function selfTest() {
   console.log('char-count self-test passed');
 }
 
-if (isMainModule(import.meta.url)) {
+if (isMainModule(import.meta.url) && ['--help', '-h'].some((f) => process.argv.includes(f))) {
+  printUsage(import.meta.url);
+} else if (isMainModule(import.meta.url)) {
   const args = process.argv.slice(2);
   if (args.includes('--self-test')) { selfTest(); process.exit(0); }
   const flag = (name) => {

@@ -16,11 +16,14 @@
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { isMainModule } from '../lib/is-main-module.mjs';
+import { printUsage } from './core/usage.mjs';
 import { latestRelease, merge, mergeText, pick, review, reviewText } from './core/upstream.mjs';
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
 
-if (isMainModule(import.meta.url)) {
+if (isMainModule(import.meta.url) && ['--help', '-h'].some((f) => process.argv.includes(f))) {
+  printUsage(import.meta.url);
+} else if (isMainModule(import.meta.url)) {
   const [cmd, ...rest] = process.argv.slice(2);
   const arg = rest.find((a) => !a.startsWith('--'));
   try {

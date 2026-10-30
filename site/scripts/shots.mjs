@@ -39,6 +39,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { isMainModule } from '../../lib/is-main-module.mjs';
+import { printUsage } from '../../shukatsu/core/usage.mjs';
 
 const SITE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = resolve(SITE, '..');
@@ -409,6 +410,8 @@ async function main() {
   log(`done in ${Math.round((Date.now() - started) / 1000)}s`);
 }
 
-if (isMainModule(import.meta.url)) {
+if (isMainModule(import.meta.url) && ['--help', '-h'].some((f) => process.argv.includes(f))) {
+  printUsage(import.meta.url);
+} else if (isMainModule(import.meta.url)) {
   main().catch((err) => { console.error(err); process.exit(1); });
 }

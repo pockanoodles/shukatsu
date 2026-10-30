@@ -12,7 +12,8 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import { spawnSync } from 'child_process';
 import { dirname, join, relative, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -75,6 +76,31 @@ test('the seam closure follows each module\'s own imports, and stays inside the 
   for (const p of [...Object.keys(SEAM.imports), ...SEAM.files]) assert.ok(closure.includes(p));
   assert.ok(closure.length > Object.keys(SEAM.imports).length + SEAM.files.length, 'the seam modules load other engine modules');
   assert.ok(closure.every((p) => !p.startsWith('..') && !p.startsWith('shukatsu/') && existsSync(join(ENGINE, p))), closure.filter((p) => !existsSync(join(ENGINE, p))).join(', '));
+});
+
+test('walk-tree: listTree lists files below a folder, skips what it is told to, and never enters a nested checkout', async () => {
+  const { listTree } = await import(join(ENGINE, 'lib/walk-tree.mjs'));
+  const dir = mkdtempSync(join(tmpdir(), 'seam-walk-'));
+  try {
+    mkdirSync(join(dir, 'a', 'b'), { recursive: true });
+    mkdirSync(join(dir, 'skipme'));
+    mkdirSync(join(dir, 'clone'));
+    writeFileSync(join(dir, 'a', 'b', 'resume.md'), 'x');
+    writeFileSync(join(dir, 'a', 'note.txt'), 'x');
+    writeFileSync(join(dir, 'skipme', 'hidden.md'), 'x');
+    writeFileSync(join(dir, 'clone', '.git'), 'gitdir: elsewhere');
+    writeFileSync(join(dir, 'clone', 'theirs.md'), 'x');
+    mkdirSync(join(dir, 'linked-target'));
+    writeFileSync(join(dir, 'linked-target', 'kept.md'), 'x');
+    symlinkSync(join(dir, 'linked-target'), join(dir, 'a', 'link'));
+    const rel = (files) => files.map((f) => relative(dir, f)).sort();
+    const skip = (entry) => entry.name === 'skipme' || entry.name === 'linked-target';
+    assert.deepEqual(rel(listTree(dir, { match: /\.md$/, skip })), ['a/b/resume.md']);
+    assert.deepEqual(rel(listTree(dir, { match: /\.md$/, skip, links: 'follow' })), ['a/b/resume.md', 'a/link/kept.md'],
+      'audit-materials follows links into folders kept elsewhere');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('url-key: a posting URL normalizes to its dedup key, and a non-URL to empty', async () => {
