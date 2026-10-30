@@ -203,6 +203,8 @@ export function merge(engine, tag) {
   // A merge git refused (an untracked file in the way, say) leaves no MERGE_HEAD.
   // Normalizing after one would copy the release in over HEAD, which is what this replaces.
   if (git(engine, ['rev-parse', '-q', '--verify', 'MERGE_HEAD'], { ok: true }).status !== 0) {
+    git(engine, ['switch', '-q', '-']);
+    git(engine, ['branch', '-q', '-D', branch]);
     throw new Error(`git did not start merging ${tag}, so nothing was changed: ${started.err || started.out}`);
   }
   const resolved = [];

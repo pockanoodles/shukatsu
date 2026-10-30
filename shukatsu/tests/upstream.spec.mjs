@@ -96,6 +96,9 @@ test('merge stops, changing nothing, when git refuses to start the merge', () =>
   assert.throws(() => merge(dir, 'career-ops-v1.2'), /did not start merging career-ops-v1\.2.*untracked/s);
   assert.equal(readFileSync(join(dir, 'd.mjs'), 'utf-8'), 'mine, untracked\n');
   assert.equal(readFileSync(join(dir, 'a.mjs'), 'utf-8'), 'export const a = 2;\n', 'no release file was copied in');
+  const branches = spawnSync('git', ['branch', '--format=%(refname:short)'], { cwd: dir, encoding: 'utf-8' }).stdout;
+  assert.doesNotMatch(branches, /update\/v1\.2/, 'the empty update branch is removed');
+  assert.match(spawnSync('git', ['branch', '--show-current'], { cwd: dir, encoding: 'utf-8' }).stdout, /^main/);
 });
 
 test('a change made in an earlier merge commit survives the next merge', () => {
